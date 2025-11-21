@@ -1,7 +1,7 @@
 import { Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function Index() {
+export default function Settings() {
   return (
     <SafeAreaView
       style={{
@@ -11,7 +11,7 @@ export default function Index() {
       }}
     >
       <Text className="text-lg font-bold text-amber-500">
-        Home Page!🏠
+        Settings Page!⚙️
       </Text>
     </SafeAreaView>
   );
