@@ -99,11 +99,18 @@ export const AuthProvider =({children}:any) =>{
             await SecureStore.setItemAsync('refresh_token', data.refresh_token);
             await SecureStore.setItemAsync('user', JSON.stringify(data.user));
             }
+        else{
+            showToast({
+                type: 'error',
+                title: 'Login Failed',
+                message: data.detail || "An error occurred during login."
+            });
+        }
         } catch (error: any) {
             showToast({
                 type: 'error',
                 title: 'Login Failed',
-                message: error.message
+                message: error.message|| 'Internal server error occurred during login.'
             });
         }
     }
@@ -129,7 +136,7 @@ export const AuthProvider =({children}:any) =>{
             showToast({
                 type: 'error',
                 title: 'Logout Failed',
-                message: error.message
+                message: error.message || 'Internal server error occurred during logout.'
             });
         }
     }
