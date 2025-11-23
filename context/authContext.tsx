@@ -76,10 +76,35 @@ export const AuthProvider =({children}:any) =>{
         }
     }
 
+    const logout = async () =>{
+        try {
+            const refresh_token = await SecureStore.getItemAsync('refresh_token');
+            if(!refresh_token) return;
 
+            const res = await postData('/auth/logout',{},{
+                Authorization: `Bearer ${refresh_token}`
+            });
+            await SecureStore.deleteItemAsync('access_token');
+            await SecureStore.deleteItemAsync('refresh_token');
+            setAuthState({
+                access_token: null,
+                refresh_token: null,
+                success: null,
+                user: null,
+            });
+        } catch (error: any) {
+            showToast({
+                type: 'error',
+                title: 'Logout Failed',
+                message: error.message
+            });
+        }
+    }
 
     const value ={
         onLogin: login,
+        onLogout: logout,
+        authState,
     };
 }
 
