@@ -16,6 +16,7 @@ authState?: {
         full_name: string;
         role: string;
     }| null;
+    isLoading?: boolean | null;
 };
 onLogin?:(payload:LoginPayload) => Promise<void>;
 onLogout?:() => Promise<void>;
@@ -38,6 +39,7 @@ export const AuthProvider =({children}:any) =>{
             full_name: string;
             role: string;
         }| null;
+        isLoading?: boolean | null;
     } >({
         access_token: null,
         refresh_token: null,
@@ -82,6 +84,7 @@ export const AuthProvider =({children}:any) =>{
                     refresh_token: data.refresh_token,
                     user: data.user,
                     success: data.success,
+                    isLoading: false,
                 });
                 showToast({
                     type: 'success',
@@ -125,6 +128,7 @@ export const AuthProvider =({children}:any) =>{
                 refresh_token: null,
                 success: null,
                 user: null,
+                isLoading: false,
             });
         } catch (error: any) {
             showToast({
@@ -146,7 +150,6 @@ export const AuthProvider =({children}:any) =>{
         </AuthContext.Provider>
     )
 }
-
 
 
 
