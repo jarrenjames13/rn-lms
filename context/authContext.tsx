@@ -3,7 +3,7 @@ import { postData } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
 import axios from "axios";
 import * as SecureStore from 'expo-secure-store';
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 interface AuthProps{
 authState?: LoginResponse;
@@ -35,7 +35,24 @@ export const AuthProvider =({children}:any) =>{
         user: null,
     });
 
+    useEffect(() => {
+        const loadTokens = async () => {
+            const access_token = await SecureStore.getItemAsync('access_token');
+            const refresh_token = await SecureStore.getItemAsync('refresh_token');
+            const user = await SecureStore.getItemAsync('user');
 
+            if (access_token && refresh_token) {
+                axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+                setAuthState({
+                    access_token,
+                    refresh_token,
+                    success: true,
+                    user: user ? JSON.parse(user) : null,
+                });
+            }
+    }
+        loadTokens();
+    }, [])
 
     const login = async ({external_id, password}: LoginPayload) =>{
         if( !external_id || !password) {
