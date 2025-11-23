@@ -6,7 +6,18 @@ import * as SecureStore from 'expo-secure-store';
 import { createContext, useContext, useEffect, useState } from "react";
 
 interface AuthProps{
-authState?: LoginResponse;
+authState?: {
+    access_token: string | null;
+    refresh_token: string | null;
+    success: boolean | null;
+    user:{
+        user_id: number;
+        external_id: string;
+        full_name: string;
+        role: string;
+    }| null;
+    message: string| null;
+};
 onLogin?:(payload:LoginPayload) => Promise<void>;
 onLogout?:() => Promise<void>;
 }
@@ -28,11 +39,13 @@ export const AuthProvider =({children}:any) =>{
             full_name: string;
             role: string;
         }| null;
+        message: string| null;
     } >({
         access_token: null,
         refresh_token: null,
         success: null,
         user: null,
+        message: null,
     });
 
     useEffect(() => {
@@ -48,6 +61,7 @@ export const AuthProvider =({children}:any) =>{
                     refresh_token,
                     success: true,
                     user: user ? JSON.parse(user) : null,
+                    message: null,
                 });
             }
     }
@@ -72,6 +86,7 @@ export const AuthProvider =({children}:any) =>{
                     refresh_token: data.refresh_token,
                     user: data.user,
                     success: data.success,
+                    message: data.message,
                 });
                 showToast({
                     type: 'success',
@@ -108,6 +123,7 @@ export const AuthProvider =({children}:any) =>{
                 refresh_token: null,
                 success: null,
                 user: null,
+                message: null,
             });
         } catch (error: any) {
             showToast({
@@ -123,6 +139,11 @@ export const AuthProvider =({children}:any) =>{
         onLogout: logout,
         authState,
     };
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+        </AuthContext.Provider>
+    )
 }
 
 
