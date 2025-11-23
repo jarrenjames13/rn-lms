@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { BASE_URL } from "../utils/constants";
 
 // Helper to build URL with query parameters
@@ -14,11 +14,12 @@ const buildUrlWithParams = (
 };
 
 // Unified request function
-const request = async (
+const request = async <T = any>(
     method: "get" | "post" | "patch" | "delete",
     url: string,
-    data: any = {},
+    data?: any,
     params: Record<string, string | number | boolean> = {},
+    headers: Record<string, string> = {}
 ) => {
     try {
         const fullUrl = buildUrlWithParams(BASE_URL + url, params);
@@ -29,36 +30,43 @@ const request = async (
             data,
             headers: {
                 "X-Client-Type": "mobile",
+                ...headers,          // <-- merge custom headers
             },
         };
 
-        return await axios(config);
+        const res = await axios<T>(config);
+        return res;
     } catch (error: any) {
         if (axios.isAxiosError(error) && error.response) {
-            return error.response;
+            return error.response as AxiosResponse<T>;
         }
-        console.error(`${method.toUpperCase()} request failed:`, error);
         throw error;
     }
 };
 
+
+
 // Exported functions
-export const getData = (
+export const getData = <T = any>(
     url: string,
     params: Record<string, string | number | boolean> = {},
-) => request("get", url, {}, params);
+    headers: Record<string, string> = {}
+) => request<T>("get", url, {}, params, headers);
 
-export const postData = (
+export const postData = <T = any>(
     url: string,
     data: any,
-) => request("post", url, data, {});
+    headers: Record<string, string> = {}
+) => request<T>("post", url, data, {}, headers);
 
-export const patchData = (
+export const patchData = <T = any>(
     url: string,
     data: any,
-) => request("patch", url, data, {});
+    headers: Record<string, string> = {}
+) => request<T>("patch", url, data, {}, headers);
 
-export const deleteData = (
+export const deleteData = <T = any>(
     url: string,
     params: Record<string, string | number | boolean> = {},
-) => request("delete", url, {}, params);
+    headers: Record<string, string> = {}
+) => request<T>("delete", url, {}, params, headers);

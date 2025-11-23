@@ -1,0 +1,104 @@
+import { LoginPayload, LoginResponse } from "@/types/api";
+import { postData } from "@/utils/fetcher";
+import { showToast } from "@/utils/toast/toast";
+import axios from "axios";
+import * as SecureStore from 'expo-secure-store';
+import { createContext, useContext, useState } from "react";
+
+interface AuthProps{
+authState?: LoginResponse;
+onLogin?:(payload:LoginPayload) => Promise<void>;
+onLogout?:() => Promise<void>;
+}
+
+const AuthContext = createContext<AuthProps>({});
+
+export const useAuth =() =>{
+    return useContext(AuthContext);
+}
+
+export const AuthProvider =({children}:any) =>{
+    const [authState, setAuthState] = useState<{
+        access_token: string | null;
+        refresh_token: string | null;
+        success: boolean | null;
+        user:{
+            user_id: number;
+            external_id: string;
+            full_name: string;
+            role: string;
+        }| null;
+    } >({
+        access_token: null,
+        refresh_token: null,
+        success: null,
+        user: null,
+    });
+
+
+
+    const login = async ({external_id, password}: LoginPayload) =>{
+        if( !external_id || !password) {
+            showToast({
+                type: 'error',
+                title: 'Login Failed',
+                message: 'Please provide both external ID and password.'
+            })
+            return;
+        }
+        try {
+            const res = await postData<LoginResponse>('/auth/login',{external_id, password});
+            const data = res.data;
+            if(data.success){
+                setAuthState({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token,
+                    user: data.user,
+                    success: data.success,
+                });
+                showToast({
+                    type: 'success',
+                    title: 'Login Successful',
+                    message: data.message
+                });
+            axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
+
+            await SecureStore.setItemAsync('access_token', data.access_token);
+            await SecureStore.setItemAsync('refresh_token', data.refresh_token);
+            await SecureStore.setItemAsync('user', JSON.stringify(data.user));
+            }
+        } catch (error: any) {
+            showToast({
+                type: 'error',
+                title: 'Login Failed',
+                message: error.message
+            });
+        }
+    }
+
+
+
+    const value ={
+        onLogin: login,
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
