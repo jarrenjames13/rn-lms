@@ -9,8 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const { onLogin, authState } = useAuth();
 
-  const handleLogin = async () => {  // ← Make sure 'async' is here
-    console.log("Attempting login with External ID:", externalId);
+  const handleLogin = async () => {
 
     // Validation
     if (!externalId.trim() || !password.trim()) {
@@ -21,36 +20,13 @@ export default function Login() {
       });
       return;
     }
-    console.log("External ID and Password provided.");
 
-    if (!/^\d+$/.test(externalId)) {
-      showToast({
-        type: 'error',
-        title: 'Validation Error',
-        message: 'External ID must contain numbers only'
-      });
-      return;
-    }
-    console.log("External ID format is valid.");
-
-    if (password.length < 6) {
-      showToast({
-        type: 'error',
-        title: 'Validation Error',
-        message: 'Password must be at least 6 characters long'
-      });
-      return;
-    }
-    console.log("Password length is valid.");
-    // Call the login function from context
     try {
-      console.log("Calling onLogin from context...");
       if (onLogin) {
         await onLogin({
           external_id: externalId,
           password: password
         });
-        console.log("onLogin call completed.");
       }
     } catch (error) {
       console.log("Login error:", error);
