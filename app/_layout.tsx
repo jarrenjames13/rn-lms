@@ -3,7 +3,7 @@ import { ToastConfig } from "@/utils/toast/toastConfig";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { ActivityIndicator, Button, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import Toast from "react-native-toast-message";
 
 import "../global.css";
@@ -39,16 +39,8 @@ function RootLayoutNav() {
           <Stack.Screen
             name="(tabs)"
             options={{
-              headerShown: true,
+              headerShown: false,
               title: "LMS",
-              headerRight: () => (
-                <Button
-                  onPress={() => onLogout?.()}
-                  title="Logout"
-                  color="#ef4444"
-
-                />
-              ),
             }}
           />
         </Stack.Protected>
