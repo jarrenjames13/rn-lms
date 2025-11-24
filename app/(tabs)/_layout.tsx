@@ -6,7 +6,7 @@ export default function TabsLayout() {
     <Tabs.Screen
       name="index"
       options={{
-        title: "Home",
+        headerShown: false,
         tabBarLabel: "Home",
         tabBarIcon:({color, size})=> <Ionicons name="home" color={color} size={size} />
       }}
@@ -14,7 +14,7 @@ export default function TabsLayout() {
     <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          headerShown: false,
           tabBarLabel: "Settings",
           tabBarIcon:({color, size})=> <Ionicons name="settings" color={color} size={size} />
         }}

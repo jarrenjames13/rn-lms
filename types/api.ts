@@ -17,3 +17,14 @@ interface LoginResponseError {
 }
 
 export type LoginResponse = LoginResponseSuccess | LoginResponseError;
+
+interface LogoutResponseSuccess {
+  success: true;
+  message: string;
+}
+
+interface GenericErrorResponse {
+  success: false;
+  detail: string;
+}
+export type LogoutResponse = LogoutResponseSuccess | GenericErrorResponse;

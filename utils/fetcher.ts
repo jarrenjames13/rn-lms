@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import { BASE_URL } from "../utils/constants";
 
 // Helper to build URL with query parameters
@@ -30,7 +30,7 @@ const request = async <T = any>(
             data,
             headers: {
                 "X-Client-Type": "mobile",
-                ...headers,          // <-- merge custom headers
+                ...headers,
             },
         };
 
@@ -38,7 +38,7 @@ const request = async <T = any>(
         return res;
     } catch (error: any) {
         if (axios.isAxiosError(error) && error.response) {
-            return error.response as AxiosResponse<T>;
+            return error.response
         }
         throw error;
     }

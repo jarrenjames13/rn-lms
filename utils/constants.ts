@@ -1,3 +1,1 @@
-import config from "react-native-config";
-
-export const BASE_URL = config.API_URI || "http://localhost:5001/api";
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.10.2.197:5001/api";
