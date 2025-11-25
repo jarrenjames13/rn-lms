@@ -103,9 +103,7 @@ export const AuthProvider = ({ children }: any) => {
 
             const res = await postData<LoginResponse>('/auth/login', { external_id, password });
             const data = res.data;
-            console.log("Login response data:", data);
-            console.log("Login response status:", res.status);
-            console.log("Login response:", res);
+
             if (res.status === 200) {
                 setAuthState({
                     access_token: data.access_token,

@@ -29,7 +29,6 @@ export default function Login() {
         });
       }
     } catch (error) {
-      console.log("Login error:", error);
       showToast({
         type: 'error',
         title: 'Login Failed',

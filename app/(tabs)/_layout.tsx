@@ -11,6 +11,14 @@ export default function TabsLayout() {
         tabBarIcon:({color, size})=> <Ionicons name="home" color={color} size={size} />
       }}
     />
+        <Tabs.Screen
+        name="stats"
+        options={{
+          headerShown: false,
+          tabBarLabel: "Stats",
+          tabBarIcon:({color, size})=> <Ionicons name="stats-chart" color={color} size={size} />
+        }}
+      />
     <Tabs.Screen
         name="settings"
         options={{
@@ -19,5 +27,6 @@ export default function TabsLayout() {
           tabBarIcon:({color, size})=> <Ionicons name="settings" color={color} size={size} />
         }}
       />
+
   </Tabs>
 }

@@ -59,7 +59,7 @@ export default function Settings() {
         <Text className="text-base">No user data available.</Text>
       )}
     </View>
-      <View className="flex justify-start mt-80">
+      <View className="flex justify-start mt-40">
         <Pressable onPress={handleLogout} className="bg-red-500 rounded-xl py-4 px-6 items-center">
           <Text className="text-white text-lg font-semibold">Logout</Text>
         </Pressable>
