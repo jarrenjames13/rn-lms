@@ -1,18 +1,12 @@
-import { Text } from "react-native";
+import { ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Index() {
+
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text className="text-lg font-bold text-amber-500">
-        Home Page!🏠
-      </Text>
+    <SafeAreaView className="flex-1 justify-center items-center">
+      <ScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 }

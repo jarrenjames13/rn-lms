@@ -16,7 +16,8 @@ export default function TabsLayout() {
         options={{
           headerShown: false,
           tabBarLabel: "Stats",
-          tabBarIcon:({color, size})=> <Ionicons name="stats-chart" color={color} size={size} />
+          tabBarIcon:({color, size})=> <Ionicons name="stats-chart" color={color} size={size}
+          />
         }}
       />
     <Tabs.Screen

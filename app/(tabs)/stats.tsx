@@ -1,6 +1,7 @@
 import { getData } from '@/utils/fetcher';
-import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface StatsData {
@@ -25,10 +26,11 @@ export default function Stats() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
 
-  useEffect(() => {
+  useFocusEffect(
+    useCallback(() => {
     const fetchStats = async () => {
+      setIsLoading(true);
       try {
-        // Assuming postData returns the parsed JSON directly
         const response = await getData<StatsData>('/modules/student-overall-learning-progress',{});
         const data = response.data;
         console.log('Fetched stats data:', data);
@@ -51,12 +53,12 @@ export default function Stats() {
     };
 
     fetchStats();
-  }, []);
-    //add loading spinner effect when fetching data
+  }, []));
+
     if (isLoading) {
     return (
       <View className="flex-1 justify-center items-center">
-        <Text>Loading stats...</Text>
+        <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
     }
