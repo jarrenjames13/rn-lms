@@ -7,7 +7,7 @@ interface StatsData {
   overall_progress: number;
   components: {
     sections: number;
-    activties: number; // typo in your original code? probably 'activities'
+    activities: number;
     quizzes: number;
     exams: number;
   };
@@ -22,35 +22,49 @@ interface StatsData {
 
 export default function Stats() {
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         // Assuming postData returns the parsed JSON directly
-        const response = await getData<StatsData>('/modules/student-overall-learning-progress');
+        const response = await getData<StatsData>('/modules/student-overall-learning-progress',{});
         const data = response.data;
         console.log('Fetched stats data:', data);
         if (response.status === 200){
             setStats(data);
+            setIsLoading(false);
         }
         else if (response.status === 400 || response.status === 401 || response.status === 403) {
             console.error('Error fetching stats:', response.data.detail || 'Unknown error');
+            setIsLoading(false);
         }
         else {
             console.error('Unexpected response status:', response.status);
+            setIsLoading(false);
         }
       } catch (error) {
         console.error('Error fetching stats:', error);
+        setIsLoading(false);
       }
     };
 
     fetchStats();
-  }, []); // run once on mount
+  }, []);
+    //add loading spinner effect when fetching data
+    if (isLoading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text>Loading stats...</Text>
+      </View>
+    );
+    }
 
   if (!stats) {
     return (
       <View>
-        <Text>Loading stats...</Text>
+        <Text>No stats available.</Text>
       </View>
     );
   }
@@ -62,13 +76,26 @@ export default function Stats() {
             Learning Statistics
         </Text>
     </View>
-    <View className='mt-4 bg-gray-300 px-4 py-6 rounded-xl'>
-      <Text className='py-4 text-lg font-semibold'>Overall Progress: {stats.overall_progress}%</Text>
-      <Text className='py-4 text-lg font-semibold'>Enrolled Courses: {stats.enrolled_courses}</Text>
-      <Text className='py-4 text-lg font-semibold'>Sections Completed: {stats.counts.sections}/{stats.components.sections}</Text>
-      <Text className='py-4 text-lg font-semibold'>Activities Completed: {stats.counts.activities}/{stats.components.activties}</Text>
-      <Text className='py-4 text-lg font-semibold'>Quizzes Completed: {stats.counts.quizzes}/{stats.components.quizzes}</Text>
-      <Text className='py-4 text-lg font-semibold'>Exams Completed: {stats.counts.exams}/{stats.components.exams}</Text>
+    <View className='mt-4 bg-white px-4 py-6 rounded-xl'>
+        <Text className='text-xl font-bold mb-2'>Here is an overview of your learning progress:</Text>
+    </View>
+    <View className='mt-4 bg-white px-4 py-6 rounded-xl'>
+        <Text className='text-lg font-semibold mb-2'>Overall Progress</Text>
+        <View className='w-full h-4 bg-gray-300 -rounded-full overflow-hidden'>
+            <View className='h-full bg-red-500 rounded-full overflow-hidden' style={{width: `${stats.overall_progress}%`}}></View>
+        </View>
+        <Text className='mt-2 text-gray-700'>{stats.overall_progress}% completed</Text>
+    </View>
+    <View className='mt-4 bg-white px-4 py-6 rounded-xl'>
+        <Text className='text-lg font-semibold mb-2'>Components Progress</Text>
+        <Text className='text-gray-700'>Sections Completed: {stats.counts.sections}</Text>
+        <Text className='text-gray-700'>Activities Completed: {stats.counts.activities} </Text>
+        <Text className='text-gray-700'>Quizzes Completed: {stats.counts.quizzes} </Text>
+        <Text className='text-gray-700'>Exams Completed: {stats.counts.exams} </Text>
+    </View>
+    <View className='mt-4 bg-white px-4 py-6 rounded-xl'>
+        <Text className='text-lg font-semibold mb-2'>Enrolled Courses</Text>
+        <Text className='text-gray-700'>You are currently enrolled in {stats.enrolled_courses} course(s).</Text>
     </View>
     </SafeAreaView>
   );
