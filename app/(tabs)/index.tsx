@@ -80,7 +80,7 @@ export default function Index() {
   });
 
   return (
-    <SafeAreaView className="flex-1 justify-center items-center">
+    <SafeAreaView className="flex-1 bg-gray-100 p-2">
       <ScrollView className="w-full px-6 py-4 bg-gray-100">
         <Text className="text-3xl font-bold text-black py-4 rounded-full px-3 mt-2 text-center">
           Active Courses
