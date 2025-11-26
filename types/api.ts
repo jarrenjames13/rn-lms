@@ -28,3 +28,15 @@ interface GenericErrorResponse {
   detail: string;
 }
 export type LogoutResponse = LogoutResponseSuccess | GenericErrorResponse;
+
+export interface Enrollment {
+  enrollment_id: number;
+  created_at: string;
+  course_id: number;
+  course_title: string;
+  description: string;
+  term_code: string;
+  start_date: string;
+  end_date: string;
+  instance_id: number;
+}
