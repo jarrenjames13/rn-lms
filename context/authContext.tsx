@@ -1,4 +1,5 @@
 import { LoginPayload, LoginResponse, LogoutResponse } from "@/types/api";
+import { BASE_URL } from "@/utils/constants";
 import { postData } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
 import axios from "axios";
@@ -147,79 +148,81 @@ export const AuthProvider = ({ children }: any) => {
     };
 
     const logout = async () => {
-        try {
-            const refresh_token = await SecureStore.getItemAsync('refresh_token');
-            if (!refresh_token) {
-                // Clear local state even if no refresh token
-                setAuthState({
-                    access_token: null,
-                    refresh_token: null,
-                    success: null,
-                    user: null,
-                    isLoading: false,
-                });
-                return;
-            }
+  try {
+    const refresh_token = await SecureStore.getItemAsync('refresh_token');
 
-            const res = await postData<LogoutResponse>('/auth/logout', {}, {
-                Authorization: `Bearer ${refresh_token}`
-            });
-            const data = res.data;
 
-            if (res.status === 200) {
-                // Clear storage
-                await SecureStore.deleteItemAsync('access_token');
-                await SecureStore.deleteItemAsync('refresh_token');
-                await SecureStore.deleteItemAsync('user');
+    if (!refresh_token) {
+      // Clear local state even if no refresh token
+      await clearAuth();
+      return;
+    }
 
-                // Clear axios header
-                delete axios.defaults.headers.common['Authorization'];
+    const res = await axios.post<LogoutResponse>(
+      `${BASE_URL}/auth/logout`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${refresh_token}` },
+      }
+    );
 
-                // Update state
-                setAuthState({
-                    access_token: null,
-                    refresh_token: null,
-                    success: null,
-                    user: null,
-                    isLoading: false,
-                });
+    const data = res.data;
 
-                showToast({
-                    type: 'success',
-                    title: 'Logout Successful',
-                    message: data.message || 'Logout successful.'
-                });
-            } else if (res.status === 401 || res.status === 400) {
-                setAuthState({
-                    access_token: null,
-                    refresh_token: null,
-                    success: null,
-                    user: null,
-                    isLoading: false,
-                });
+    // Always clear storage on logout
+    await clearAuth();
 
-                showToast({
-                    type: 'error',
-                    title: 'Logout Failed',
-                    message: data.detail || "An error occurred during logout."
-                });
-            }
-        } catch (error: any) {
-            setAuthState({
-                    access_token: null,
-                    refresh_token: null,
-                    success: null,
-                    user: null,
-                    isLoading: false,
-                });
+    if (res.status === 200 && 'success' in data && data.success) {
+      showToast({
+        type: 'success',
+        title: 'Logout Successful',
+        message: data.message,
+      });
+    } else {
+      showToast({
+        type: 'error',
+        title: 'Logout Failed',
+        message: 'detail' in data ? data.detail : 'An unknown error occurred.',
+      });
+    }
+  } catch (error: unknown) {
+    // Generic axios error typing
+    let message = 'Internal server error occurred during logout.';
 
-            showToast({
-                type: 'error',
-                title: 'Logout Failed',
-                message: error.message || 'Internal server error occurred during logout.'
-            });
-        }
-    };
+    if (axios.isAxiosError(error)) {
+      if (error.response?.data) {
+        const data = error.response.data as LogoutResponse;
+        message = 'detail' in data ? data.detail : 'An unknown error occurred.';
+      } else if (error.message) {
+        message = error.message;
+      }
+    } else if (error instanceof Error) {
+      message = error.message;
+    }
+
+    await clearAuth();
+
+    showToast({
+      type: 'error',
+      title: 'Logout Failed',
+      message,
+    });
+  }
+};
+
+const clearAuth = async () => {
+  await SecureStore.deleteItemAsync('access_token');
+  await SecureStore.deleteItemAsync('refresh_token');
+  await SecureStore.deleteItemAsync('user');
+  delete axios.defaults.headers.common['Authorization'];
+
+  setAuthState({
+    access_token: null,
+    refresh_token: null,
+    success: null,
+    user: null,
+    isLoading: false,
+  });
+};
 
     const value = {
         onLogin: login,

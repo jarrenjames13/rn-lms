@@ -84,7 +84,7 @@ export default function Stats() {
     <View className='mt-4 bg-white px-4 py-6 rounded-xl'>
         <Text className='text-lg font-semibold mb-2'>Overall Progress</Text>
         <View className='w-full h-4 bg-gray-300 rounded-full overflow-hidden'>
-            <View className='w-full bg-red-500 rounded-full overflow-hidden' style={{width: `${stats.overall_progress}%`}}></View>
+            <View className='w-full h-full bg-red-500 rounded-full ' style={{width: `${stats.overall_progress}%`}}></View>
         </View>
         <Text className='mt-2 text-gray-700'>{stats.overall_progress}% completed</Text>
     </View>
