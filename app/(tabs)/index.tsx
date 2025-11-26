@@ -1,12 +1,12 @@
 import { Enrollment } from "@/types/api";
 import { getData } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
+import { AntDesign } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 export default function Index() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
@@ -95,14 +95,14 @@ export default function Index() {
                 <Text className="text-gray-600">Term: {enrollment.term_code}</Text>
                 <Text className="text-gray-600">Start Date: {new Date(enrollment.start_date).toLocaleDateString()}</Text>
                 <Text className="text-gray-600">End Date: {new Date(enrollment.end_date).toLocaleDateString()}</Text>
-                <Pressable className="mt-6 bg-blue-500 rounded-xl py-2 px-3 items-center">
-                  <Text className="text-white text-lg font-semibold">View Details</Text>
+                <Pressable className="mt-6 flex-row items-center justify-center rounded-xl bg-blue-500 px-3 py-2">
+                  <Text className="text-white text-lg font-semibold" onPress={()=> {}}><AntDesign name="eye" size={16} color="white"/>View</Text>
                 </Pressable>
               </View>
             ))
           )}
         </View>
-        <Text className="text-3xl font-bold text-black py-4 rounded-full px-3 textt-center mt-6">
+        <Text className="text-3xl font-bold text-black py-4 rounded-full px-3 text-center mt-6">
           Completed Courses
         </Text>
         <View className="w-full px-4 mb-6">
