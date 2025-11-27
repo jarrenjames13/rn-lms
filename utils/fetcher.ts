@@ -1,8 +1,7 @@
-import { useAuth } from "@/context/authContext";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "../utils/constants";
-import { refreshAccessToken } from "../utils/refresh";
+
 // Create axios instance
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -10,30 +9,94 @@ export const apiClient = axios.create({
     "X-Client-Type": "mobile",
   },
 });
-const { onLogout } = useAuth();
+
+// Store logout callback reference
+let logoutCallback: (() => Promise<void>) | null = null;
+
+// Function to set logout callback from AuthProvider
+export const setLogoutCallback = (callback: () => Promise<void>) => {
+  logoutCallback = callback;
+};
+
 // Token refresh function
+const refreshToken = async (): Promise<string> => {
+  try {
+    const refreshTokenValue = await SecureStore.getItemAsync("refresh_token");
+
+    if (!refreshTokenValue) {
+      throw new Error("No refresh token available");
+    }
+
+    const response = await axios.post(
+      `${BASE_URL}/auth/refresh`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${refreshTokenValue}`,
+        },
+      }
+    );
+
+    const newAccessToken = response.data.access_token;
+    const newRefreshToken = response.data.refresh_token;
+
+    // Store new tokens
+    await SecureStore.setItemAsync("refresh_token", newRefreshToken);
+    await SecureStore.setItemAsync("access_token", newAccessToken);
+
+    // Update default axios headers
+    apiClient.defaults.headers.common["Authorization"] =
+      `Bearer ${newAccessToken}`;
+
+    return newAccessToken;
+  } catch (error) {
+    // Handle refresh failure - clear tokens and trigger logout
+    await SecureStore.deleteItemAsync("access_token");
+    await SecureStore.deleteItemAsync("refresh_token");
+    await SecureStore.deleteItemAsync("user");
+
+    // Trigger logout callback if available
+    if (logoutCallback) {
+      await logoutCallback();
+    }
+
+    throw error;
+  }
+};
 
 // Request interceptor to add token to each request
-apiClient.interceptors.request.use(async (config: any) => {
-  if (config._skipAuthInterceptor) return config; // skip interceptor
-  const token = await SecureStore.getItemAsync("access_token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+apiClient.interceptors.request.use(
+  async (config: any) => {
+    if (config._skipAuthInterceptor) return config; // skip interceptor
 
-// Response interceptor to handle 422 errors (token expiration)
+    const token = await SecureStore.getItemAsync("access_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to handle 401/422 errors (token expiration)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // If we get a 422 and haven't retried this request yet
-    if (error.response?.status === 422 && !originalRequest._retry) {
+    // Handle 401 (unauthorized) or 422 (token expired/invalid)
+    if (
+      (error.response?.status === 401 || error.response?.status === 422) &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
 
       try {
-        // Refresh the token
-        const token = await refreshAccessToken(onLogout);
+        // Attempt to refresh the token
+        const token = await refreshToken();
 
         // Update the failed request with new token
         originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -41,7 +104,8 @@ apiClient.interceptors.response.use(
         // Retry the original request
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Redirect to login or handle refresh failure
+        // Refresh failed - user will be logged out via refreshToken function
+        console.log("Token refresh failed, user logged out");
         return Promise.reject(refreshError);
       }
     }
