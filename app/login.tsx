@@ -10,13 +10,12 @@ export default function Login() {
   const { onLogin, authState } = useAuth();
 
   const handleLogin = async () => {
-
     // Validation
     if (!externalId.trim() || !password.trim()) {
       showToast({
-        type: 'error',
-        title: 'Validation Error',
-        message: 'Please fill in both External ID and Password'
+        type: "error",
+        title: "Validation Error",
+        message: "Please fill in both External ID and Password",
       });
       return;
     }
@@ -25,22 +24,20 @@ export default function Login() {
       if (onLogin) {
         await onLogin({
           external_id: externalId,
-          password: password
+          password: password,
         });
       }
     } catch (error) {
       showToast({
-        type: 'error',
-        title: 'Login Failed',
-        message: 'An unexpected error occurred. Please try again.'
+        type: "error",
+        title: "Login Failed",
+        message: "An unexpected error occurred. Please try again.",
       });
     }
   };
 
   return (
-    <SafeAreaView
-      className="flex-1 justify-center items-center bg-gray-100 px-5"
-    >
+    <SafeAreaView className="flex-1 justify-center items-center bg-gray-100 px-5">
       <Text className="text-2xl font-bold text-violet-500 mb-8">
         LEARNING MANAGEMENT SYSTEM
       </Text>
@@ -67,7 +64,9 @@ export default function Login() {
         onPress={handleLogin}
         disabled={authState?.isLoading}
         className={`px-4 py-3 rounded-lg ${
-          authState?.isLoading ? 'bg-blue-300' : 'bg-blue-500 active:bg-blue-600'
+          authState?.isLoading
+            ? "bg-blue-300"
+            : "bg-blue-500 active:bg-blue-600"
         }`}
       >
         {authState?.isLoading ? (

@@ -16,6 +16,9 @@ export default function Index() {
   const [userId, setUserId] = useState<number | null>(null);
   const { course_id, setCourseId } = useCourseStore();
 
+  setCourseId(null); // Reset course_id on main tabs page
+
+  console.log("Current course_id in main tabs page:", course_id);
   useEffect(() => {
     const fetchUser = async () => {
       try {
