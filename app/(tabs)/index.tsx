@@ -93,7 +93,7 @@ export default function Index() {
   const handlePress = (course_id: number) => {
     console.log("View course with ID:", course_id);
 
-    router.push({
+    router.replace({
       pathname: "/(course_tabs)/overview",
       params: { course_id },
     });
