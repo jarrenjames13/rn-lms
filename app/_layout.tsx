@@ -1,20 +1,22 @@
 import { AuthProvider, useAuth } from "@/context/authContext";
 import { ToastConfig } from "@/utils/toast/toastConfig";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import Toast from "react-native-toast-message";
-
 import "../global.css";
 
+const queryClient = new QueryClient();
+
 function RootLayoutNav() {
-  const { authState, onLogout } = useAuth();
+  const { authState } = useAuth();
 
   // Show loading screen while checking auth
   if (authState?.isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#8b5cf6" />
       </View>
     );
@@ -45,7 +47,6 @@ function RootLayoutNav() {
           />
         </Stack.Protected>
       </Stack>
-
     </React.Fragment>
   );
 }
@@ -53,8 +54,10 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootLayoutNav />
-      <Toast config={ToastConfig} />
+      <QueryClientProvider client={queryClient}>
+        <RootLayoutNav />
+        <Toast config={ToastConfig} />
+      </QueryClientProvider>
     </AuthProvider>
   );
 }
