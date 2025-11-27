@@ -45,6 +45,13 @@ function RootLayoutNav() {
               title: "LMS",
             }}
           />
+          <Stack.Screen
+            name="(course_tabs)"
+            options={{
+              headerShown: false,
+              title: "Course",
+            }}
+          />
         </Stack.Protected>
       </Stack>
     </React.Fragment>
