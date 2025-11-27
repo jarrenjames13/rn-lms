@@ -1,3 +1,4 @@
+import { useCourseStore } from "@/store/useCourseStore";
 import { Enrollment } from "@/types/api";
 import { getData } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
@@ -13,6 +14,7 @@ export default function Index() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
+  const { course_id, setCourseId } = useCourseStore();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -91,11 +93,9 @@ export default function Index() {
   });
 
   const handlePress = (course_id: number) => {
-    console.log("View course with ID:", course_id);
-
+    setCourseId(course_id);
     router.replace({
       pathname: "/(course_tabs)/overview",
-      params: { course_id },
     });
   };
 
