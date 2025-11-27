@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "../utils/constants";
 
@@ -12,6 +13,7 @@ export const apiClient = axios.create({
 
 // Token refresh function
 const refreshToken = async (): Promise<string> => {
+  const router = useRouter();
   try {
     const refreshTokenValue = await SecureStore.getItemAsync("refresh_token");
 
@@ -41,6 +43,7 @@ const refreshToken = async (): Promise<string> => {
     await SecureStore.deleteItemAsync("refresh_token");
     //logout
 
+    router.replace("/login");
     throw error;
   }
 };
