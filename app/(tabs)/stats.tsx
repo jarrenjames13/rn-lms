@@ -1,26 +1,9 @@
-import { getData } from "@/utils/fetcher";
+import createStatsOptions from "@/api/QueryOptions/statsOptions";
 import { useFocusEffect } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import React, { useCallback } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-interface StatsData {
-  overall_progress: number;
-  components: {
-    sections: number;
-    activities: number;
-    quizzes: number;
-    exams: number;
-  };
-  counts: {
-    sections: number;
-    activities: number;
-    quizzes: number;
-    exams: number;
-  };
-  enrolled_courses: number;
-}
 
 export default function Stats() {
   // useFocusEffect(
@@ -73,11 +56,7 @@ export default function Stats() {
     isLoading,
     error,
     refetch,
-  } = useQuery<StatsData, Error>({
-    queryKey: ["studentOverallLearningProgress"],
-    queryFn: fetchStats,
-    enabled: false,
-  });
+  } = useQuery({ ...createStatsOptions(), enabled: false });
 
   useFocusEffect(
     useCallback(() => {
@@ -159,19 +138,3 @@ export default function Stats() {
     </SafeAreaView>
   );
 }
-
-const fetchStats = async () => {
-  try {
-    const response = await getData<StatsData>(
-      "/modules/student-overall-learning-progress",
-      {}
-    );
-    const data = response.data;
-
-    return data;
-  } catch (error: any) {
-    throw new Error(
-      error?.response?.data?.detail || error.message || "Error fetching stats"
-    );
-  }
-};

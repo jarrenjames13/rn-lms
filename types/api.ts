@@ -1,12 +1,17 @@
 export interface LoginPayload {
-    external_id: string;
-    password: string;
+  external_id: string;
+  password: string;
 }
 
 interface LoginResponseSuccess {
   success: true;
   message: string;
-  user: { user_id: number; external_id: string; full_name: string; role: string };
+  user: {
+    user_id: number;
+    external_id: string;
+    full_name: string;
+    role: string;
+  };
   access_token: string;
   refresh_token: string;
 }
@@ -39,4 +44,21 @@ export interface Enrollment {
   start_date: string;
   end_date: string;
   instance_id: number;
+}
+
+export interface StatsData {
+  overall_progress: number;
+  components: {
+    sections: number;
+    activities: number;
+    quizzes: number;
+    exams: number;
+  };
+  counts: {
+    sections: number;
+    activities: number;
+    quizzes: number;
+    exams: number;
+  };
+  enrolled_courses: number;
 }

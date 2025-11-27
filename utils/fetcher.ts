@@ -1,8 +1,8 @@
+import { useAuth } from "@/context/authContext";
 import axios from "axios";
-import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "../utils/constants";
-
+import { refreshAccessToken } from "../utils/refresh";
 // Create axios instance
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -10,43 +10,8 @@ export const apiClient = axios.create({
     "X-Client-Type": "mobile",
   },
 });
-
+const { onLogout } = useAuth();
 // Token refresh function
-const refreshToken = async (): Promise<string> => {
-  const router = useRouter();
-  try {
-    const refreshTokenValue = await SecureStore.getItemAsync("refresh_token");
-
-    const response = await axios.post(
-      `${BASE_URL}/auth/refresh`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${refreshTokenValue}`,
-        },
-      }
-    );
-
-    const newAccessToken = response.data.access_token;
-    const newRefreshToken = response.data.refresh_token;
-
-    // Store new refresh token
-    await SecureStore.setItemAsync("refresh_token", newRefreshToken);
-
-    // Store new access token
-    await SecureStore.setItemAsync("access_token", newAccessToken);
-
-    return newAccessToken;
-  } catch (error) {
-    // Handle refresh failure (e.g., redirect to login)
-    await SecureStore.deleteItemAsync("access_token");
-    await SecureStore.deleteItemAsync("refresh_token");
-    //logout
-
-    router.replace("/login");
-    throw error;
-  }
-};
 
 // Request interceptor to add token to each request
 apiClient.interceptors.request.use(async (config: any) => {
@@ -68,7 +33,7 @@ apiClient.interceptors.response.use(
 
       try {
         // Refresh the token
-        const token = await refreshToken();
+        const token = await refreshAccessToken(onLogout);
 
         // Update the failed request with new token
         originalRequest.headers.Authorization = `Bearer ${token}`;
