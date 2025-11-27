@@ -1,13 +1,21 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
 export default function courseTabs() {
   return (
-    <Tabs>
+    <Tabs
+      screenOptions={{
+        animation: "none",
+      }}
+    >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           headerShown: false,
           tabBarLabel: "Home",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -15,6 +23,9 @@ export default function courseTabs() {
         options={{
           headerShown: false,
           tabBarLabel: "Overview",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="information-circle" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -22,6 +33,9 @@ export default function courseTabs() {
         options={{
           headerShown: false,
           tabBarLabel: "Modules",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="book" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -29,6 +43,9 @@ export default function courseTabs() {
         options={{
           headerShown: false,
           tabBarLabel: "Quiz",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="help-circle" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -36,6 +53,9 @@ export default function courseTabs() {
         options={{
           headerShown: false,
           tabBarLabel: "Exams",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="clipboard" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -43,6 +63,9 @@ export default function courseTabs() {
         options={{
           headerShown: false,
           tabBarLabel: "Grade",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart" color={color} size={size} />
+          ),
         }}
       />
     </Tabs>

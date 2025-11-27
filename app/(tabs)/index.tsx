@@ -3,81 +3,102 @@ import { getData } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
 import { AntDesign } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import * as SecureStore from 'expo-secure-store';
+import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 export default function Index() {
+  const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
 
   useEffect(() => {
-          const fetchUser = async () => {
-            try {
-              const userData = await SecureStore.getItemAsync('user');
-              if (userData) {
-                const user = JSON.parse(userData);
-                setUserId(user.user_id);
-              }
-            } catch (error) {
-              console.log("Error fetching user data:", error);
-            }
-          }
-          fetchUser();
-      }, []);
+    const fetchUser = async () => {
+      try {
+        const userData = await SecureStore.getItemAsync("user");
+        if (userData) {
+          const user = JSON.parse(userData);
+          setUserId(user.user_id);
+        }
+      } catch (error) {
+        console.log("Error fetching user data:", error);
+      }
+    };
+    fetchUser();
+  }, []);
 
-  useFocusEffect (
+  useFocusEffect(
     useCallback(() => {
       const fetchEnrollments = async () => {
         if (userId === null) return;
         try {
-          const response = await getData<Enrollment[]>(`/enrollments/student/${userId}`,{});
+          const response = await getData<Enrollment[]>(
+            `/enrollments/student/${userId}`,
+            {}
+          );
           const data = response.data;
-          console.log('Fetched enrollments data:', data);
-          if (response.status === 200){
-              setEnrollments(data.enrollments);
-          }
-          else if (response.status === 400 || response.status === 401 || response.status === 403) {
+          console.log("Fetched enrollments data:", data);
+          if (response.status === 200) {
+            setEnrollments(data.enrollments);
+          } else if (
+            response.status === 400 ||
+            response.status === 401 ||
+            response.status === 403
+          ) {
             showToast({
-                type: 'error',
-                title: 'Error Fetching Enrollments',
-                message: data.detail || 'Unknown error.'
+              type: "error",
+              title: "Error Fetching Enrollments",
+              message: data.detail || "Unknown error.",
             });
-              console.error('Error fetching enrollments:', response.data.detail || 'Unknown error');
+            console.error(
+              "Error fetching enrollments:",
+              response.data.detail || "Unknown error"
+            );
+          } else {
+            console.error("Unexpected response status:", response.status);
+            showToast({
+              type: "error",
+              title: "Error Fetching Enrollments",
+              message: "Unexpected response status: " + response.status,
+            });
           }
-          else {
-              console.error('Unexpected response status:', response.status);
-              showToast({
-                type: 'error',
-                title: 'Error Fetching Enrollments',
-                message: 'Unexpected response status: ' + response.status
-              });
-          }
-        } catch (error:any) {
+        } catch (error: any) {
           console.error("Error fetching enrollments:", error);
           showToast({
-            type: 'error',
-            title: 'Error Fetching Enrollments',
-            message: error.message || 'An error occurred while fetching enrollments.'
+            type: "error",
+            title: "Error Fetching Enrollments",
+            message:
+              error.message || "An error occurred while fetching enrollments.",
           });
         }
-      }
+      };
       fetchEnrollments();
-    },[userId])
-  )
+    }, [userId])
+  );
 
-  const activeEnrollments = enrollments.filter(enrollment => {
+  const activeEnrollments = enrollments.filter((enrollment) => {
     const now = new Date();
     const startDate = new Date(enrollment.start_date);
     const endDate = new Date(enrollment.end_date);
     return now >= startDate && now <= endDate;
   });
 
-  const completedEnrollments = enrollments.filter(enrollment => {
+  const completedEnrollments = enrollments.filter((enrollment) => {
     const now = new Date();
     const endDate = new Date(enrollment.end_date);
     return now > endDate;
   });
+
+  const handlePress = (course_id: number) => {
+    console.log("View course with ID:", course_id);
+
+    router.push({
+      pathname: "/(course_tabs)/overview",
+      params: { course_id },
+    });
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100 p-2">
@@ -90,13 +111,33 @@ export default function Index() {
             <Text className="text-base">No active enrollments.</Text>
           ) : (
             activeEnrollments.map((enrollment) => (
-              <View key={enrollment.enrollment_id} className="bg-white rounded-xl shadow-md mb-4 px-8 py-9">
-                <Text className="text-lg font-semibold text-gray-800">{enrollment.course_title}</Text>
-                <Text className="text-gray-600">Term: {enrollment.term_code}</Text>
-                <Text className="text-gray-600">Start Date: {new Date(enrollment.start_date).toLocaleDateString()}</Text>
-                <Text className="text-gray-600">End Date: {new Date(enrollment.end_date).toLocaleDateString()}</Text>
+              <View
+                key={enrollment.enrollment_id}
+                className="bg-white rounded-xl shadow-md mb-4 px-8 py-9"
+              >
+                <Text className="text-lg font-semibold text-gray-800">
+                  {enrollment.course_title}
+                </Text>
+                <Text className="text-gray-600">
+                  Term: {enrollment.term_code}
+                </Text>
+                <Text className="text-gray-600">
+                  Start Date:{" "}
+                  {new Date(enrollment.start_date).toLocaleDateString()}
+                </Text>
+                <Text className="text-gray-600">
+                  End Date: {new Date(enrollment.end_date).toLocaleDateString()}
+                </Text>
                 <Pressable className="mt-6 flex-row items-center justify-center rounded-xl bg-blue-500 px-3 py-2">
-                  <Text className="text-white text-lg font-semibold" onPress={()=> {}}><AntDesign name="eye" size={16} color="white"/>View</Text>
+                  <Text
+                    className="text-white text-lg font-semibold"
+                    onPress={() => {
+                      handlePress(enrollment.course_id);
+                    }}
+                  >
+                    <AntDesign name="eye" size={16} color="white" />
+                    View
+                  </Text>
                 </Pressable>
               </View>
             ))
@@ -110,16 +151,27 @@ export default function Index() {
             <Text className="text-base">No completed enrollments.</Text>
           ) : (
             completedEnrollments.map((enrollment) => (
-              <View key={enrollment.enrollment_id} className="bg-white rounded-xl shadow-md mb-4 px-8 py-9">
-                <Text className="text-lg font-semibold text-gray-800">{enrollment.course_title}</Text>
-                <Text className="text-gray-600">Term: {enrollment.term_code}</Text>
-                <Text className="text-gray-600">Start Date: {new Date(enrollment.start_date).toLocaleDateString()}</Text>
-                <Text className="text-gray-600">End Date: {new Date(enrollment.end_date).toLocaleDateString()}</Text>
+              <View
+                key={enrollment.enrollment_id}
+                className="bg-white rounded-xl shadow-md mb-4 px-8 py-9"
+              >
+                <Text className="text-lg font-semibold text-gray-800">
+                  {enrollment.course_title}
+                </Text>
+                <Text className="text-gray-600">
+                  Term: {enrollment.term_code}
+                </Text>
+                <Text className="text-gray-600">
+                  Start Date:{" "}
+                  {new Date(enrollment.start_date).toLocaleDateString()}
+                </Text>
+                <Text className="text-gray-600">
+                  End Date: {new Date(enrollment.end_date).toLocaleDateString()}
+                </Text>
               </View>
             ))
           )}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
