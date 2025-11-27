@@ -39,7 +39,6 @@ export default function Index() {
             {}
           );
           const data = response.data;
-          console.log("Fetched enrollments data:", data);
           if (response.status === 200) {
             setEnrollments(data.enrollments);
           } else if (
