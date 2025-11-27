@@ -14,12 +14,10 @@ export default function Index() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
-  const { course_id, setCourseId } = useCourseStore();
+  const { setCourseId } = useCourseStore();
 
-  setCourseId(null); // Reset course_id on main tabs page
-
-  console.log("Current course_id in main tabs page:", course_id);
   useEffect(() => {
+    setCourseId(null);
     const fetchUser = async () => {
       try {
         const userData = await SecureStore.getItemAsync("user");
@@ -130,7 +128,7 @@ export default function Index() {
                 <Text className="text-gray-600">
                   End Date: {new Date(enrollment.end_date).toLocaleDateString()}
                 </Text>
-                <Pressable className="mt-6 flex-row items-center justify-center rounded-xl bg-blue-500 px-3 py-2">
+                <Pressable className="mt-6 flex-row items-center justify-center rounded-xl bg-blue-500 px-3 py-4">
                   <Text
                     className="text-white text-lg font-semibold"
                     onPress={() => {

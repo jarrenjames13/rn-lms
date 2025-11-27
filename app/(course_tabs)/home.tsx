@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback } from "react";
 
-export default function courseHome() {
+export default function CourseHome() {
   const router = useRouter();
 
   useFocusEffect(
