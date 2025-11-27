@@ -14,7 +14,7 @@ export default function Index() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
-  const { setCourseId } = useCourseStore();
+  const { setCourseId, setInstanceId } = useCourseStore();
 
   useEffect(() => {
     setCourseId(null);
@@ -93,8 +93,9 @@ export default function Index() {
     return now > endDate;
   });
 
-  const handlePress = (course_id: number) => {
+  const handlePress = (course_id: number, instance_id: number) => {
     setCourseId(course_id);
+    setInstanceId(instance_id);
     router.replace({
       pathname: "/(course_tabs)/overview",
     });
@@ -132,7 +133,7 @@ export default function Index() {
                   <Text
                     className="text-white text-lg font-semibold"
                     onPress={() => {
-                      handlePress(enrollment.course_id);
+                      handlePress(enrollment.course_id, enrollment.instance_id);
                     }}
                   >
                     <AntDesign name="eye" size={16} color="white" />

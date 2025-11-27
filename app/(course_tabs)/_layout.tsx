@@ -42,7 +42,7 @@ export default function CourseTabsLayout() {
         name="quiz"
         options={{
           headerShown: false,
-          tabBarLabel: "Quiz",
+          tabBarLabel: "Quizzes",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="help-circle" color={color} size={size} />
           ),
@@ -62,7 +62,7 @@ export default function CourseTabsLayout() {
         name="grade"
         options={{
           headerShown: false,
-          tabBarLabel: "Grade",
+          tabBarLabel: "Grades",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bar-chart" color={color} size={size} />
           ),
