@@ -107,3 +107,29 @@ export interface CourseQuickStats {
   submissions: string;
   overall_grade: number;
 }
+
+export interface CourseProgress {
+  overall_progress: number;
+  components: {
+    sections: {
+      completed: number;
+      total: number;
+      percentage: number;
+    };
+    activities: {
+      completed: number;
+      total: number;
+      percentage: number;
+    };
+    quizzes: {
+      completed: number;
+      total: number;
+      percentage: number;
+    };
+    exams: {
+      completed: number;
+      total: number;
+      percentage: number;
+    };
+  };
+}
