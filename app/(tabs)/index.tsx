@@ -3,7 +3,7 @@ import { Enrollment } from "@/types/api";
 import { AntDesign } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -17,6 +17,7 @@ import createEnrollmentsOptions from "../../api/QueryOptions/enrollmentsOptions"
 export default function Index() {
   const router = useRouter();
   const { setCourseId, setInstanceId } = useCourseStore();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const { data: userData } = useQuery({
     queryKey: ["user"],
@@ -70,12 +71,20 @@ export default function Index() {
     return now > endDate;
   });
 
-  const handlePress = (course_id: number, instance_id: number) => {
-    setCourseId(course_id);
-    setInstanceId(instance_id);
-    router.replace({
-      pathname: "/(course_tabs)/overview",
-    });
+  const handlePress = async (course_id: number, instance_id: number) => {
+    try {
+      setIsNavigating(true);
+
+      setCourseId(course_id);
+      setInstanceId(instance_id);
+
+      await router.replace({
+        pathname: "/(course_tabs)/overview",
+      });
+    } catch (error) {
+      console.log("Navigation error:", error);
+      setIsNavigating(false);
+    }
   };
 
   return (
@@ -106,16 +115,22 @@ export default function Index() {
                 <Text className="text-gray-600">
                   End Date: {new Date(enrollment.end_date).toLocaleDateString()}
                 </Text>
-                <Pressable className="mt-6 flex-row items-center justify-center rounded-xl bg-blue-500 px-3 py-4">
-                  <Text
-                    className="text-white text-lg font-semibold"
-                    onPress={() => {
+                <Pressable
+                  className="mt-6 flex-row items-center justify-center rounded-xl bg-blue-500 px-3 py-4"
+                  onPress={() => {
+                    if (!isNavigating) {
                       handlePress(enrollment.course_id, enrollment.instance_id);
-                    }}
-                  >
-                    <AntDesign name="eye" size={16} color="white" />
-                    View
-                  </Text>
+                    }
+                  }}
+                >
+                  {isNavigating ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className="text-white text-lg font-semibold">
+                      <AntDesign name="eye" size={16} color="white" />
+                      View
+                    </Text>
+                  )}
                 </Pressable>
               </View>
             ))
