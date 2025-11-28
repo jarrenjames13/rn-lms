@@ -1,3 +1,4 @@
+import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
 import { useCourseStore } from "@/store/useCourseStore";
 import { CourseAllDetails, CourseDetails, CourseQuickStats } from "@/types/api";
@@ -46,7 +47,25 @@ export default function Overview() {
     }, [course_id, refetchStats])
   );
 
-  if (loadingDetails || loadingStats) {
+  const {
+    data: courseProgress,
+    isLoading: loadingProgress,
+    error: progressError,
+    refetch: refetchProgress,
+  } = useQuery({
+    ...createCourseProgressOptions(course_id!),
+    enabled: !!course_id,
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (course_id) {
+        refetchProgress();
+      }
+    }, [course_id, refetchProgress])
+  );
+
+  if (loadingDetails || loadingStats || loadingProgress) {
     return (
       <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" color="black" />
@@ -54,7 +73,7 @@ export default function Overview() {
     );
   }
 
-  if (detailsError || statsError) {
+  if (detailsError || statsError || progressError) {
     return (
       <View className="flex-1 justify-center items-center">
         <Text className="text-base text-red-500">
