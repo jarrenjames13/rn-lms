@@ -99,3 +99,11 @@ export type CourseDetails = {
   course_title: string;
   description: string;
 };
+
+export interface CourseQuickStats {
+  modules: string;
+  quizzes: string;
+  exams: string;
+  submissions: string;
+  overall_grade: number;
+}
