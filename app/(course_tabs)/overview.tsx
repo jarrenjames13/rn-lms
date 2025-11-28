@@ -38,6 +38,14 @@ export default function Overview() {
     enabled: !!course_id,
   });
 
+  useFocusEffect(
+    useCallback(() => {
+      if (course_id) {
+        refetchStats();
+      }
+    }, [course_id, refetchStats])
+  );
+
   if (loadingDetails || loadingStats) {
     return (
       <View className="flex-1 justify-center items-center">
@@ -76,7 +84,7 @@ export default function Overview() {
   };
   return (
     <SafeAreaView className="flex-1 justify-center items-center">
-      <ScrollView className="w-full px-4 py-6">
+      <ScrollView className="w-full px-4">
         <View
           key={course.course_code}
           className="px-4 py-8 bg-white rounded-lg shadow-md "
@@ -89,12 +97,13 @@ export default function Overview() {
             {course.description || "No description available."}
           </Text>
         </View>
-        <View className="mt-6 px-4 py-6 bg-white rounded-lg shadow-md">
+
+        <View className="mt-6 px-4 py-6 bg-white rounded-lg shadow-md mb-4">
           <Text className="text-2xl font-bold text-gray-800 mb-4">
             Course Statistics
           </Text>
           <View className="border-t border-gray-300 my-4" />
-          <Text className="text-lg text-gray-600 mb-2">
+          <Text className="text-lg text-white  mb-2">
             Modules: {stats.modules}
           </Text>
           <Text className="text-lg text-gray-600 mb-2">
@@ -107,7 +116,7 @@ export default function Overview() {
             Submissions: {stats.submissions}
           </Text>
           <Text className="text-lg text-gray-600 mb-2">
-            Overall Grade: {stats.overall_grade}
+            Overall Grade: {stats.overall_grade}%
           </Text>
         </View>
       </ScrollView>
