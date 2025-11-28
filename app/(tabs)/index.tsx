@@ -1,84 +1,61 @@
 import { useCourseStore } from "@/store/useCourseStore";
 import { Enrollment } from "@/types/api";
-import { getData } from "@/utils/fetcher";
-import { showToast } from "@/utils/toast/toast";
 import { AntDesign } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-import { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { fetchUser } from "../../api/QueryFunctions/fetchUser";
+import createEnrollmentsOptions from "../../api/QueryOptions/enrollmentsOptions";
 export default function Index() {
   const router = useRouter();
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [userId, setUserId] = useState<number | null>(null);
   const { setCourseId, setInstanceId } = useCourseStore();
 
-  useEffect(() => {
-    setCourseId(null);
-    const fetchUser = async () => {
-      try {
-        const userData = await SecureStore.getItemAsync("user");
-        if (userData) {
-          const user = JSON.parse(userData);
-          setUserId(user.user_id);
-        }
-      } catch (error) {
-        console.log("Error fetching user data:", error);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { data: userData } = useQuery({
+    queryKey: ["user"],
+    queryFn: fetchUser,
+  });
+  const userId = userData?.user_id ?? null;
+
+  const { data, isLoading, error, refetch } = useQuery({
+    ...createEnrollmentsOptions(userId!),
+    enabled: false,
+  });
+
+  const enrollments: Enrollment[] = data?.enrollments ?? [];
 
   useFocusEffect(
     useCallback(() => {
-      const fetchEnrollments = async () => {
-        if (userId === null) return;
-        try {
-          const response = await getData<Enrollment[]>(
-            `/enrollments/student/${userId}`,
-            {}
-          );
-          const data = response.data;
-          if (response.status === 200) {
-            setEnrollments(data.enrollments);
-          } else if (
-            response.status === 400 ||
-            response.status === 401 ||
-            response.status === 403
-          ) {
-            showToast({
-              type: "error",
-              title: "Error Fetching Enrollments",
-              message: data.detail || "Unknown error.",
-            });
-            console.error(
-              "Error fetching enrollments:",
-              response.data.detail || "Unknown error"
-            );
-          } else {
-            console.error("Unexpected response status:", response.status);
-            showToast({
-              type: "error",
-              title: "Error Fetching Enrollments",
-              message: "Unexpected response status: " + response.status,
-            });
-          }
-        } catch (error: any) {
-          console.error("Error fetching enrollments:", error);
-          showToast({
-            type: "error",
-            title: "Error Fetching Enrollments",
-            message:
-              error.message || "An error occurred while fetching enrollments.",
-          });
-        }
-      };
-      fetchEnrollments();
+      if (userId) {
+        refetch();
+      }
     }, [userId])
   );
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="black" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-base text-red-500">
+          Error fetching enrollments.
+        </Text>
+      </View>
+    );
+  }
 
   const activeEnrollments = enrollments.filter((enrollment) => {
     const now = new Date();

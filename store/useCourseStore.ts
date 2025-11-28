@@ -9,7 +9,8 @@ type CourseStore = {
 
 export const useCourseStore = create<CourseStore>((set) => ({
   course_id: null,
-  setCourseId: (course_id: number | null) => set({ course_id }),
+  setCourseId: (newCourseId: number | null) => set({ course_id: newCourseId }),
   instance_id: null,
-  setInstanceId: (instance_id: number | null) => set({ instance_id }),
+  setInstanceId: (newInstanceId: number | null) =>
+    set({ instance_id: newInstanceId }),
 }));
