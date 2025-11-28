@@ -3,11 +3,7 @@ import { Tabs } from "expo-router";
 
 export default function CourseTabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        animation: "none",
-      }}
-    >
+    <Tabs>
       <Tabs.Screen
         name="home"
         options={{
