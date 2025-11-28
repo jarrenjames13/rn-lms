@@ -1,3 +1,4 @@
+import { useAuth } from "@/context/authContext";
 import { useCourseStore } from "@/store/useCourseStore";
 import { Enrollment } from "@/types/api";
 import { AntDesign } from "@expo/vector-icons";
@@ -12,22 +13,24 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { fetchUser } from "../../api/QueryFunctions/fetchUser";
 import createEnrollmentsOptions from "../../api/QueryOptions/enrollmentsOptions";
 export default function Index() {
   const router = useRouter();
   const { setCourseId, setInstanceId } = useCourseStore();
   const [isNavigating, setIsNavigating] = useState(false);
+  const { authState } = useAuth();
 
-  const { data: userData } = useQuery({
-    queryKey: ["user"],
-    queryFn: fetchUser,
-  });
-  const userId = userData?.user_id ?? null;
+  const userId = authState?.user?.user_id ?? null;
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const {
+    data,
+    isLoading: isEnrollmentsLoading,
+    error: enrollmentsError,
+    refetch,
+  } = useQuery({
     ...createEnrollmentsOptions(userId!),
-    enabled: false,
+    enabled: !!userId,
+    refetchOnMount: "always",
   });
 
   const enrollments: Enrollment[] = data?.enrollments ?? [];
@@ -37,10 +40,10 @@ export default function Index() {
       if (userId) {
         refetch();
       }
-    }, [userId])
+    }, [userId, refetch])
   );
 
-  if (isLoading) {
+  if (isEnrollmentsLoading || authState?.isLoading) {
     return (
       <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" color="black" />
@@ -48,7 +51,7 @@ export default function Index() {
     );
   }
 
-  if (error) {
+  if (enrollmentsError) {
     return (
       <View className="flex-1 justify-center items-center">
         <Text className="text-base text-red-500">
@@ -116,7 +119,7 @@ export default function Index() {
                   End Date: {new Date(enrollment.end_date).toLocaleDateString()}
                 </Text>
                 <Pressable
-                  className="mt-6 flex-row items-center justify-center rounded-xl bg-blue-500 px-3 py-4"
+                  className="mt-6 flex-row items-center justify-center rounded-xl bg-blue-500 active:bg-blue-600 px-3 py-4"
                   onPress={() => {
                     if (!isNavigating) {
                       handlePress(enrollment.course_id, enrollment.instance_id);

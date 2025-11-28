@@ -38,7 +38,7 @@ export default function Login() {
 
   return (
     <SafeAreaView className="flex-1 justify-center items-center bg-gray-100 px-5">
-      <Text className="text-2xl font-bold text-violet-500 mb-8">
+      <Text className="text-2xl font-bold text-red-700 mb-8 text-center">
         LEARNING MANAGEMENT SYSTEM
       </Text>
 

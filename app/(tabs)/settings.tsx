@@ -1,7 +1,5 @@
-import { fetchUser } from "@/api/QueryFunctions/fetchUser";
 import { useAuth } from "@/context/authContext";
-import { useQuery } from "@tanstack/react-query";
-import { Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 interface User {
   user_id: number;
@@ -11,14 +9,9 @@ interface User {
 }
 
 export default function Settings() {
-  const { onLogout } = useAuth();
+  const { onLogout, authState } = useAuth();
 
-  const { data: userData } = useQuery({
-    queryKey: ["user"],
-    queryFn: fetchUser,
-    staleTime: 60 * 60 * 1000, // 1 hour
-  });
-  const user = userData as User | null;
+  const user = authState?.user;
 
   const handleLogout = async () => {
     try {
@@ -27,6 +20,14 @@ export default function Settings() {
       console.log("Logout error:", error);
     }
   };
+
+  if (authState?.isLoading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView className="flex py-4 px-6 mt-4 bg-gray-100 ">
@@ -60,7 +61,7 @@ export default function Settings() {
       <View className="flex justify-start mt-">
         <Pressable
           onPress={handleLogout}
-          className="bg-red-500 rounded-xl py-4 px-6 items-center"
+          className="bg-red-500 active:bg-red-600 rounded-xl py-4 px-6 items-center"
         >
           <Text className="text-white text-lg font-semibold">Logout</Text>
         </Pressable>

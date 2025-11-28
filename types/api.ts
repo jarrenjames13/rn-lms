@@ -62,3 +62,13 @@ export interface StatsData {
   };
   enrolled_courses: number;
 }
+
+export interface VerifyUser {
+  success: boolean;
+  user: {
+    user_id: number;
+    external_id: string;
+    full_name: string;
+    role: string;
+  };
+}

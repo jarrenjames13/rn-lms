@@ -1,4 +1,9 @@
-import { LoginPayload, LoginResponse, LogoutResponse } from "@/types/api";
+import {
+  LoginPayload,
+  LoginResponse,
+  LogoutResponse,
+  VerifyUser,
+} from "@/types/api";
 import { BASE_URL } from "@/utils/constants";
 import { setLogoutCallback } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
@@ -122,6 +127,7 @@ export const AuthProvider = ({ children }: any) => {
 
   const verifyUser = async () => {
     try {
+      console.log("Verifying user...");
       const access_token = await SecureStore.getItemAsync("access_token");
       const refresh_token = await SecureStore.getItemAsync("refresh_token");
 
@@ -129,10 +135,10 @@ export const AuthProvider = ({ children }: any) => {
         setAuthState((prev) => ({ ...prev, isLoading: false }));
         return;
       }
-
+      console.log("Found tokens, proceeding with verification...");
       // Attempt to verify with current access token
       try {
-        const res = await axios.get(`${BASE_URL}/auth/verify`, {
+        const res = await axios.get<VerifyUser>(`${BASE_URL}/auth/verify`, {
           headers: { Authorization: `Bearer ${access_token}` },
         });
 
@@ -140,7 +146,7 @@ export const AuthProvider = ({ children }: any) => {
           const data = res.data;
 
           setAuthState({
-            access_token: data.access_token || access_token,
+            access_token: access_token,
             refresh_token,
             user: data.user,
             success: true,
@@ -148,10 +154,11 @@ export const AuthProvider = ({ children }: any) => {
           });
 
           axios.defaults.headers.common["Authorization"] =
-            `Bearer ${data.access_token || access_token}`;
+            `Bearer ${access_token}`;
 
-          if (data.access_token) {
-            await SecureStore.setItemAsync("access_token", data.access_token);
+          if (data.user) {
+            console.log("User verified successfully:", data.user);
+            await SecureStore.setItemAsync("user", JSON.stringify(data.user));
           }
           return;
         }
@@ -233,7 +240,8 @@ export const AuthProvider = ({ children }: any) => {
       });
       const data = res.data;
 
-      if (res.status === 200 && data.success) {
+      // Only successful 200 responses reach here
+      if (data.success) {
         setAuthState({
           access_token: data.access_token,
           refresh_token: data.refresh_token,
@@ -254,25 +262,29 @@ export const AuthProvider = ({ children }: any) => {
         await SecureStore.setItemAsync("access_token", data.access_token);
         await SecureStore.setItemAsync("refresh_token", data.refresh_token);
         await SecureStore.setItemAsync("user", JSON.stringify(data.user));
-      } else if ((res.status === 401 || res.status === 400) && !data.success) {
-        console.log("Login failed with status:", res.status);
-
-        showToast({
-          type: "error",
-          title: "Login Failed",
-          message: data?.detail || "An error occurred during login.",
-        });
-        setAuthState((prev) => ({ ...prev, isLoading: false }));
       }
     } catch (error: any) {
       console.log("Login error caught:", error);
 
-      showToast({
-        type: "error",
-        title: "Login Failed",
-        message:
-          error.message || "Internal server error occurred during login.",
-      });
+      // Handle axios errors (including 401, 400, etc.)
+      if (axios.isAxiosError(error) && error.response) {
+        const data = error.response.data;
+
+        showToast({
+          type: "error",
+          title: "Login Failed",
+          message: data?.detail || data?.message || "Invalid credentials.",
+        });
+      } else {
+        // Handle network errors or other exceptions
+        showToast({
+          type: "error",
+          title: "Login Failed",
+          message:
+            error.message || "Internal server error occurred during login.",
+        });
+      }
+
       setAuthState((prev) => ({ ...prev, isLoading: false }));
     }
   };
