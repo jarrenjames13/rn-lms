@@ -324,7 +324,7 @@ export const AuthProvider = ({ children }: any) => {
             "detail" in data ? data.detail : "An unknown error occurred.",
         });
       }
-    } catch (error: unknown) {
+    } catch (error: any) {
       let message = "Internal server error occurred during logout.";
 
       if (axios.isAxiosError(error)) {
