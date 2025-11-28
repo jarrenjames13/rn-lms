@@ -1,7 +1,12 @@
 import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
 import { useCourseStore } from "@/store/useCourseStore";
-import { CourseAllDetails, CourseDetails, CourseQuickStats } from "@/types/api";
+import {
+  CourseAllDetails,
+  CourseDetails,
+  CourseProgress,
+  CourseQuickStats,
+} from "@/types/api";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
@@ -101,6 +106,17 @@ export default function Overview() {
     submissions: "0",
     overall_grade: 0,
   };
+
+  const progress: CourseProgress = courseProgress ?? {
+    overall_progress: 0,
+    components: {
+      sections: { completed: 0, total: 0, percentage: 0 },
+      activities: { completed: 0, total: 0, percentage: 0 },
+      quizzes: { completed: 0, total: 0, percentage: 0 },
+      exams: { completed: 0, total: 0, percentage: 0 },
+    },
+  };
+
   return (
     <SafeAreaView className="flex-1 justify-center items-center">
       <ScrollView className="w-full px-4">
