@@ -34,6 +34,15 @@ interface GenericErrorResponse {
 }
 export type LogoutResponse = LogoutResponseSuccess | GenericErrorResponse;
 
+export interface VerifyUser {
+  success: boolean;
+  user: {
+    user_id: number;
+    external_id: string;
+    full_name: string;
+    role: string;
+  };
+}
 export interface Enrollment {
   enrollment_id: number;
   created_at: string;
@@ -63,12 +72,30 @@ export interface StatsData {
   enrolled_courses: number;
 }
 
-export interface VerifyUser {
-  success: boolean;
-  user: {
-    user_id: number;
-    external_id: string;
-    full_name: string;
-    role: string;
+export type CourseAllDetails = {
+  course: {
+    course_code: string;
+    course_title: string;
+    description: string;
   };
-}
+  modules: {
+    module_id: number;
+    position: number;
+    content_html: string;
+    learning_outcomes: string[];
+    created_at: string;
+    updated_at: string;
+    sections: {
+      section_id: number;
+      position: number;
+      title: string;
+      content: string;
+    }[];
+  }[];
+};
+
+export type CourseDetails = {
+  course_code: string;
+  course_title: string;
+  description: string;
+};
