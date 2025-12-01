@@ -93,7 +93,12 @@ export default function Index() {
   return (
     <SafeAreaView className="flex-1 bg-gray-100 p-2">
       <ScrollView className="w-full px-6 py-4 bg-gray-100">
-        <Text className="text-3xl font-bold text-black py-4 rounded-full px-3 mt-2 text-center">
+        <View className="my-4" />
+        <Text className="text-3xl font-bold text-black py-4 rounded-full px-3 text-center">
+          Learning Dashboard
+        </Text>
+        <View className="border-t border-gray-300 mb-6" />
+        <Text className="text-2xl font-bold text-black py-4 rounded-full px-3 mt-2 text-center">
           Active Courses
         </Text>
         <View className="w-full py-8">
@@ -126,11 +131,11 @@ export default function Index() {
                     }
                   }}
                 >
+                  <AntDesign name="eye" size={16} color="white" />
                   {isNavigating ? (
                     <ActivityIndicator color="white" />
                   ) : (
-                    <Text className="text-white text-lg font-semibold">
-                      <AntDesign name="eye" size={16} color="white" />
+                    <Text className="text-white text-lg font-semibold px-2">
                       View
                     </Text>
                   )}
@@ -139,7 +144,7 @@ export default function Index() {
             ))
           )}
         </View>
-        <Text className="text-3xl font-bold text-black py-4 rounded-full px-3 text-center mt-6">
+        <Text className="text-2xl font-bold text-black py-4 rounded-full px-3 text-center mt-6">
           Completed Courses
         </Text>
         <View className="w-full px-4 mb-6">
