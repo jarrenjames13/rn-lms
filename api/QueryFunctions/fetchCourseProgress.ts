@@ -4,7 +4,7 @@ import { getData } from "@/utils/fetcher";
 export const fetchCourseProgress = async (courseId: number) => {
   try {
     const res = await getData<CourseProgress>(
-      `/modules/student-course-progress/-comprehensive/${courseId}`,
+      `/modules/student-course-progress-comprehensive/${courseId}`,
       {}
     );
     const data = res.data;

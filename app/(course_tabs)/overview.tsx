@@ -116,6 +116,7 @@ export default function Overview() {
       exams: { completed: 0, total: 0, percentage: 0 },
     },
   };
+  console.log("Course Progress:", progress);
 
   return (
     <SafeAreaView className="flex-1 justify-center items-center">
@@ -131,6 +132,42 @@ export default function Overview() {
           <Text className="text-lg text-gray-600 text-justify">
             {course.description || "No description available."}
           </Text>
+          <View className="mt-2">
+            <View className="border-t border-gray-300 my-4" />
+            <Text className="text-lg font-semibold text-gray-800 mb-2">
+              Overall Progress
+            </Text>
+
+            <View className="w-full h-4 bg-gray-300 rounded-full overflow-hidden">
+              <View
+                className="w-full h-full bg-red-500 rounded-full"
+                style={{ width: `${progress.overall_progress}%` }}
+              ></View>
+            </View>
+            <Text className="text-sm text-gray-600 mt-2">
+              {progress.overall_progress}% completed
+            </Text>
+            <Text className="text-sm text-gray-600 mt-3">
+              Sections Completed: {progress.components.sections.completed} /{" "}
+              {progress.components.sections.total} (
+              {progress.components.sections.percentage}%)
+            </Text>
+            <Text className="text-sm text-gray-600 mt-1">
+              Activities Completed: {progress.components.activities.completed} /{" "}
+              {progress.components.activities.total} (
+              {progress.components.activities.percentage}%)
+            </Text>
+            <Text className="text-sm text-gray-600 mt-1">
+              Quizzes Completed: {progress.components.quizzes.completed} /{" "}
+              {progress.components.quizzes.total} (
+              {progress.components.quizzes.percentage}%)
+            </Text>
+            <Text className="text-sm text-gray-600 mt-1">
+              Exams Completed: {progress.components.exams.completed} /{" "}
+              {progress.components.exams.total} (
+              {progress.components.exams.percentage}%)
+            </Text>
+          </View>
         </View>
 
         <View className="mt-6 px-4 py-6 bg-white rounded-lg shadow-md mb-4">
