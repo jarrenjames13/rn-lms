@@ -1,6 +1,7 @@
 import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
 import { useCourseStore } from "@/store/useCourseStore";
+import { useModuleStore } from "@/store/useModuleStore";
 import {
   CourseAllDetails,
   CourseDetails,
@@ -15,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
 export default function Overview() {
   const { course_id, instance_id } = useCourseStore();
+  const { setModuleData } = useModuleStore();
 
   const {
     data: courseDetails,
@@ -26,12 +28,15 @@ export default function Overview() {
     enabled: !!course_id,
   });
 
+  // console.log("Fetched Course Details in Overview:", courseDetails);
+
   useFocusEffect(
     useCallback(() => {
       if (course_id) {
         refetch();
+        setModuleData(courseDetails?.modules || []);
       }
-    }, [course_id, refetch])
+    }, [course_id, refetch, courseDetails?.modules, setModuleData])
   );
 
   const {
@@ -91,7 +96,6 @@ export default function Overview() {
     course: null,
     modules: [],
   };
-  const modules = details.modules ?? [];
 
   const course: CourseDetails = details.course ?? {
     course_code: "",
@@ -116,7 +120,7 @@ export default function Overview() {
       exams: { completed: 0, total: 0, percentage: 0 },
     },
   };
-  console.log("Course Progress:", progress);
+  // console.log("Course Progress:", progress);
 
   return (
     <SafeAreaView className="flex-1 justify-center items-center">

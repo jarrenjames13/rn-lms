@@ -85,14 +85,26 @@ export type CourseAllDetails = {
     learning_outcomes: string[];
     created_at: string;
     updated_at: string;
-    sections: {
-      section_id: number;
-      position: number;
-      title: string;
-      content: string;
-    }[];
+    sections: Section[];
   }[];
 };
+
+export type Section = {
+  section_id: number;
+  position: number;
+  title: string;
+  content: string;
+};
+
+export type ModuleData = {
+  module_id: number;
+  position: number;
+  content_html: string;
+  learning_outcomes: string[];
+  created_at: string;
+  updated_at: string;
+  sections: Section[];
+}[];
 
 export type CourseDetails = {
   course_code: string;

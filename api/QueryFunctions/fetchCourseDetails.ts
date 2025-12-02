@@ -1,8 +1,10 @@
-import { CourseDetails } from "@/types/api";
+import { CourseAllDetails } from "@/types/api";
 import { getData } from "@/utils/fetcher";
 export const fetchCourseDetails = async (courseId: number) => {
   try {
-    const res = await getData<CourseDetails>(`/modules/?course_id=${courseId}`);
+    const res = await getData<CourseAllDetails>(
+      `/modules/?course_id=${courseId}`
+    );
     const data = res.data;
 
     return data;

@@ -1,10 +1,10 @@
+import { useModuleStore } from "@/store/useModuleStore";
 import React from "react";
-import { Text, View } from "react-native";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 export default function Modules() {
-  return (
-    <View>
-      <Text>M</Text>
-    </View>
-  );
+  const { moduleData } = useModuleStore();
+
+  const modules = moduleData;
+  console.log("Modules Data:", modules);
+  return <SafeAreaView></SafeAreaView>;
 }
