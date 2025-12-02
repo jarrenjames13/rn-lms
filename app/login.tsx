@@ -27,11 +27,11 @@ export default function Login() {
           password: password,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       showToast({
         type: "error",
         title: "Login Failed",
-        message: "An unexpected error occurred. Please try again.",
+        message: error.message || "An unexpected error occurred during login.",
       });
     }
   };
