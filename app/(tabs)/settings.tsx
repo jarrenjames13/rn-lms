@@ -1,12 +1,6 @@
 import { useAuth } from "@/context/authContext";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-interface User {
-  user_id: number;
-  external_id: string;
-  full_name: string;
-  role: string;
-}
 
 export default function Settings() {
   const { onLogout, authState } = useAuth();
