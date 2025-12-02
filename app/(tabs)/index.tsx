@@ -12,7 +12,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import createEnrollmentsOptions from "../../api/QueryOptions/enrollmentsOptions";
 export default function Index() {
   const router = useRouter();
@@ -90,183 +89,175 @@ export default function Index() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100 p-2">
-      <ScrollView
-        className="w-full px-6 py-4 bg-gray-100"
-        stickyHeaderIndices={[0]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/** Header Section */}
-        <View className="bg-gray-100 py-4 px-2 w-full">
-          <Text className="text-3xl font-bold text-violet-500 rounded-full px-3 text-center">
-            Aurora LMS
+    <ScrollView
+      className="w-full  py-4  bg-gray-100"
+      stickyHeaderIndices={[0]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/** Header Section */}
+      <View className="bg-gray-100 py-7 w-full">
+        <Text className="text-3xl font-bold text-violet-500 rounded-full px-3 text-center">
+          Aurora LMS
+        </Text>
+      </View>
+      {/* <View className="border-t border-gray-300 mb-6" /> */}
+      {/** Active Enrollments Header */}
+      <View className=" bg-gray-150 rounded-lg ">
+        <Text className="text-2xl font-bold text-black py-4 rounded-full px-3 text-center">
+          Active Courses
+        </Text>
+      </View>
+      {/** Active Enrollments List */}
+      <View className="w-full py-8 px-4">
+        {activeEnrollments.length === 0 ? (
+          <Text className="text-base text-gray-600 text-center">
+            No active enrollments.
           </Text>
-        </View>
-        <View className="border-t border-gray-300 mb-6" />
-        {/** Active Enrollments Header */}
-        <View className=" bg-gray-150 rounded-lg">
-          <Text className="text-2xl font-bold text-black py-4 rounded-full px-3 mt-2 text-center">
-            Active Courses
-          </Text>
-        </View>
-        {/** Active Enrollments List */}
-        <View className="w-full py-8">
-          {activeEnrollments.length === 0 ? (
-            <Text className="text-base text-gray-600 text-center">
-              No active enrollments.
-            </Text>
-          ) : (
-            activeEnrollments.map((enrollment) => (
-              <View
-                key={enrollment.enrollment_id}
-                className="bg-gradient-to-br from-black to-purple-400 rounded-2xl shadow-lg mb-4 px-8 py-9 border border-purple-100"
-              >
-                <View className="border-l-4 border-red-500 pl-4 mb-4">
-                  <Text className="text-xl font-bold text-gray-800">
-                    {enrollment.course_title}
+        ) : (
+          activeEnrollments.map((enrollment) => (
+            <View
+              key={enrollment.enrollment_id}
+              className="bg-gradient-to-br from-black to-purple-400 rounded-2xl shadow-lg mb-4 px-8 py-9 border border-purple-100"
+            >
+              <View className="border-l-4 border-red-500 pl-4 mb-4">
+                <Text className="text-xl font-bold text-gray-800">
+                  {enrollment.course_title}
+                </Text>
+              </View>
+              {/** Course Details Section */}
+              <View className="space-y-2 mb-6">
+                <View className="flex-row items-center">
+                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
+                  <Text className="text-gray-700 font-medium">
+                    Term:{" "}
+                    <Text className="text-purple-600 font-semibold">
+                      {enrollment.term_code}
+                    </Text>
                   </Text>
                 </View>
-                {/** Course Details Section */}
-                <View className="space-y-2 mb-6">
-                  <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
-                    <Text className="text-gray-700 font-medium">
-                      Term:{" "}
-                      <Text className="text-purple-600 font-semibold">
-                        {enrollment.term_code}
-                      </Text>
+                {/** Start Date */}
+                <View className="flex-row items-center">
+                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
+                  <Text className="text-gray-700 font-medium">
+                    Start:{" "}
+                    <Text className="text-gray-600">
+                      {new Date(enrollment.start_date).toLocaleDateString()}
                     </Text>
-                  </View>
-                  {/** Start Date */}
-                  <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
-                    <Text className="text-gray-700 font-medium">
-                      Start:{" "}
-                      <Text className="text-gray-600">
-                        {new Date(enrollment.start_date).toLocaleDateString()}
-                      </Text>
-                    </Text>
-                  </View>
-                  {/** End Date Section */}
-                  <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
-                    <Text className="text-gray-700 font-medium">
-                      End:{" "}
-                      <Text className="text-gray-600">
-                        {new Date(enrollment.end_date).toLocaleDateString()}
-                      </Text>
-                    </Text>
-                  </View>
-                </View>
-                {/** View Course Button */}
-                <View className="items-center">
-                  <Pressable
-                    className="w-40 mt-4 flex-row items-center justify-center rounded-xl bg-red-500 active:bg-red-600 px-4 py-4 shadow-md"
-                    onPress={() => {
-                      if (!isNavigating) {
-                        handlePress(
-                          enrollment.course_id,
-                          enrollment.instance_id
-                        );
-                      }
-                    }}
-                  >
-                    <AntDesign name="eye" size={18} color="white" />
-                    {isNavigating ? (
-                      <ActivityIndicator color="white" className="ml-2" />
-                    ) : (
-                      <Text className="text-white text-lg font-bold ml-2">
-                        View Course
-                      </Text>
-                    )}
-                  </Pressable>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-        <View className=" bg-gray-150 rounded-lg">
-          <Text className="text-2xl font-bold text-black py-4 rounded-full px-3 mt-2 text-center">
-            Completed Courses
-          </Text>
-        </View>
-        {/** Completed Enrollments List */}
-        <View className="w-full py-8">
-          {completedEnrollments.length === 0 ? (
-            <Text className="text-base text-gray-600 text-center">
-              No completed enrollments.
-            </Text>
-          ) : (
-            completedEnrollments.map((enrollment) => (
-              <View
-                key={enrollment.enrollment_id}
-                className="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-lg mb-4 px-8 py-9 border border-purple-100"
-              >
-                <View className="border-l-4 border-red-500 pl-4 mb-4">
-                  <Text className="text-xl font-bold text-gray-800">
-                    {enrollment.course_title}
                   </Text>
                 </View>
-                {/** Course Details Section */}
-                <View className="space-y-2 mb-6">
-                  <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
-                    <Text className="text-gray-700 font-medium">
-                      Term:{" "}
-                      <Text className="text-purple-600 font-semibold">
-                        {enrollment.term_code}
-                      </Text>
+                {/** End Date Section */}
+                <View className="flex-row items-center">
+                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
+                  <Text className="text-gray-700 font-medium">
+                    End:{" "}
+                    <Text className="text-gray-600">
+                      {new Date(enrollment.end_date).toLocaleDateString()}
                     </Text>
-                  </View>
-                  {/** Start Date */}
-                  <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
-                    <Text className="text-gray-700 font-medium">
-                      Start:{" "}
-                      <Text className="text-gray-600">
-                        {new Date(enrollment.start_date).toLocaleDateString()}
-                      </Text>
-                    </Text>
-                  </View>
-                  {/** End Date Section */}
-                  <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
-                    <Text className="text-gray-700 font-medium">
-                      End:{" "}
-                      <Text className="text-gray-600">
-                        {new Date(enrollment.end_date).toLocaleDateString()}
-                      </Text>
-                    </Text>
-                  </View>
-                </View>
-                {/** View Course Button */}
-                <View className="items-center">
-                  <Pressable
-                    className="w-40 mt-4 flex-row items-center justify-center rounded-xl bg-red-500 active:bg-red-600 px-4 py-4 shadow-md"
-                    onPress={() => {
-                      if (!isNavigating) {
-                        handlePress(
-                          enrollment.course_id,
-                          enrollment.instance_id
-                        );
-                      }
-                    }}
-                  >
-                    <AntDesign name="eye" size={18} color="white" />
-                    {isNavigating ? (
-                      <ActivityIndicator color="white" className="ml-2" />
-                    ) : (
-                      <Text className="text-white text-lg font-bold ml-2">
-                        View Course
-                      </Text>
-                    )}
-                  </Pressable>
+                  </Text>
                 </View>
               </View>
-            ))
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+              {/** View Course Button */}
+              <View className="items-center">
+                <Pressable
+                  className="w-40 mt-4 flex-row items-center justify-center rounded-xl bg-red-500 active:bg-red-600 px-4 py-4 shadow-md"
+                  onPress={() => {
+                    if (!isNavigating) {
+                      handlePress(enrollment.course_id, enrollment.instance_id);
+                    }
+                  }}
+                >
+                  <AntDesign name="eye" size={18} color="white" />
+                  {isNavigating ? (
+                    <ActivityIndicator color="white" className="ml-2" />
+                  ) : (
+                    <Text className="text-white text-lg font-bold ml-2">
+                      View Course
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+      <View className=" bg-gray-150 rounded-lg">
+        <Text className="text-2xl font-bold text-black py-4 rounded-full px-3 mt-2 text-center">
+          Completed Courses
+        </Text>
+      </View>
+      {/** Completed Enrollments List */}
+      <View className="w-full py-8 px-4">
+        {completedEnrollments.length === 0 ? (
+          <Text className="text-base text-gray-600 text-center">
+            No completed enrollments.
+          </Text>
+        ) : (
+          completedEnrollments.map((enrollment) => (
+            <View
+              key={enrollment.enrollment_id}
+              className="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-lg mb-4 px-8 py-9 border border-purple-100"
+            >
+              <View className="border-l-4 border-red-500 pl-4 mb-4">
+                <Text className="text-xl font-bold text-gray-800">
+                  {enrollment.course_title}
+                </Text>
+              </View>
+              {/** Course Details Section */}
+              <View className="space-y-2 mb-6">
+                <View className="flex-row items-center">
+                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
+                  <Text className="text-gray-700 font-medium">
+                    Term:{" "}
+                    <Text className="text-purple-600 font-semibold">
+                      {enrollment.term_code}
+                    </Text>
+                  </Text>
+                </View>
+                {/** Start Date */}
+                <View className="flex-row items-center">
+                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
+                  <Text className="text-gray-700 font-medium">
+                    Start:{" "}
+                    <Text className="text-gray-600">
+                      {new Date(enrollment.start_date).toLocaleDateString()}
+                    </Text>
+                  </Text>
+                </View>
+                {/** End Date Section */}
+                <View className="flex-row items-center">
+                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
+                  <Text className="text-gray-700 font-medium">
+                    End:{" "}
+                    <Text className="text-gray-600">
+                      {new Date(enrollment.end_date).toLocaleDateString()}
+                    </Text>
+                  </Text>
+                </View>
+              </View>
+              {/** View Course Button */}
+              <View className="items-center">
+                <Pressable
+                  className="w-40 mt-4 flex-row items-center justify-center rounded-xl bg-red-500 active:bg-red-600 px-4 py-4 shadow-md"
+                  onPress={() => {
+                    if (!isNavigating) {
+                      handlePress(enrollment.course_id, enrollment.instance_id);
+                    }
+                  }}
+                >
+                  <AntDesign name="eye" size={18} color="white" />
+                  {isNavigating ? (
+                    <ActivityIndicator color="white" className="ml-2" />
+                  ) : (
+                    <Text className="text-white text-lg font-bold ml-2">
+                      View Course
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+    </ScrollView>
   );
 }
