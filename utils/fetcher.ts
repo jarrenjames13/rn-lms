@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "../utils/constants";
 
@@ -146,7 +146,7 @@ const request = async <T = any>(
     const res = await apiClient.request<T>(config);
     return res;
   } catch (error: any) {
-    if (axios.isAxiosError(error) && error.response) {
+    if (isAxiosError(error) && error.response) {
       return error.response;
     }
     throw error;
