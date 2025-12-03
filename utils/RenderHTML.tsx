@@ -27,19 +27,19 @@ const HEADER_CLASSES: Record<string, string> = {
   h1: "text-3xl font-bold my-2",
   h2: "text-2xl font-bold my-2",
   h3: "text-xl font-bold my-2",
-  h4: "text-lg font-bold pt-3 pb-4 my-2",
+  h4: "text-lg font-bold my-2",
   h5: "text-base font-bold my-2",
   h6: "text-sm font-bold my-2",
 };
 
 const TAG_CLASSES: Record<string, string> = {
-  p: "my-2 py-2 text-base leading-relaxed",
+  p: "my-2 py-3 text-base leading-relaxed",
   span: "mx-1",
   ul: "pl-5 my-2",
   ol: "pl-5 my-2",
   li: "my-1 text-base leading-relaxed",
   pre: "bg-gray-100 p-3 rounded my-2",
-  code: "font-mono text-base",
+  code: "font-mono text-sm",
   strong: "font-bold mx-0.5",
   em: "italic mx-0.5",
   blockquote: "border-l-4 border-gray-300 pl-4 my-2 italic",
@@ -225,3 +225,49 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
 
   return React.createElement(View, { className: "p-4" }, renderedNodes);
 }
+
+// Helper function to extract title from parsed HTML
+export function extractTitleFromParsed(nodes: ParsedNode[]): string {
+  for (const node of nodes) {
+    if (
+      node.type === "tag" &&
+      node.name &&
+      ["h1", "h2", "h3", "h4", "h5", "h6"].includes(node.name)
+    ) {
+      return extractTextContent(node);
+    }
+    if (node.children) {
+      const title = extractTitleFromParsed(node.children);
+      if (title) return title;
+    }
+  }
+  return "";
+}
+
+// Helper function to extract description (first paragraph)
+export function extractDescriptionFromParsed(nodes: ParsedNode[]): string {
+  for (const node of nodes) {
+    if (node.type === "tag" && node.name === "p") {
+      return extractTextContent(node);
+    }
+    if (node.children) {
+      const desc = extractDescriptionFromParsed(node.children);
+      if (desc) return desc;
+    }
+  }
+  return "";
+}
+
+// Helper to extract plain text from a node
+function extractTextContent(node: ParsedNode): string {
+  if (node.type === "text") {
+    return node.content || "";
+  }
+  if (node.children) {
+    return node.children.map((child) => extractTextContent(child)).join(" ");
+  }
+  return "";
+}
+
+// Export parseHTML so it can be used externally
+export { parseHTML };

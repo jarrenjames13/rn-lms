@@ -1,7 +1,11 @@
 import { useModuleStore } from "@/store/useModuleStore";
-import { ModuleData } from "@/types/api";
-import { renderHTMLContent } from "@/utils/RenderHTML";
-import React, { useRef, useState } from "react";
+import {
+  extractDescriptionFromParsed,
+  extractTitleFromParsed,
+  parseHTML,
+  renderHTMLContent,
+} from "@/utils/RenderHTML";
+import React, { useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -11,46 +15,61 @@ export default function Modules() {
   const scrollViewRef = useRef<ScrollView>(null);
   const sectionRefs = useRef<{ [key: number]: View | null }>({});
 
-  const modules: ModuleData = moduleData || [];
+  // Parse once and cache
+  const parsedModules = useMemo(() => {
+    const modules = moduleData || [];
+    return modules.map((module) => {
+      const parsed = parseHTML(module.content_html);
+      const title = extractTitleFromParsed(parsed);
+      const description = extractDescriptionFromParsed(parsed);
+
+      return {
+        ...module,
+        parsedTitle: title,
+        parsedDescription: description,
+      };
+    });
+  }, [moduleData]);
 
   const toggleSection = (sectionId: number) => {
     const isOpening = openSectionId !== sectionId;
     setOpenSectionId(openSectionId === sectionId ? null : sectionId);
 
-    // Scroll to the accordion when opening a different section
     if (isOpening && sectionRefs.current[sectionId]) {
       setTimeout(() => {
         sectionRefs.current[sectionId]?.measureLayout(
           scrollViewRef.current as any,
           (x, y) => {
             scrollViewRef.current?.scrollTo({
-              y: y - 20, // 20px offset from top for better visibility
+              y: y - 20,
               animated: true,
             });
           },
           () => console.log("measureLayout failed")
         );
-      }, 100); // Small delay to allow accordion to expand
+      }, 100);
     }
   };
 
   return (
     <SafeAreaView>
       <ScrollView ref={scrollViewRef}>
-        {modules.length === 0 ? (
+        {parsedModules.length === 0 ? (
           <Text className="text-base text-gray-600 text-center mt-4">
             No modules available for this course.
           </Text>
         ) : (
-          modules.map((module) => (
+          parsedModules.map((module) => (
             <View
               key={module.module_id}
               className="bg-white rounded-xl shadow-md mb-4 mx-4 p-4"
             >
-              <Text className="text-xl font-bold text-gray-800 mb-2">
-                {renderHTMLContent(module.content_html)}
+              <Text className="text-2xl font-bold text-gray-800 mb-2">
+                {module.parsedTitle || "Untitled Module"}
               </Text>
-              <Text className="text-gray-600">{module.learning_outcomes}</Text>
+              <Text className="text-gray-600 mb-2 text-lg text-justify px-2">
+                {module.parsedDescription || "No description available"}
+              </Text>
               {module.sections && module.sections.length === 0 ? (
                 <View className="text-center mx-4">
                   <Text className="text-xl font-semibold">
