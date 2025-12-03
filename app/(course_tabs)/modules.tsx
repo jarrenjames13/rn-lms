@@ -9,6 +9,7 @@ export default function Modules() {
   const { moduleData } = useModuleStore();
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const sectionRefs = useRef<{ [key: number]: View | null }>({});
 
   const modules: ModuleData = moduleData || [];
 
@@ -16,12 +17,20 @@ export default function Modules() {
     const isOpening = openSectionId !== sectionId;
     setOpenSectionId(openSectionId === sectionId ? null : sectionId);
 
-    // Scroll to top when opening a different section
-    if (isOpening) {
-      scrollViewRef.current?.scrollTo({
-        y: 0,
-        animated: true,
-      });
+    // Scroll to the accordion when opening a different section
+    if (isOpening && sectionRefs.current[sectionId]) {
+      setTimeout(() => {
+        sectionRefs.current[sectionId]?.measureLayout(
+          scrollViewRef.current as any,
+          (x, y) => {
+            scrollViewRef.current?.scrollTo({
+              y: y - 20, // 20px offset from top for better visibility
+              animated: true,
+            });
+          },
+          () => console.log("measureLayout failed")
+        );
+      }, 100); // Small delay to allow accordion to expand
     }
   };
 
@@ -59,7 +68,13 @@ export default function Modules() {
                   {module.sections.map((section) => {
                     const isOpen = openSectionId === section.section_id;
                     return (
-                      <View key={section.section_id} className="mb-2">
+                      <View
+                        key={section.section_id}
+                        className="mb-2"
+                        ref={(ref) => {
+                          sectionRefs.current[section.section_id] = ref;
+                        }}
+                      >
                         <Pressable
                           onPress={() => toggleSection(section.section_id)}
                           className="bg-gray-100 rounded-lg p-3"
