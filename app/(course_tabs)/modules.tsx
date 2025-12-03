@@ -1,22 +1,33 @@
 import { useModuleStore } from "@/store/useModuleStore";
 import { ModuleData } from "@/types/api";
-import React, { useState } from "react";
+import { renderHTMLContent } from "@/utils/RenderHTML";
+import React, { useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Modules() {
   const { moduleData } = useModuleStore();
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const modules: ModuleData = moduleData || [];
 
   const toggleSection = (sectionId: number) => {
+    const isOpening = openSectionId !== sectionId;
     setOpenSectionId(openSectionId === sectionId ? null : sectionId);
+
+    // Scroll to top when opening a different section
+    if (isOpening) {
+      scrollViewRef.current?.scrollTo({
+        y: 0,
+        animated: true,
+      });
+    }
   };
 
   return (
     <SafeAreaView>
-      <ScrollView>
+      <ScrollView ref={scrollViewRef}>
         {modules.length === 0 ? (
           <Text className="text-base text-gray-600 text-center mt-4">
             No modules available for this course.
@@ -28,11 +39,23 @@ export default function Modules() {
               className="bg-white rounded-xl shadow-md mb-4 mx-4 p-4"
             >
               <Text className="text-xl font-bold text-gray-800 mb-2">
-                {module.content_html}
+                {renderHTMLContent(module.content_html)}
               </Text>
               <Text className="text-gray-600">{module.learning_outcomes}</Text>
-              {module.sections && module.sections.length > 0 && (
+              {module.sections && module.sections.length === 0 ? (
+                <View className="text-center mx-4">
+                  <Text className="text-xl font-semibold">
+                    Module Sections:
+                  </Text>
+                  <Text className="text-base text-gray-600 mt-2">
+                    No sections available for this module.
+                  </Text>
+                </View>
+              ) : (
                 <View className="mt-4">
+                  <Text className="text-xl font-semibold mb-2 px-2">
+                    Module Sections:
+                  </Text>
                   {module.sections.map((section) => {
                     const isOpen = openSectionId === section.section_id;
                     return (
@@ -52,9 +75,9 @@ export default function Modules() {
                         </Pressable>
                         {isOpen && (
                           <View className="bg-gray-50 rounded-b-lg p-3 mt-1">
-                            <Text className="text-gray-600">
-                              {section.content}
-                            </Text>
+                            <View className="">
+                              {renderHTMLContent(section.content)}
+                            </View>
                           </View>
                         )}
                       </View>

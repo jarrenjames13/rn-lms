@@ -27,22 +27,23 @@ const HEADER_CLASSES: Record<string, string> = {
   h1: "text-3xl font-bold my-2",
   h2: "text-2xl font-bold my-2",
   h3: "text-xl font-bold my-2",
-  h4: "text-lg font-bold my-2",
+  h4: "text-lg font-bold pt-3 pb-4 my-2",
   h5: "text-base font-bold my-2",
   h6: "text-sm font-bold my-2",
 };
 
 const TAG_CLASSES: Record<string, string> = {
-  p: "my-2 text-base",
+  p: "my-2 py-2 text-base leading-relaxed",
+  span: "mx-1",
   ul: "pl-5 my-2",
   ol: "pl-5 my-2",
-  li: "my-1 text-base",
+  li: "my-1 text-base leading-relaxed",
   pre: "bg-gray-100 p-3 rounded my-2",
-  code: "font-mono text-sm bg-gray-100 px-1",
-  strong: "font-bold",
-  em: "italic",
+  code: "font-mono text-base",
+  strong: "font-bold mx-0.5",
+  em: "italic mx-0.5",
   blockquote: "border-l-4 border-gray-300 pl-4 my-2 italic",
-  a: "text-blue-600 underline",
+  a: "text-blue-600 underline mx-0.5",
 };
 
 interface ParsedNode {
@@ -130,7 +131,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
       }
       return React.createElement(
         Text,
-        { key: index, className: "text-base" },
+        { key: index, className: "text-base mx-1" },
         content
       );
     }
@@ -179,6 +180,29 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
           Text,
           { key: index, className: className },
           bullet,
+          children
+        );
+      }
+
+      // Add spacing for inline code elements
+      if (node.name === "code" && isTextComponent) {
+        return React.createElement(
+          Text,
+          { key: index },
+          " ",
+          React.createElement(Text, { className: className }, children),
+          " "
+        );
+      }
+
+      // Add spacing for other inline elements inside text
+      if (
+        isTextComponent &&
+        ["strong", "em", "a", "span"].includes(node.name)
+      ) {
+        return React.createElement(
+          Text,
+          { key: index, className: className },
           children
         );
       }
