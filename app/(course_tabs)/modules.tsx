@@ -55,9 +55,13 @@ export default function Modules() {
     <SafeAreaView>
       <ScrollView ref={scrollViewRef}>
         {parsedModules.length === 0 ? (
-          <Text className="text-base text-gray-600 text-center mt-4">
-            No modules available for this course.
-          </Text>
+          <View className="mt-80">
+            <Text className="text-lg text-gray-600 text-center mt-4">
+              {
+                "No modules available for this course.\nPlease check back later."
+              }
+            </Text>
+          </View>
         ) : (
           parsedModules.map((module) => (
             <View
