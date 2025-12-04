@@ -145,3 +145,31 @@ export interface CourseProgress {
     };
   };
 }
+
+export interface Comment {
+  success: boolean;
+  message: string;
+  page: number;
+  per_page: number;
+  total: number;
+  comments: {
+    id: number;
+    comment: string;
+    user_id: number;
+    full_name: string;
+    status: string;
+    created_at: string;
+    updated_at?: string;
+    updated_by?: number;
+    total_replies: number;
+    file_path?: string;
+    like: number;
+    love: number;
+    haha: number;
+    sad: number;
+    wow: number;
+    dislike: number;
+    total_reacts: number;
+    user_reaction?: string;
+  }[];
+}
