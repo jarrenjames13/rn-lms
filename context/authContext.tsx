@@ -7,9 +7,16 @@ import {
 import { BASE_URL } from "@/utils/constants";
 import { setLogoutCallback } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 import * as SecureStore from "expo-secure-store";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { AppState, AppStateStatus } from "react-native";
 
 interface AuthProps {
@@ -57,75 +64,59 @@ export const AuthProvider = ({ children }: any) => {
 
   const appState = useRef(AppState.currentState);
 
-  useEffect(() => {
-    // Register logout callback for apiClient
-    setLogoutCallback(clearAuth);
+  const clearAuth = useCallback(async () => {
+    await SecureStore.deleteItemAsync("access_token");
+    await SecureStore.deleteItemAsync("refresh_token");
+    await SecureStore.deleteItemAsync("user");
+    delete axios.defaults.headers.common["Authorization"];
 
-    verifyUser();
+    setAuthState({
+      access_token: null,
+      refresh_token: null,
+      success: null,
+      user: null,
+      isLoading: false,
+    });
   }, []);
 
-  // Listen to app state changes to verify user when app comes to foreground
-  useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      handleAppStateChange
-    );
-
-    return () => {
-      subscription.remove();
-    };
-  }, [authState.access_token, authState.refresh_token]);
-
-  const handleAppStateChange = (nextAppState: AppStateStatus) => {
-    // Only verify when transitioning from background/inactive to active
-    if (
-      appState.current.match(/inactive|background/) &&
-      nextAppState === "active" &&
-      authState.access_token &&
-      authState.refresh_token
-    ) {
-      console.log("App became active from background, verifying user...");
-      verifyUser();
-    }
-
-    appState.current = nextAppState;
-  };
-
   // Helper function to refresh tokens
-  const refreshAccessToken = async (
-    currentRefreshToken: string
-  ): Promise<{ access_token: string; refresh_token: string } | null> => {
-    try {
-      const res = await axios.post(
-        `${BASE_URL}/auth/refresh`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${currentRefreshToken}` },
+  const refreshAccessToken = useCallback(
+    async (
+      currentRefreshToken: string
+    ): Promise<{ access_token: string; refresh_token: string } | null> => {
+      try {
+        const res = await axios.post(
+          `${BASE_URL}/auth/refresh`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${currentRefreshToken}` },
+          }
+        );
+
+        if (res.status === 200 && res.data.access_token) {
+          const newAccessToken = res.data.access_token;
+          const newRefreshToken = res.data.refresh_token;
+
+          // Store new tokens
+          await SecureStore.setItemAsync("access_token", newAccessToken);
+          await SecureStore.setItemAsync("refresh_token", newRefreshToken);
+
+          return {
+            access_token: newAccessToken,
+            refresh_token: newRefreshToken,
+          };
         }
-      );
 
-      if (res.status === 200 && res.data.access_token) {
-        const newAccessToken = res.data.access_token;
-        const newRefreshToken = res.data.refresh_token;
-
-        // Store new tokens
-        await SecureStore.setItemAsync("access_token", newAccessToken);
-        await SecureStore.setItemAsync("refresh_token", newRefreshToken);
-
-        return {
-          access_token: newAccessToken,
-          refresh_token: newRefreshToken,
-        };
+        return null;
+      } catch (error) {
+        console.log("Token refresh failed:", error);
+        return null;
       }
+    },
+    []
+  );
 
-      return null;
-    } catch (error) {
-      console.log("Token refresh failed:", error);
-      return null;
-    }
-  };
-
-  const verifyUser = async () => {
+  const verifyUser = useCallback(async () => {
     try {
       console.log("Verifying user...");
       const access_token = await SecureStore.getItemAsync("access_token");
@@ -219,7 +210,44 @@ export const AuthProvider = ({ children }: any) => {
       console.log("Verify user error:", error);
       await clearAuth();
     }
-  };
+  }, [refreshAccessToken, clearAuth]);
+
+  const handleAppStateChange = useCallback(
+    (nextAppState: AppStateStatus) => {
+      // Only verify when transitioning from background/inactive to active
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active" &&
+        authState.access_token &&
+        authState.refresh_token
+      ) {
+        console.log("App became active from background, verifying user...");
+        verifyUser();
+      }
+
+      appState.current = nextAppState;
+    },
+    [authState.access_token, authState.refresh_token, verifyUser]
+  );
+
+  useEffect(() => {
+    // Register logout callback for apiClient
+    setLogoutCallback(clearAuth);
+
+    verifyUser();
+  }, [clearAuth, verifyUser]);
+
+  // Listen to app state changes to verify user when app comes to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [handleAppStateChange]);
 
   const login = async ({ external_id, password }: LoginPayload) => {
     if (!external_id || !password) {
@@ -267,7 +295,7 @@ export const AuthProvider = ({ children }: any) => {
       console.log("Login error caught:", error);
 
       // Handle axios errors (including 401, 400, etc.)
-      if (axios.isAxiosError(error) && error.response) {
+      if (isAxiosError(error) && error.response) {
         const data = error.response.data;
 
         showToast({
@@ -327,7 +355,7 @@ export const AuthProvider = ({ children }: any) => {
     } catch (error: any) {
       let message = "Internal server error occurred during logout.";
 
-      if (axios.isAxiosError(error)) {
+      if (isAxiosError(error)) {
         if (error.response?.data) {
           const data = error.response.data as LogoutResponse;
           message =
@@ -347,21 +375,6 @@ export const AuthProvider = ({ children }: any) => {
         message,
       });
     }
-  };
-
-  const clearAuth = async () => {
-    await SecureStore.deleteItemAsync("access_token");
-    await SecureStore.deleteItemAsync("refresh_token");
-    await SecureStore.deleteItemAsync("user");
-    delete axios.defaults.headers.common["Authorization"];
-
-    setAuthState({
-      access_token: null,
-      refresh_token: null,
-      success: null,
-      user: null,
-      isLoading: false,
-    });
   };
 
   const value = {
