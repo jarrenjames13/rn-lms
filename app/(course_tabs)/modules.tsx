@@ -62,7 +62,7 @@ export default function Modules() {
           parsedModules.map((module) => (
             <View
               key={module.module_id}
-              className="bg-white rounded-xl shadow-md mb-4 mx-4 p-4"
+              className="bg-white rounded-xl shadow-md mb-4 mx-4 p-6"
             >
               <Text className="text-xl font-bold text-gray-800 my-2">
                 {module.parsedTitle || "Untitled Module"}
