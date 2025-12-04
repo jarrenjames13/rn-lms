@@ -64,23 +64,23 @@ export default function Modules() {
               key={module.module_id}
               className="bg-white rounded-xl shadow-md mb-4 mx-4 p-4"
             >
-              <Text className="text-2xl font-bold text-gray-800 mb-2">
+              <Text className="text-xl font-bold text-gray-800 my-2">
                 {module.parsedTitle || "Untitled Module"}
               </Text>
-              <Text className="text-gray-600 mb-2 text-lg text-justify px-2">
+              <Text className="text-gray-600 my-2 text-lg text-justify px-2">
                 {module.parsedDescription || "No description available"}
               </Text>
               {module.sections && module.sections.length === 0 ? (
-                <View className="text-center mx-4">
+                <View className="mt-6 pt-2 border-t border-gray-300 py-3">
                   <Text className="text-xl font-semibold">
                     Module Sections:
                   </Text>
-                  <Text className="text-base text-gray-600 mt-2">
+                  <Text className="text-base text-gray-600 mt-2 px-2">
                     No sections available for this module.
                   </Text>
                 </View>
               ) : (
-                <View className="mt-4">
+                <View className="mt-6 pt-2 border-t border-gray-300">
                   <Text className="text-xl font-semibold mb-2 px-2">
                     Module Sections:
                   </Text>
@@ -99,7 +99,7 @@ export default function Modules() {
                           className="bg-gray-100 rounded-lg p-3"
                         >
                           <View className="flex-row justify-between items-center">
-                            <Text className="text-lg font-semibold text-gray-700 flex-1">
+                            <Text className="text-base font-semibold text-gray-700 flex-1">
                               {section.title}
                             </Text>
                             <Text className="text-gray-500 text-xl ml-2">

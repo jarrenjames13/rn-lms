@@ -39,7 +39,7 @@ const TAG_CLASSES: Record<string, string> = {
   ol: "pl-5 my-2",
   li: "my-1 text-base leading-relaxed",
   pre: "bg-gray-100 p-3 rounded my-2",
-  code: "font-mono text-sm",
+  code: "font-mono text-sm text-red-700",
   strong: "font-bold mx-0.5",
   em: "italic mx-0.5",
   blockquote: "border-l-4 border-gray-300 pl-4 my-2 italic",
