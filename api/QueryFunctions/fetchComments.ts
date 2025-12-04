@@ -2,16 +2,24 @@ import { getData } from "@/utils/fetcher";
 export const fetchComments = async (
   instanceId: number,
   moduleId?: number,
-  page?: number,
-  perPage?: number
+  page: number = 1,
+  perPage: number = 10
 ) => {
   try {
-    const res = await getData<any>(
-      `/comment-section/${instanceId}?module_id=${moduleId || ""}&page=${page || 1}&per_page=${perPage || 10}`
-    );
-    const data = res.data;
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      per_page: perPage.toString(),
+    });
 
-    return data;
+    if (moduleId !== undefined) {
+      queryParams.append("module_id", moduleId.toString());
+    }
+
+    const response = await getData(
+      `/comment-section/${instanceId}?${queryParams.toString()}`
+    );
+
+    return response.data;
   } catch (error: any) {
     throw new Error(
       error?.response?.data?.detail ||
