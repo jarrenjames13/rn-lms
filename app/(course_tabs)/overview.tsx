@@ -11,11 +11,18 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
 export default function Overview() {
-  const { course_id, instance_id } = useCourseStore();
+  const { course_id } = useCourseStore();
   const { setModuleData } = useModuleStore();
 
   const {
@@ -197,7 +204,15 @@ export default function Overview() {
         </View>
         <View className="mt-6 px-4 py-6 bg-white rounded-lg shadow-md mb-4">
           <Text className="font-bold text-2xl">Comment Section</Text>
-          <View className="border-t border-gray-300 py-4 mt-8"></View>
+          <View className="border-t border-gray-300 py-4 mt-8">
+            <TextInput
+              placeholder="Write your comment here..."
+              className="w-full border border-gray-300 rounded-lg px-2 py-3"
+            ></TextInput>
+            <Pressable className="text-right py-2 w-auto mt-1">
+              <Text className="text-red-500 mt-4 font-semibold">Submit</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
