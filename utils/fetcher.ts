@@ -13,12 +13,32 @@ export const apiClient = axios.create({
 // Store logout callback reference
 let logoutCallback: (() => Promise<void>) | null = null;
 
+// Track ongoing refresh attempt to prevent race conditions
+let isRefreshing = false;
+let failedQueue: {
+  resolve: (value?: any) => void;
+  reject: (error?: any) => void;
+}[] = [];
+
 // Function to set logout callback from AuthProvider
 export const setLogoutCallback = (callback: () => Promise<void>) => {
   logoutCallback = callback;
 };
 
-// Token refresh function
+// Process queued requests after token refresh
+const processQueue = (error: any = null, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
+// Token refresh function with race condition prevention
 const refreshToken = async (): Promise<string> => {
   try {
     const refreshTokenValue = await SecureStore.getItemAsync("refresh_token");
@@ -92,11 +112,29 @@ apiClient.interceptors.response.use(
       (error.response?.status === 401 || error.response?.status === 422) &&
       !originalRequest._retry
     ) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return apiClient(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
         // Attempt to refresh the token
         const token = await refreshToken();
+
+        // Process all queued requests with new token
+        processQueue(null, token);
 
         // Update the failed request with new token
         originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -104,9 +142,14 @@ apiClient.interceptors.response.use(
         // Retry the original request
         return apiClient(originalRequest);
       } catch (refreshError) {
+        // Process queued requests with error
+        processQueue(refreshError, null);
+
         // Refresh failed - user will be logged out via refreshToken function
         console.log("Token refresh failed, user logged out");
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 
