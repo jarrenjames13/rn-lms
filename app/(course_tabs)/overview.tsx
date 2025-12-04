@@ -195,6 +195,10 @@ export default function Overview() {
             Overall Grade: {stats.overall_grade}%
           </Text>
         </View>
+        <View className="mt-6 px-4 py-6 bg-white rounded-lg shadow-md mb-4">
+          <Text className="font-bold text-2xl">Comment Section</Text>
+          <View className="border-t border-gray-300 py-4 mt-8"></View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
