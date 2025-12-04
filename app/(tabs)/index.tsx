@@ -1,7 +1,7 @@
 import { useAuth } from "@/context/authContext";
 import { useCourseStore } from "@/store/useCourseStore";
 import { Enrollment } from "@/types/api";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, Entypo } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -108,7 +108,7 @@ export default function Index() {
         </Text>
       </View>
       {/** Active Enrollments List */}
-      <View className="w-full py-8 px-4">
+      <View className="w-full py-8 px-6">
         {activeEnrollments.length === 0 ? (
           <Text className="text-base text-gray-600 text-center">
             No active enrollments.
@@ -117,40 +117,37 @@ export default function Index() {
           activeEnrollments.map((enrollment) => (
             <View
               key={enrollment.enrollment_id}
-              className="bg-gradient-to-br from-black to-purple-400 rounded-2xl shadow-lg mb-4 px-8 py-9 border border-purple-100"
+              className="bg-white rounded-2xl  mb-4 px-8 py-9 border bg border-gray-300"
             >
               <View className="border-l-4 border-red-500 pl-4 mb-4">
                 <Text className="text-xl font-bold text-gray-800">
                   {enrollment.course_title}
                 </Text>
               </View>
-              {/** Course Details Section */}
+              {/** Course Details Section **/}
               <View className="space-y-2 mb-6">
                 <View className="flex-row items-center">
-                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
+                  <Entypo
+                    name="calendar"
+                    size={18}
+                    color="red"
+                    className="pr-2"
+                  />
                   <Text className="text-gray-700 font-medium">
                     Term:{" "}
-                    <Text className="text-purple-600 font-semibold">
+                    <Text className="text-purple-600 text-lg font-semibold">
                       {enrollment.term_code}
                     </Text>
                   </Text>
                 </View>
                 {/** Start Date */}
-                <View className="flex-row items-center">
-                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
+                <View className="flex-row items-center py-2">
                   <Text className="text-gray-700 font-medium">
-                    Start:{" "}
+                    <AntDesign name="clock-circle" size={18} color="red" />
                     <Text className="text-gray-600">
+                      {" "}
                       {new Date(enrollment.start_date).toLocaleDateString()}
-                    </Text>
-                  </Text>
-                </View>
-                {/** End Date Section */}
-                <View className="flex-row items-center">
-                  <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
-                  <Text className="text-gray-700 font-medium">
-                    End:{" "}
-                    <Text className="text-gray-600">
+                      {" - "}
                       {new Date(enrollment.end_date).toLocaleDateString()}
                     </Text>
                   </Text>
@@ -195,7 +192,7 @@ export default function Index() {
           completedEnrollments.map((enrollment) => (
             <View
               key={enrollment.enrollment_id}
-              className="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-lg mb-4 px-8 py-9 border border-purple-100"
+              className="bg-gradient-to-br from-white to-purple-50 rounded-2xlsh\ mb-4 px-8 py-9 border border-purple-100"
             >
               <View className="border-l-4 border-red-500 pl-4 mb-4">
                 <Text className="text-xl font-bold text-gray-800">
@@ -217,7 +214,6 @@ export default function Index() {
                 <View className="flex-row items-center">
                   <View className="w-2 h-2 rounded-full bg-purple-400 mr-3" />
                   <Text className="text-gray-700 font-medium">
-                    Start:{" "}
                     <Text className="text-gray-600">
                       {new Date(enrollment.start_date).toLocaleDateString()}
                     </Text>
