@@ -207,7 +207,7 @@ export default function Overview() {
           <Text className="font-bold text-2xl">Comment Section</Text>
           <View className="border-t border-gray-300 py-4 mt-8">
             <TextInput
-              placeholder="Write your comment here..."
+              placeholder="Share your thoughts..."
               className="w-full border border-gray-300 rounded-lg px-2 py-3"
             ></TextInput>
             <View className="w-full flex flex-row-reverse px-2 gap-1">
