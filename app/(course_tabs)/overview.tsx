@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
 export default function Overview() {
+  const [comment, setComment] = React.useState<string>("");
   const { course_id } = useCourseStore();
   const { setModuleData } = useModuleStore();
 
@@ -205,9 +206,13 @@ export default function Overview() {
         </View>
         <View className="mt-6 px-4 py-6 bg-white rounded-lg shadow-md mb-4">
           <Text className="font-bold text-2xl">Comment Section</Text>
-          <View className="border-t border-gray-300 py-4 mt-8">
+          <View className="w-full border-t border-gray-300 mt-10" />
+          <View className="border border-gray-300 py-4 mt-4 px-2 rounded-lg">
             <TextInput
               placeholder="Share your thoughts..."
+              value={comment}
+              onChangeText={setComment}
+              multiline
               className="w-full border border-gray-300 rounded-lg px-2 py-3"
             ></TextInput>
             <View className="w-full flex flex-row-reverse px-2 gap-1">
@@ -219,6 +224,8 @@ export default function Overview() {
               </Pressable>
             </View>
           </View>
+          {/**Comment List*/}
+          <View></View>
         </View>
       </ScrollView>
     </SafeAreaView>
