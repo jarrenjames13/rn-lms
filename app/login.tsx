@@ -1,10 +1,18 @@
 import { useAuth } from "@/context/authContext";
 import { showToast } from "@/utils/toast/toast";
+import { AntDesign } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Login() {
+  const [showPassword, setShowPassword] = useState(false);
   const [externalId, setExternalId] = useState("");
   const [password, setPassword] = useState("");
   const { onLogin, authState } = useAuth();
@@ -51,19 +59,32 @@ export default function Login() {
         className="w-full p-3 border border-gray-300 rounded-lg bg-white mb-4"
       />
 
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        editable={!authState?.isLoading}
-        className="w-full p-3 border border-gray-300 rounded-lg bg-white mb-6"
-      />
+      <View className="w-full relative mb-6">
+        <TextInput
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          editable={!authState?.isLoading}
+          className="w-full p-3 pr-12 border border-gray-300 rounded-lg bg-white"
+        />
+        <Pressable
+          onPress={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-3"
+          disabled={authState?.isLoading}
+        >
+          <AntDesign
+            name={showPassword ? "eye" : "eye-invisible"}
+            size={20}
+            color="gray"
+          />
+        </Pressable>
+      </View>
 
       <Pressable
         onPress={handleLogin}
         disabled={authState?.isLoading}
-        className={`px-4 py-3 rounded-lg ${
+        className={`w-full px-4 py-3 rounded-lg ${
           authState?.isLoading
             ? "bg-blue-300"
             : "bg-blue-500 active:bg-blue-600"
@@ -72,7 +93,9 @@ export default function Login() {
         {authState?.isLoading ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text className="text-white font-bold text-lg">Login</Text>
+          <Text className="text-white font-bold text-lg text-center">
+            Login
+          </Text>
         )}
       </Pressable>
     </SafeAreaView>
