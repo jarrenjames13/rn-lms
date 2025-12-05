@@ -1,3 +1,4 @@
+import { Comment } from "@/types/api";
 import { getData } from "@/utils/fetcher";
 export const fetchComments = async (
   instanceId: number,
@@ -15,11 +16,11 @@ export const fetchComments = async (
       queryParams.append("module_id", moduleId.toString());
     }
 
-    const response = await getData(
+    const response = await getData<Comment>(
       `/comment-section/${instanceId}?${queryParams.toString()}`
     );
-
-    return response.data;
+    const data: Comment = response.data;
+    return data;
   } catch (error: any) {
     throw new Error(
       error?.response?.data?.detail ||

@@ -8,6 +8,7 @@ import {
   CourseProgress,
   CourseQuickStats,
 } from "@/types/api";
+import { AntDesign } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback } from "react";
@@ -209,9 +210,14 @@ export default function Overview() {
               placeholder="Write your comment here..."
               className="w-full border border-gray-300 rounded-lg px-2 py-3"
             ></TextInput>
-            <Pressable className="text-right py-1 rounded-full w-20 pl-3 bg-red-400 mt-1">
-              <Text className="text-red-500 mt-4 font-semibold">Submit</Text>
-            </Pressable>
+            <View className="w-full flex flex-row-reverse px-2 gap-1">
+              <Pressable className="bg-red-500 active:bg-red-600 rounded-xl py-3 px-6 items-center mt-4 w-18">
+                <AntDesign name="send" size={18} color="white" />
+              </Pressable>
+              <Pressable className="bg-white-500 active:bg-gray-100 border border-gray-100 rounded-xl py-3 px-3 items-center mt-4 w-18">
+                <AntDesign name="file-image" size={18} color="black" />
+              </Pressable>
+            </View>
           </View>
         </View>
       </ScrollView>
