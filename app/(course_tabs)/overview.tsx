@@ -209,7 +209,7 @@ export default function Overview() {
               placeholder="Write your comment here..."
               className="w-full border border-gray-300 rounded-lg px-2 py-3"
             ></TextInput>
-            <Pressable className="text-right py-2 w-auto mt-1">
+            <Pressable className="text-right py-1 rounded-full w-20 pl-3 bg-red-400 mt-1">
               <Text className="text-red-500 mt-4 font-semibold">Submit</Text>
             </Pressable>
           </View>
