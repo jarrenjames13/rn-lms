@@ -65,6 +65,7 @@ export default function Login() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!showPassword}
+          autoCapitalize="none"
           editable={!authState?.isLoading}
           className="w-full p-3 pr-12 border border-gray-300 rounded-lg bg-white"
         />
