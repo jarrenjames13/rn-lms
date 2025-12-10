@@ -1,4 +1,5 @@
 import { useModuleStore } from "@/store/useModuleStore";
+import { ModuleData } from "@/types/api";
 import {
   extractDescriptionFromParsed,
   extractTitleFromParsed,
@@ -17,7 +18,7 @@ export default function Modules() {
 
   // Parse once and cache
   const parsedModules = useMemo(() => {
-    const modules = moduleData || [];
+    const modules: ModuleData = moduleData || [];
     return modules.map((module) => {
       const parsed = parseHTML(module.content_html);
       const title = extractTitleFromParsed(parsed);
