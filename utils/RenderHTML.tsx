@@ -1,6 +1,7 @@
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 
+// Mapping HTML tags to React Native components
 const TAG_MAP: Record<string, any> = {
   div: View,
   p: Text,
@@ -54,7 +55,7 @@ interface ParsedNode {
   attribs?: Record<string, string>;
 }
 
-// Simple HTML parser that works with React Native
+// ---------------------- HTML Parsing ----------------------
 function parseHTML(html: string): ParsedNode[] {
   const nodes: ParsedNode[] = [];
   const tagRegex =
@@ -66,10 +67,7 @@ function parseHTML(html: string): ParsedNode[] {
       // Text node
       const text = match[6].trim();
       if (text) {
-        nodes.push({
-          type: "text",
-          content: text,
-        });
+        nodes.push({ type: "text", content: text });
       }
     } else if (match[1]) {
       // Paired tag with content
@@ -86,8 +84,11 @@ function parseHTML(html: string): ParsedNode[] {
     } else if (match[4]) {
       // Self-closing or single tag
       const tagName = match[4].toLowerCase();
-      const attributes = parseAttributes(match[5]);
 
+      // Ignore lone closing tags like </p>
+      if (tagName.startsWith("/")) continue;
+
+      const attributes = parseAttributes(match[5]);
       nodes.push({
         type: "tag",
         name: tagName,
@@ -112,6 +113,7 @@ function parseAttributes(attrString: string): Record<string, string> {
   return attrs;
 }
 
+// ---------------------- HTML Rendering ----------------------
 export function renderHTMLContent(htmlContent: string): React.ReactNode {
   const nodes = parseHTML(htmlContent);
 
@@ -123,12 +125,8 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
   ): React.ReactNode => {
     // Handle text nodes
     if (node.type === "text") {
-      const content = node.content || null;
-      // If nested inside a Text component, return plain string
-      // Otherwise wrap in Text component
-      if (isNested || !content) {
-        return content;
-      }
+      const content = node.content?.trim();
+      if (!content) return null;
       return React.createElement(
         Text,
         { key: index, className: "text-base mx-1" },
@@ -141,26 +139,14 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
       const Tag = TAG_MAP[node.name] || View;
       let className = "";
 
-      // Apply header styles
-      if (HEADER_CLASSES[node.name]) {
-        className += HEADER_CLASSES[node.name];
-      }
-      // Apply other tag styles
-      else if (TAG_CLASSES[node.name]) {
-        className += TAG_CLASSES[node.name];
-      }
+      if (HEADER_CLASSES[node.name]) className += HEADER_CLASSES[node.name];
+      else if (TAG_CLASSES[node.name]) className += TAG_CLASSES[node.name];
 
-      // Add existing class attribute if present
-      if (node.attribs?.class) {
-        className += " " + node.attribs.class;
-      }
+      if (node.attribs?.class) className += " " + node.attribs.class;
 
-      // Handle special cases
-      if (node.name === "br") {
+      if (node.name === "br")
         return React.createElement(Text, { key: index }, "\n");
-      }
 
-      // Recursively render children
       const isTextComponent = Tag === Text;
       const children = node.children
         ?.map((child, idx) =>
@@ -168,12 +154,15 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
         )
         .filter(Boolean);
 
-      // Return null if no children and not a self-closing tag
-      if (!children || children.length === 0) {
+      // Skip rendering empty nodes for inline tags or paragraphs
+      if (
+        (!children || children.length === 0) &&
+        ["p", "span", "strong", "em", "a", "li"].includes(node.name)
+      ) {
         return null;
       }
 
-      // Handle list items with bullets/numbers
+      // List items
       if (node.name === "li") {
         const bullet = parentTag === "ul" ? "• " : `${index + 1}. `;
         return React.createElement(
@@ -184,7 +173,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
         );
       }
 
-      // Add spacing for inline code elements
+      // Inline code spacing
       if (node.name === "code" && isTextComponent) {
         return React.createElement(
           Text,
@@ -195,7 +184,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
         );
       }
 
-      // Add spacing for other inline elements inside text
+      // Inline tags inside Text
       if (
         isTextComponent &&
         ["strong", "em", "a", "span"].includes(node.name)
@@ -207,7 +196,6 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
         );
       }
 
-      // Render the component
       return React.createElement(
         Tag,
         { key: index, className: className },
@@ -218,15 +206,13 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
     return null;
   };
 
-  // Render all root nodes
   const renderedNodes = nodes
     .map((node, idx) => renderNode(node, idx))
     .filter(Boolean);
-
   return React.createElement(View, { className: "p-4" }, renderedNodes);
 }
 
-// Helper function to extract title from parsed HTML
+// ---------------------- HTML Helpers ----------------------
 export function extractTitleFromParsed(nodes: ParsedNode[]): string {
   for (const node of nodes) {
     if (
@@ -244,12 +230,10 @@ export function extractTitleFromParsed(nodes: ParsedNode[]): string {
   return "";
 }
 
-// Helper function to extract description (first paragraph)
 export function extractDescriptionFromParsed(nodes: ParsedNode[]): string {
   for (const node of nodes) {
-    if (node.type === "tag" && node.name === "p") {
+    if (node.type === "tag" && node.name === "p")
       return extractTextContent(node);
-    }
     if (node.children) {
       const desc = extractDescriptionFromParsed(node.children);
       if (desc) return desc;
@@ -258,16 +242,12 @@ export function extractDescriptionFromParsed(nodes: ParsedNode[]): string {
   return "";
 }
 
-// Helper to extract plain text from a node
 function extractTextContent(node: ParsedNode): string {
-  if (node.type === "text") {
-    return node.content || "";
-  }
-  if (node.children) {
+  if (node.type === "text") return node.content || "";
+  if (node.children)
     return node.children.map((child) => extractTextContent(child)).join(" ");
-  }
   return "";
 }
 
-// Export parseHTML so it can be used externally
+// Export parseHTML for external use
 export { parseHTML };
