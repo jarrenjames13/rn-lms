@@ -176,7 +176,7 @@ export interface Comment {
 
 export interface ActivityWithGrade {
   activities: {
-    activitiy_id: number;
+    activity_id: number;
     title: string;
     instructions: string;
     activity_type: string;
