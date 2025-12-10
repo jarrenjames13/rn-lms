@@ -156,9 +156,15 @@ export default function Modules() {
         </View>
       )}
 
-      <Text className="text-xs text-gray-500">
+      <Text className="text-sm text-gray-500">
         {renderHTMLContent(activity.instructions)}
       </Text>
+
+      <View className="w-full items-start ">
+        <Pressable className="mt-2 w-auto bg-blue-600 active:bg-blue-500 border border-blue-600 rounded-lg px-4 py-2">
+          <Text className="text-sm text-white  p-1">Submit Activity</Text>
+        </Pressable>
+      </View>
     </View>
   );
 
