@@ -173,3 +173,20 @@ export interface Comment {
     user_reaction?: string;
   }[];
 }
+
+export interface ActivityWithGrade {
+  activities: {
+    activitiy_id: number;
+    title: string;
+    instructions: string;
+    activity_type: string;
+    position: number;
+    submission_id: number | null;
+    status: string | null;
+    grade: number | null;
+    feedback: string | null;
+    submitted_at: string | null;
+    is_graded: boolean;
+    has_submission: boolean;
+  }[];
+}
