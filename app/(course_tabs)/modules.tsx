@@ -1,5 +1,6 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
 import { useModuleStore } from "@/store/useModuleStore";
+import { ActivityWithGrade, SingleActivity } from "@/types/api";
 import {
   extractDescriptionFromParsed,
   extractTitleFromParsed,
@@ -10,21 +11,6 @@ import { useQueries } from "@tanstack/react-query";
 import React, { useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-interface Activity {
-  activity_id: number;
-  title: string;
-  instructions: string;
-  activity_type: string;
-  position: number;
-  submission_id: number | null;
-  status: string | null;
-  grade: number | null;
-  feedback: string | null;
-  submitted_at: string | null;
-  is_graded: boolean;
-  has_submission: boolean;
-}
 
 export default function Modules() {
   const { moduleData } = useModuleStore();
@@ -50,8 +36,8 @@ export default function Modules() {
 
       // Get activities for this specific module
       const queryResult = activitiesQueries[index];
-      const activitiesData = queryResult?.data;
-      const activities: Activity[] = activitiesData?.activities || [];
+      const activitiesData: ActivityWithGrade | undefined = queryResult?.data;
+      const activities: SingleActivity[] = activitiesData?.activities || [];
 
       return {
         ...module,
@@ -97,7 +83,7 @@ export default function Modules() {
     }
   };
 
-  const renderActivity = (activity: Activity) => (
+  const renderActivity = (activity: SingleActivity) => (
     <View
       key={activity.activity_id}
       className="bg-gray-100 rounded-lg p-4 mb-3"
