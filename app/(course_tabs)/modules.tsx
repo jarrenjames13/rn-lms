@@ -84,10 +84,12 @@ export default function Modules() {
                   </Text>
                 </View>
               ) : (
-                <View className="mt-6 pt-2 border-t border-gray-300">
-                  <Text className="text-xl font-semibold mb-2 px-2">
-                    Module Sections:
-                  </Text>
+                <View className="mt-6 pt-2">
+                  <View className="py-2 border-t border-gray-300">
+                    <Text className="text-xl font-semibold mb-2 px-2">
+                      Module Sections:
+                    </Text>
+                  </View>
                   {module.sections.map((section) => {
                     const isOpen = openSectionId === section.section_id;
                     return (
@@ -113,7 +115,7 @@ export default function Modules() {
                         </Pressable>
                         {isOpen && (
                           <View className="bg-gray-50 rounded-b-lg p-3 mt-1">
-                            <View className="">
+                            <View className="px-2">
                               {renderHTMLContent(section.content)}
                             </View>
                           </View>
@@ -121,6 +123,18 @@ export default function Modules() {
                       </View>
                     );
                   })}
+                  <View>
+                    <Text className="text-sm text-gray-500 italic px-2">
+                      Tap on a section title to expand or collapse its content.
+                    </Text>
+                  </View>
+                  <View className="mt-2 pt-2">
+                    <View className="py-2 border-t border-gray-300">
+                      <Text className="text-xl font-semibold mb-2 px-2">
+                        Module Activities:
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               )}
             </View>
