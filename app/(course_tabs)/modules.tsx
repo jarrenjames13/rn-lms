@@ -1,4 +1,5 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
+import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
 import { useModuleStore } from "@/store/useModuleStore";
 import { ActivityWithGrade, SingleActivity } from "@/types/api";
 import {
@@ -15,6 +16,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function Modules() {
   const { moduleData } = useModuleStore();
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
+  const [selectedActivity, setSelectedActivity] =
+    useState<SingleActivity | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const sectionRefs = useRef<{ [key: number]: View | null }>({});
 
@@ -70,6 +74,16 @@ export default function Modules() {
     }
   };
 
+  const handleOpenSubmission = (activity: SingleActivity) => {
+    setSelectedActivity(activity);
+    setIsModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
+    setSelectedActivity(null);
+  };
+
   const getStatusColor = (status: string | null) => {
     switch (status?.toLowerCase()) {
       case "submitted":
@@ -83,90 +97,114 @@ export default function Modules() {
     }
   };
 
-  const renderActivity = (activity: SingleActivity) => (
-    <View
-      key={activity.activity_id}
-      className="bg-gray-100 rounded-lg p-4 mb-3"
-    >
-      {/* Activity Header */}
-      <View className="flex-row justify-between items-start mb-2">
-        <Text className="text-base font-semibold text-gray-800 flex-1 pr-2">
-          {activity.title}
-        </Text>
+  const renderActivity = (activity: SingleActivity) => {
+    // Each activity evaluates independently based on its own properties
+    const hasSubmission = activity.has_submission === true;
+    const isGraded = activity.is_graded === true;
 
-        {activity.is_graded && activity.grade !== null && (
-          <View className="bg-blue-500 rounded-lg px-3 py-1">
-            <Text className="text-sm font-bold text-white">
-              {activity.grade}%
+    // Can only submit if never submitted before
+    const canSubmit = !hasSubmission;
+
+    // Determine button text based on status
+    const getButtonText = () => {
+      if (isGraded) return "Activity Graded";
+      if (hasSubmission) return "Activity Submitted";
+      return "Submit Activity";
+    };
+
+    return (
+      <View
+        key={activity.activity_id}
+        className="bg-gray-100 rounded-lg p-4 mb-3"
+      >
+        {/* Activity Header */}
+        <View className="flex-row justify-between items-start mb-2">
+          <Text className="text-base font-semibold text-gray-800 flex-1 pr-2">
+            {activity.title}
+          </Text>
+
+          {activity.is_graded && activity.grade !== null && (
+            <View className="bg-blue-500 rounded-lg px-3 py-1">
+              <Text className="text-sm font-bold text-white">
+                {activity.grade}%
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Activity Type Badge */}
+        <View className="flex-row flex-wrap gap-2 mb-2">
+          <View className="bg-purple-100 rounded-full px-3 py-1">
+            <Text className="text-xs font-medium text-purple-800 capitalize">
+              {activity.activity_type}
+            </Text>
+          </View>
+
+          {/* Status Badge */}
+          {activity.status && (
+            <View
+              className={`rounded-full px-3 py-1 ${getStatusColor(activity.status)}`}
+            >
+              <Text className="text-xs font-medium capitalize">
+                {activity.status}
+              </Text>
+            </View>
+          )}
+
+          {/* Pending Review Badge */}
+          {activity.has_submission && !activity.is_graded && (
+            <View className="bg-orange-100 rounded-full px-3 py-1">
+              <Text className="text-xs font-medium text-orange-800">
+                Pending Review
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Submission Date */}
+        {activity.submitted_at && (
+          <Text className="text-xs text-gray-500 mb-2">
+            Submitted:{" "}
+            {new Date(activity.submitted_at).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </Text>
+        )}
+
+        {/* Feedback Section */}
+        {activity.feedback && (
+          <View className="bg-blue-50 border-l-4 border-blue-400 rounded p-3 mt-2">
+            <Text className="text-xs font-semibold text-gray-700 mb-1">
+              Instructor Feedback:
+            </Text>
+            <Text className="text-xs text-gray-600 leading-5">
+              {activity.feedback}
             </Text>
           </View>
         )}
-      </View>
 
-      {/* Activity Type Badge */}
-      <View className="flex-row flex-wrap gap-2 mb-2">
-        <View className="bg-purple-100 rounded-full px-3 py-1">
-          <Text className="text-xs font-medium text-purple-800 capitalize">
-            {activity.activity_type}
-          </Text>
-        </View>
+        <Text className="text-sm text-gray-500">
+          {renderHTMLContent(activity.instructions)}
+        </Text>
 
-        {/* Status Badge */}
-        {activity.status && (
-          <View
-            className={`rounded-full px-3 py-1 ${getStatusColor(activity.status)}`}
+        <View className="w-full items-start">
+          <Pressable
+            onPress={() => handleOpenSubmission(activity)}
+            disabled={!canSubmit}
+            className={`mt-2 w-auto border rounded-lg px-4 py-2 ${
+              canSubmit
+                ? "bg-blue-600 active:bg-blue-500 border-blue-600"
+                : "bg-gray-400 border-gray-400"
+            }`}
           >
-            <Text className="text-xs font-medium capitalize">
-              {activity.status}
-            </Text>
-          </View>
-        )}
-
-        {/* Pending Review Badge */}
-        {activity.has_submission && !activity.is_graded && (
-          <View className="bg-orange-100 rounded-full px-3 py-1">
-            <Text className="text-xs font-medium text-orange-800">
-              Pending Review
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Submission Date */}
-      {activity.submitted_at && (
-        <Text className="text-xs text-gray-500 mb-2">
-          Submitted:{" "}
-          {new Date(activity.submitted_at).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })}
-        </Text>
-      )}
-
-      {/* Feedback Section */}
-      {activity.feedback && (
-        <View className="bg-blue-50 border-l-4 border-blue-400 rounded p-3 mt-2">
-          <Text className="text-xs font-semibold text-gray-700 mb-1">
-            Instructor Feedback:
-          </Text>
-          <Text className="text-xs text-gray-600 leading-5">
-            {activity.feedback}
-          </Text>
+            <Text className="text-sm text-white p-1">{getButtonText()}</Text>
+          </Pressable>
         </View>
-      )}
-
-      <Text className="text-sm text-gray-500">
-        {renderHTMLContent(activity.instructions)}
-      </Text>
-
-      <View className="w-full items-start ">
-        <Pressable className="mt-2 w-auto bg-blue-600 active:bg-blue-500 border border-blue-600 rounded-lg px-4 py-2">
-          <Text className="text-sm text-white  p-1">Submit Activity</Text>
-        </Pressable>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderModuleSections = (module: any) => {
     if (!module.sections || module.sections.length === 0) {
@@ -298,6 +336,13 @@ export default function Modules() {
           ))}
         </View>
       </ScrollView>
+
+      {/* Activity Submission Modal */}
+      <ActivitySubmissionModal
+        visible={isModalVisible}
+        activity={selectedActivity}
+        onClose={handleCloseModal}
+      />
     </SafeAreaView>
   );
 }

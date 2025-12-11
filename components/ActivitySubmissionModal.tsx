@@ -1,6 +1,7 @@
 import { SingleActivity } from "@/types/api";
 import { postData } from "@/utils/fetcher";
 import { renderHTMLContent } from "@/utils/RenderHTML";
+import { showToast } from "@/utils/toast/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
 import {
@@ -61,6 +62,13 @@ export default function ActivitySubmissionModal({
       queryClient.invalidateQueries({ queryKey: ["module_activities"] });
 
       setAnswer("");
+      submitMutation.reset();
+      showToast({
+        type: "success",
+        title: "Activity submitted successfully!",
+        message: "Your activity has been submitted and is pending review.",
+      });
+
       onClose();
     },
   });
