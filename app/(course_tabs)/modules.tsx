@@ -1,4 +1,5 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
+import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
 import { useModuleStore } from "@/store/useModuleStore";
 import { ActivityWithGrade, SingleActivity } from "@/types/api";
@@ -28,7 +29,12 @@ export default function Modules() {
       createActivitiesOptions(module.module_id)
     ),
   });
-
+  // Fetch progress for all modules in parallel
+  const progressQueries = useQueries({
+    queries: (moduleData || []).map((module) =>
+      createModuleProgressOptions(module.module_id)
+    ),
+  });
   // Parse modules and attach their activities
   const parsedModules = useMemo(() => {
     if (!moduleData) return [];
