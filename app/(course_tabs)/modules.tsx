@@ -2,7 +2,13 @@ import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
 import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
 import { useModuleStore } from "@/store/useModuleStore";
-import { ActivityWithGrade, ModuleProgress, SingleActivity } from "@/types/api";
+import {
+  ActivityWithGrade,
+  ModuleProgress,
+  ParsedModule,
+  Section,
+  SingleActivity,
+} from "@/types/api";
 import {
   extractDescriptionFromParsed,
   extractTitleFromParsed,
@@ -217,7 +223,7 @@ export default function Modules() {
     );
   };
 
-  const renderModuleSections = (module: any) => {
+  const renderModuleSections = (module: ParsedModule) => {
     if (!module.sections || module.sections.length === 0) {
       return (
         <View className="mt-6 pt-4 border-t border-gray-200">
@@ -236,7 +242,7 @@ export default function Modules() {
         <Text className="text-lg font-semibold text-gray-800 mb-3">
           Module Sections
         </Text>
-        {module.sections.map((section: any) => {
+        {module.sections.map((section: Section) => {
           const isOpen = openSectionId === section.section_id;
           return (
             <View
@@ -274,7 +280,7 @@ export default function Modules() {
     );
   };
 
-  const renderModuleActivities = (module: any) => (
+  const renderModuleActivities = (module: ParsedModule) => (
     <View className="mt-6 pt-4 border-t border-gray-200">
       <Text className="text-lg font-semibold text-gray-800 mb-3">
         Module Activities

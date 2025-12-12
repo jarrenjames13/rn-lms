@@ -212,7 +212,7 @@ export interface ModuleProgress {
   completed_sections: number;
   sections_percentage: number;
   total_activities: number;
-  completed_activities: number;
+  submitted_activities: number;
   activities_percentage: number;
   overall_percentage: number;
 }
