@@ -248,3 +248,14 @@ export interface StudentQuizzes {
   }[];
   instance_id: number;
 }
+
+export interface QuizDetails {
+  quiz_id: number;
+  quiz_name: string;
+  exam_period: string;
+  description: string;
+  total_items: number;
+  is_taken: boolean;
+  score: number | null;
+  completed_at: string | null;
+}
