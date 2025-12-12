@@ -1,5 +1,6 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
 import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
+import { createTrackSectionOptions } from "@/api/QueryOptions/trackSectionOption";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
 import ModuleProgressBar from "@/components/ModuleProgressBar";
 import { useModuleStore } from "@/store/useModuleStore";
@@ -16,7 +17,7 @@ import {
   parseHTML,
   renderHTMLContent,
 } from "@/utils/RenderHTML";
-import { useQueries } from "@tanstack/react-query";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,6 +30,9 @@ export default function Modules() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const sectionRefs = useRef<{ [key: number]: View | null }>({});
+
+  //query client
+  const queryClient = useQueryClient();
 
   // Fetch activities for all modules in parallel
   const activitiesQueries = useQueries({
@@ -71,12 +75,15 @@ export default function Modules() {
       };
     });
   }, [moduleData, activitiesQueries, progressQueries]);
-
+  const trackSectionMutation = useMutation(
+    createTrackSectionOptions(queryClient)
+  );
   const toggleSection = (sectionId: number) => {
     const isOpening = openSectionId !== sectionId;
     setOpenSectionId(isOpening ? sectionId : null);
 
     if (isOpening && sectionRefs.current[sectionId]) {
+      trackSectionMutation.mutate({ section_id: sectionId });
       setTimeout(() => {
         sectionRefs.current[sectionId]?.measureLayout(
           scrollViewRef.current as any,
@@ -328,7 +335,11 @@ export default function Modules() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView ref={scrollViewRef} className="flex-1">
+      <ScrollView
+        ref={scrollViewRef}
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+      >
         <View className="p-4">
           {parsedModules.map((module) => (
             <View

@@ -8,7 +8,7 @@ export const createTrackSectionOptions = (queryClient: QueryClient) => {
       console.log("Section tracked successfully:", data);
 
       await queryClient.invalidateQueries({
-        queryKey: ["moduleProgress"],
+        queryKey: ["module_progress"],
       });
     },
     onError: (error: any) => {
