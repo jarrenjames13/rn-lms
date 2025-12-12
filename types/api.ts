@@ -234,3 +234,17 @@ export interface ParsedModule extends Module {
   isLoadingActivities: boolean;
   activitiesError: boolean;
 }
+
+export interface StudentQuizzes {
+  quizzes: {
+    quiz_id: number;
+    quiz_name: string;
+    exam_period: string;
+    description: string;
+    total_items: number;
+    is_taken: boolean;
+    score: number | null;
+    completed_at: string | null;
+  }[];
+  instance_id: number;
+}
