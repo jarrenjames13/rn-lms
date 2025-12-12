@@ -1,6 +1,7 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
 import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
+import ModuleProgressBar from "@/components/ModuleProgressBar";
 import { useModuleStore } from "@/store/useModuleStore";
 import {
   ActivityWithGrade,
@@ -343,7 +344,12 @@ export default function Modules() {
               <Text className="text-sm text-gray-600 leading-6 mb-4">
                 {module.parsedDescription || "No description available"}
               </Text>
-
+              {/* Module Progress Bar */}
+              {module.progress && (
+                <View className="mb-4">
+                  <ModuleProgressBar progress={module.progress} showDetails />
+                </View>
+              )}
               {/* Module Sections */}
               {renderModuleSections(module)}
 
