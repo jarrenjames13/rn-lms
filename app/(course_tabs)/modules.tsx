@@ -2,7 +2,7 @@ import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
 import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
 import { useModuleStore } from "@/store/useModuleStore";
-import { ActivityWithGrade, SingleActivity } from "@/types/api";
+import { ActivityWithGrade, ModuleProgress, SingleActivity } from "@/types/api";
 import {
   extractDescriptionFromParsed,
   extractTitleFromParsed,
@@ -48,17 +48,22 @@ export default function Modules() {
       const queryResult = activitiesQueries[index];
       const activitiesData: ActivityWithGrade | undefined = queryResult?.data;
       const activities: SingleActivity[] = activitiesData?.activities || [];
+      // attach module progress data to all modules
+      const progressResult = progressQueries[index];
+      const progressData: ModuleProgress | undefined = progressResult?.data;
+      const progress = progressData || null;
 
       return {
         ...module,
         parsedTitle: title,
         parsedDescription: description,
+        progress,
         activities,
         isLoadingActivities: queryResult?.isLoading || false,
         activitiesError: queryResult?.isError || false,
       };
     });
-  }, [moduleData, activitiesQueries]);
+  }, [moduleData, activitiesQueries, progressQueries]);
 
   const toggleSection = (sectionId: number) => {
     const isOpening = openSectionId !== sectionId;

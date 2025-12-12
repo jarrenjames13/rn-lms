@@ -206,7 +206,7 @@ export interface SingleActivity {
   has_submission: boolean;
 }
 
-export interface SubmissionResponse {
+export interface ModuleProgress {
   module_id: number;
   total_sections: number;
   completed_sections: number;
@@ -215,4 +215,22 @@ export interface SubmissionResponse {
   completed_activities: number;
   activities_percentage: number;
   overall_percentage: number;
+}
+
+export interface Module {
+  module_id: number;
+  position: number;
+  content_html: string;
+  learning_outcomes: string[];
+  created_at: string;
+  updated_at: string;
+  sections: Section[];
+}
+export interface ParsedModule extends Module {
+  parsedTitle: string;
+  parsedDescription: string;
+  progress: ModuleProgress | null;
+  activities: SingleActivity[];
+  isLoadingActivities: boolean;
+  activitiesError: boolean;
 }
