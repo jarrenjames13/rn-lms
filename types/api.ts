@@ -205,3 +205,14 @@ export interface SingleActivity {
   is_graded: boolean;
   has_submission: boolean;
 }
+
+export interface SubmissionResponse {
+  module_id: number;
+  total_sections: number;
+  completed_sections: number;
+  sections_percentage: number;
+  total_activities: number;
+  completed_activities: number;
+  activities_percentage: number;
+  overall_percentage: number;
+}
