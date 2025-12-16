@@ -259,3 +259,24 @@ export interface QuizDetails {
   score: number | null;
   completed_at: string | null;
 }
+
+// Strict option keys
+export type OptionKey = "A" | "B" | "C" | "D";
+
+export interface Options {
+  A: string;
+  B: string;
+  C: string;
+  D: string;
+}
+
+export interface Question {
+  question_number: number;
+  item_id: number;
+  question: string;
+  options: Options;
+}
+
+export interface QuestionsResponse {
+  questions: Question[];
+}
