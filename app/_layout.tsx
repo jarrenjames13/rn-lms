@@ -52,6 +52,13 @@ function RootLayoutNav() {
               title: "Course",
             }}
           />
+          <Stack.Screen
+            name="quiz_taking"
+            options={{
+              headerShown: false,
+              title: "Take Quiz",
+            }}
+          />
         </Stack.Protected>
       </Stack>
     </React.Fragment>
