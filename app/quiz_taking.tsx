@@ -83,6 +83,7 @@ export default function QuizTaking() {
         renderItem={renderQuestion}
         keyExtractor={(item) => item.item_id.toString()}
         contentContainerClassName="p-4"
+        extraData={{ selectedAnswers }}
         recycleItems
       />
       <View>
