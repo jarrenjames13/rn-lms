@@ -1,5 +1,6 @@
 import createListQuizzesOptions from "@/api/QueryOptions/listQuizzesOptions";
 import { useCourseStore } from "@/store/useCourseStore";
+import { useQuizStore } from "@/store/useQuizStore";
 import { QuizDetails } from "@/types/api";
 import {
   Entypo,
@@ -8,6 +9,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
@@ -19,6 +21,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Quiz() {
+  const router = useRouter();
+  const { setQuizId, setInstanceId } = useQuizStore();
   const { course_id } = useCourseStore();
 
   const {
@@ -29,7 +33,7 @@ export default function Quiz() {
   } = useQuery(createListQuizzesOptions(course_id!));
 
   const quizzes = quizzesData?.quizzes || [];
-
+  const instanceId = quizzesData?.instance_id || null;
   // Group quizzes by exam_period
   const groupedQuizzes = quizzes.reduce(
     (acc, quiz) => {
@@ -87,6 +91,14 @@ export default function Quiz() {
       default:
         return "text-gray-100";
     }
+  };
+
+  const handlePress = (quiz: QuizDetails) => {
+    setQuizId(quiz.quiz_id);
+    if (instanceId !== null) {
+      setInstanceId(instanceId);
+    }
+    router.replace("/quiz_taking");
   };
 
   // Render a single quiz card
@@ -183,7 +195,10 @@ export default function Quiz() {
         {/* Action Button (if not taken) */}
         {!quiz.is_taken && (
           <View className="mt-3">
-            <Pressable className="bg-blue-500 active:bg-blue-700 py-3 rounded-lg items-center mx-auto px-6">
+            <Pressable
+              className="bg-blue-500 active:bg-blue-700 py-3 rounded-lg items-center mx-auto px-6"
+              onPress={() => handlePress(quiz)}
+            >
               <Text className="text-white font-semibold">Start Quiz</Text>
             </Pressable>
           </View>
