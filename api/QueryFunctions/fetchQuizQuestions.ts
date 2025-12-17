@@ -7,7 +7,7 @@ export const fetchQuizQuestions = async (
 ) => {
   try {
     const res = await getData<QuestionsResponse>(
-      `/modules/student-quiz-questions/${quizId}${instanceId}`,
+      `/modules/student-quiz-questions/${quizId}/${instanceId}`,
       {}
     );
     const data: QuestionsResponse = res.data;
