@@ -1,20 +1,25 @@
 import createQuizQuestionsOptions from "@/api/QueryOptions/quizQuestionsOptions";
 import { useQuizStore } from "@/store/useQuizStore";
-import type { OptionKey, Question } from "@/types/api"; // adjust import path
+import type { OptionKey, Question } from "@/types/api";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useRef } from "react";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 export default function QuizTaking() {
-  const [selectedAnswers, setSelectedAnswers] = React.useState<
-    Record<number, OptionKey>
-  >({});
-
   const router = useRouter();
-  const { quiz_id, instance_id } = useQuizStore();
+  const { quiz_id, instance_id, selectedAnswers, setSelectedAnswers } =
+    useQuizStore();
+
+  const listRef = useRef<any>(null); // Add ref for LegendList
+
+  useFocusEffect(
+    useCallback(() => {
+      setSelectedAnswers({});
+      console.log("Quiz Taking Mounted, answers reset.");
+    }, [setSelectedAnswers])
+  );
 
   const {
     data: questionsData,
@@ -26,7 +31,7 @@ export default function QuizTaking() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center">
-        <Text>Loading Quiz Questions...</Text>
+        <ActivityIndicator size="large" color="#8b5cf6" />
       </SafeAreaView>
     );
   }
@@ -38,18 +43,52 @@ export default function QuizTaking() {
       </SafeAreaView>
     );
   }
-  const handleSubmitQuiz = (answers: Record<number, OptionKey>) => {
-    console.log("Submitting Answers:", answers);
-    router.push("/(course_tabs)/quiz");
+
+  const handleSubmitQuiz = () => {
+    const questions = questionsData?.questions || [];
+    const answeredCount = Object.keys(selectedAnswers).length;
+
+    if (answeredCount === questions.length) {
+      router.replace("/(course_tabs)/quiz");
+      console.log("Submitted Answers:", selectedAnswers);
+    } else {
+      // Find the first unanswered question
+      const firstUnansweredIndex = questions.findIndex(
+        (q) => !selectedAnswers[q.item_id]
+      );
+
+      Alert.alert(
+        "Incomplete Quiz",
+        "Please answer all questions before submitting.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // Scroll to the first unanswered question
+              if (firstUnansweredIndex !== -1 && listRef.current) {
+                listRef.current.scrollToIndex({
+                  index: firstUnansweredIndex,
+                  animated: true,
+                  viewPosition: 0.2, // Position it near the top
+                });
+              }
+            },
+          },
+        ]
+      );
+    }
   };
+
   const renderQuestion = ({ item }: LegendListRenderItemProps<Question>) => {
     const optionKeys: OptionKey[] = ["A", "B", "C", "D"];
 
     return (
       <View className="p-4 mb-4 bg-white rounded-lg">
-        <Text className="text-lg font-semibold mb-3">
-          {item.question_number}. {item.question}
-        </Text>
+        <View className="flex-row items-center justify-between mb-3">
+          <Text className="text-lg font-semibold flex-1">
+            {item.question_number}. {item.question}
+          </Text>
+        </View>
 
         {optionKeys.map((key) => {
           const isSelected = selectedAnswers[item.item_id] === key;
@@ -60,10 +99,10 @@ export default function QuizTaking() {
                 isSelected ? "bg-blue-200 border-blue-600" : "border-gray-300"
               }`}
               onPress={() => {
-                setSelectedAnswers((prev) => ({
-                  ...prev,
+                setSelectedAnswers({
+                  ...selectedAnswers,
                   [item.item_id]: key,
-                }));
+                });
               }}
             >
               <Text>
@@ -79,6 +118,7 @@ export default function QuizTaking() {
   return (
     <SafeAreaView className="flex-1">
       <LegendList
+        ref={listRef} // Add ref here
         data={questionsData?.questions || []}
         renderItem={renderQuestion}
         keyExtractor={(item) => item.item_id.toString()}
@@ -87,12 +127,13 @@ export default function QuizTaking() {
         recycleItems
       />
       <View>
+        <Text className="text-center text-gray-600 my-2">
+          {Object.keys(selectedAnswers).length} of{" "}
+          {questionsData?.questions.length} answered
+        </Text>
         <Pressable
           className="mx-auto mb-3 px-6 py-3 mt-3 bg-blue-600 rounded-lg active:bg-blue-700"
-          onPress={() => {
-            handleSubmitQuiz(selectedAnswers);
-            console.log("Submitted Answers:", selectedAnswers);
-          }}
+          onPress={handleSubmitQuiz}
         >
           <Text className="font-semibold text-white">Submit</Text>
         </Pressable>
