@@ -1,25 +1,42 @@
 import createQuizQuestionsOptions from "@/api/QueryOptions/quizQuestionsOptions";
 import { useQuizStore } from "@/store/useQuizStore";
 import type { OptionKey, Question } from "@/types/api";
+import { Ionicons } from "@expo/vector-icons";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useRef } from "react";
-import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  AppState,
+  AppStateStatus,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function QuizTaking() {
+  const [secondsLeft, setSecondsLeft] = React.useState(30 * 60); // 30 minutes in seconds
+  const appState = useRef(AppState.currentState);
+  const hasSubmittedRef = useRef(false);
   const router = useRouter();
-  const { quiz_id, instance_id, selectedAnswers, setSelectedAnswers } =
-    useQuizStore();
+  const {
+    quiz_id,
+    instance_id,
+    selectedAnswers,
+    setSelectedAnswers,
+    clearAnswers,
+  } = useQuizStore();
 
   const listRef = useRef<any>(null); // Add ref for LegendList
 
   useFocusEffect(
     useCallback(() => {
-      setSelectedAnswers({});
+      clearAnswers();
       console.log("Quiz Taking Mounted, answers reset.");
-    }, [setSelectedAnswers])
+    }, [clearAnswers])
   );
 
   const {
@@ -28,6 +45,82 @@ export default function QuizTaking() {
     isError,
     error,
   } = useQuery(createQuizQuestionsOptions(quiz_id, instance_id));
+
+  useEffect(() => {
+    // 30 minutes in milliseconds
+    const QuizMinutes = 30 * 60 * 1000;
+    const tenMinutesInSeconds = 10 * 60; // 600 seconds
+    let hasVibrated = false; // Track if we've already vibrated
+
+    const timer = setTimeout(() => {
+      if (hasSubmittedRef.current) return;
+
+      hasSubmittedRef.current = true;
+
+      console.log("30 minutes passed — auto submitting quiz");
+
+      router.replace({
+        pathname: "/(course_tabs)/quiz",
+        params: {
+          showResult: "true",
+          SubmissionReason: "Ran out of time (30 minutes)",
+        },
+      });
+    }, QuizMinutes);
+
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => {
+        const newValue = prev <= 1 ? 0 : prev - 1;
+
+        // Vibrate when exactly 10 minutes remaining
+        if (newValue === tenMinutesInSeconds && !hasVibrated) {
+          hasVibrated = true;
+          // Vibrate for 500ms
+          if ("vibrate" in navigator) {
+            navigator.vibrate(500);
+          }
+          console.log("10 minutes remaining - vibrating");
+        }
+
+        if (newValue === 0) {
+          clearInterval(interval);
+        }
+
+        return newValue;
+      });
+    }, 1000);
+
+    // Cleanup timer on unmount
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [router]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener(
+      "change",
+      (nextAppState: AppStateStatus) => {
+        if (appState.current === "active" && nextAppState === "background") {
+          if (hasSubmittedRef.current) return;
+
+          hasSubmittedRef.current = true;
+
+          router.replace({
+            pathname: "/(course_tabs)/quiz",
+            params: {
+              showResult: "true",
+              SubmissionReason: "Auto-submitted due to app going to background",
+            },
+          });
+        }
+
+        appState.current = nextAppState;
+      }
+    );
+
+    return () => subscription.remove();
+  }, [router]);
 
   if (isLoading) {
     return (
@@ -46,14 +139,24 @@ export default function QuizTaking() {
   }
 
   const handleSubmitQuiz = () => {
+    if (hasSubmittedRef.current) return;
+
     const questions = questionsData?.questions || [];
     const answeredCount = Object.keys(selectedAnswers).length;
 
     if (answeredCount === questions.length) {
-      router.replace("/(course_tabs)/quiz");
+      hasSubmittedRef.current = true;
+
+      router.replace({
+        pathname: "/(course_tabs)/quiz",
+        params: {
+          showResult: "true",
+          SubmissionReason: "Manually submitted by user",
+        },
+      });
+
       console.log("Submitted Answers:", selectedAnswers);
     } else {
-      // Find the first unanswered question
       const firstUnansweredIndex = questions.findIndex(
         (q) => !selectedAnswers[q.item_id]
       );
@@ -65,12 +168,11 @@ export default function QuizTaking() {
           {
             text: "OK",
             onPress: () => {
-              // Scroll to the first unanswered question
               if (firstUnansweredIndex !== -1 && listRef.current) {
                 listRef.current.scrollToIndex({
                   index: firstUnansweredIndex,
                   animated: true,
-                  viewPosition: 0.2, // Position it near the top
+                  viewPosition: 0.2,
                 });
               }
             },
@@ -126,6 +228,16 @@ export default function QuizTaking() {
 
   return (
     <SafeAreaView className="flex-1">
+      <View className="py-3">
+        <Text className="text-center mt-2 text-blue-700 text-lg font-semibold">
+          <Ionicons name="alarm" size={21} color="Blue" />
+          Time Left:{" "}
+          {Math.floor(secondsLeft / 60)
+            .toString()
+            .padStart(2, "0")}
+          :{(secondsLeft % 60).toString().padStart(2, "0")}
+        </Text>
+      </View>
       <LegendList
         ref={listRef} // Add ref here
         data={questionsData?.questions || []}
