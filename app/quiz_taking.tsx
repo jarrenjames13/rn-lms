@@ -7,6 +7,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useRef } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 export default function QuizTaking() {
   const router = useRouter();
   const { quiz_id, instance_id, selectedAnswers, setSelectedAnswers } =
@@ -81,6 +82,7 @@ export default function QuizTaking() {
 
   const renderQuestion = ({ item }: LegendListRenderItemProps<Question>) => {
     const optionKeys: OptionKey[] = ["A", "B", "C", "D"];
+    const isAnswered = !!selectedAnswers[item.item_id];
 
     return (
       <View className="p-4 mb-4 bg-white rounded-lg">
@@ -88,6 +90,13 @@ export default function QuizTaking() {
           <Text className="text-lg font-semibold flex-1">
             {item.question_number}. {item.question}
           </Text>
+          {!isAnswered && (
+            <View className="bg-red-100 px-2 py-1 rounded">
+              <Text className="text-xs text-red-600 font-medium">
+                Unanswered
+              </Text>
+            </View>
+          )}
         </View>
 
         {optionKeys.map((key) => {
