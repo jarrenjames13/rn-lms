@@ -7,6 +7,7 @@ type QuizStore = {
   setInstanceId: (instance_id: number) => void;
   selectedAnswers: Record<number, OptionKey>;
   setSelectedAnswers: (answers: Record<number, OptionKey>) => void;
+  clearAnswers: () => void;
 };
 
 export const useQuizStore = create<QuizStore>((set) => ({
@@ -17,4 +18,5 @@ export const useQuizStore = create<QuizStore>((set) => ({
   selectedAnswers: {},
   setSelectedAnswers: (answers: Record<number, OptionKey>) =>
     set({ selectedAnswers: answers }),
+  clearAnswers: () => set({ selectedAnswers: {} }),
 }));
