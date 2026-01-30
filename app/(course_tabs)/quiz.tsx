@@ -44,7 +44,7 @@ export default function Quiz() {
       acc[period].push(quiz);
       return acc;
     },
-    {} as Record<string, QuizDetails[]>
+    {} as Record<string, QuizDetails[]>,
   );
 
   // Define the correct order for exam periods
@@ -157,7 +157,7 @@ export default function Quiz() {
                 color="#f97316"
               />
             </View>
-            <Text className="text-sm text-gray-700 font-medium">30 mins</Text>
+            <Text className="text-sm text-gray-700 font-medium">45 mins</Text>
           </View>
         </View>
 
