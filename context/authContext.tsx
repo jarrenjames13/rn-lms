@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }: any) => {
   // Helper function to refresh tokens
   const refreshAccessToken = useCallback(
     async (
-      currentRefreshToken: string
+      currentRefreshToken: string,
     ): Promise<{ access_token: string; refresh_token: string } | null> => {
       try {
         const res = await axios.post(
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }: any) => {
           {},
           {
             headers: { Authorization: `Bearer ${currentRefreshToken}` },
-          }
+          },
         );
 
         if (res.status === 200 && res.data.access_token) {
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: any) => {
         return null;
       }
     },
-    []
+    [],
   );
 
   const verifyUser = useCallback(async () => {
@@ -132,10 +132,8 @@ export const AuthProvider = ({ children }: any) => {
         const res = await axios.get<VerifyUser>(`${BASE_URL}/auth/verify`, {
           headers: { Authorization: `Bearer ${access_token}` },
         });
-
-        if (res.status === 200) {
-          const data = res.data;
-
+        const data = res.data;
+        if (res.status === 200 && data.user.role === "student") {
           setAuthState({
             access_token: access_token,
             refresh_token,
@@ -151,6 +149,10 @@ export const AuthProvider = ({ children }: any) => {
             console.log("User verified successfully:", data.user);
             await SecureStore.setItemAsync("user", JSON.stringify(data.user));
           }
+          return;
+        } else if (res.status === 200 && data.user.role !== "student") {
+          console.log("User role is not student, clearing auth.");
+          await clearAuth();
           return;
         }
       } catch (verifyError: any) {
@@ -189,14 +191,14 @@ export const AuthProvider = ({ children }: any) => {
             } catch (retryError) {
               console.log(
                 "Verification failed after token refresh:",
-                retryError
+                retryError,
               );
             }
           }
 
           // If refresh failed or retry verification failed, logout
           console.log(
-            "Token refresh or re-verification failed, logging out..."
+            "Token refresh or re-verification failed, logging out...",
           );
           await clearAuth();
           return;
@@ -227,7 +229,7 @@ export const AuthProvider = ({ children }: any) => {
 
       appState.current = nextAppState;
     },
-    [authState.access_token, authState.refresh_token, verifyUser]
+    [authState.access_token, authState.refresh_token, verifyUser],
   );
 
   useEffect(() => {
@@ -241,7 +243,7 @@ export const AuthProvider = ({ children }: any) => {
   useEffect(() => {
     const subscription = AppState.addEventListener(
       "change",
-      handleAppStateChange
+      handleAppStateChange,
     );
 
     return () => {
@@ -269,7 +271,7 @@ export const AuthProvider = ({ children }: any) => {
       const data = res.data;
 
       // Only successful 200 responses reach here
-      if (data.success) {
+      if (data.success && data.user.role === "student") {
         setAuthState({
           access_token: data.access_token,
           refresh_token: data.refresh_token,
@@ -290,6 +292,15 @@ export const AuthProvider = ({ children }: any) => {
         await SecureStore.setItemAsync("access_token", data.access_token);
         await SecureStore.setItemAsync("refresh_token", data.refresh_token);
         await SecureStore.setItemAsync("user", JSON.stringify(data.user));
+      } else if (data.success && data.user.role !== "student") {
+        console.log("User role is not student, clearing auth.");
+        showToast({
+          type: "error",
+          title: "Login Failed",
+          message: "LMS is only dedicated for students.",
+        });
+        await clearAuth();
+        return;
       }
     } catch (error: any) {
       console.log("Login error caught:", error);
@@ -331,7 +342,7 @@ export const AuthProvider = ({ children }: any) => {
         {},
         {
           headers: { Authorization: `Bearer ${refresh_token}` },
-        }
+        },
       );
 
       const data = res.data;
