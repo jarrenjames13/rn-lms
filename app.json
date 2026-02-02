@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "rn-lms",
-    "slug": "rn-lms",
+    "name": "Aurora LMS",
+    "slug": "aurora-lms",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
