@@ -13,12 +13,13 @@ import {
   AppStateStatus,
   Pressable,
   Text,
+  Vibration,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function QuizTaking() {
-  const [secondsLeft, setSecondsLeft] = React.useState(30 * 60); // 30 minutes in seconds
+  const [secondsLeft, setSecondsLeft] = React.useState(45 * 60); // 45 minutes in seconds
   const appState = useRef(AppState.currentState);
   const hasSubmittedRef = useRef(false);
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function QuizTaking() {
     useCallback(() => {
       clearAnswers();
       console.log("Quiz Taking Mounted, answers reset.");
-    }, [clearAnswers])
+    }, [clearAnswers]),
   );
 
   const {
@@ -48,7 +49,7 @@ export default function QuizTaking() {
 
   useEffect(() => {
     // 30 minutes in milliseconds
-    const QuizMinutes = 30 * 60 * 1000;
+    const QuizMinutes = 45 * 60 * 1000;
     const tenMinutesInSeconds = 10 * 60; // 600 seconds
     let hasVibrated = false; // Track if we've already vibrated
 
@@ -57,13 +58,13 @@ export default function QuizTaking() {
 
       hasSubmittedRef.current = true;
 
-      console.log("30 minutes passed — auto submitting quiz");
+      console.log("45 minutes passed — auto submitting quiz");
 
       router.replace({
         pathname: "/(course_tabs)/quiz",
         params: {
           showResult: "true",
-          SubmissionReason: "Ran out of time (30 minutes)",
+          SubmissionReason: "Ran out of time (45 minutes)",
         },
       });
     }, QuizMinutes);
@@ -77,7 +78,7 @@ export default function QuizTaking() {
           hasVibrated = true;
           // Vibrate for 500ms
           if ("vibrate" in navigator) {
-            navigator.vibrate(500);
+            Vibration.vibrate(500);
           }
           console.log("10 minutes remaining - vibrating");
         }
@@ -116,7 +117,7 @@ export default function QuizTaking() {
         }
 
         appState.current = nextAppState;
-      }
+      },
     );
 
     return () => subscription.remove();
@@ -158,7 +159,7 @@ export default function QuizTaking() {
       console.log("Submitted Answers:", selectedAnswers);
     } else {
       const firstUnansweredIndex = questions.findIndex(
-        (q) => !selectedAnswers[q.item_id]
+        (q) => !selectedAnswers[q.item_id],
       );
 
       Alert.alert(
@@ -177,7 +178,7 @@ export default function QuizTaking() {
               }
             },
           },
-        ]
+        ],
       );
     }
   };
