@@ -1,11 +1,13 @@
+import createQuizAnswersOptions from "@/api/QueryOptions/QuizAnswersOption";
 import createQuizQuestionsOptions from "@/api/QueryOptions/quizQuestionsOptions";
+import QuizSubmissionModal from "@/components/QuizSubmissionModal";
 import { useQuizStore } from "@/store/useQuizStore";
 import type { OptionKey, Question } from "@/types/api";
 import { Ionicons } from "@expo/vector-icons";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,11 +20,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const QUIZ_DURATION_SECONDS = 60 * 60;
+
 export default function QuizTaking() {
-  const [secondsLeft, setSecondsLeft] = React.useState(45 * 60); // 45 minutes in seconds
+  const [secondsLeft, setSecondsLeft] = useState(QUIZ_DURATION_SECONDS);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [submissionReason, setSubmissionReason] = useState("");
+
   const appState = useRef(AppState.currentState);
   const hasSubmittedRef = useRef(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
+
   const {
     quiz_id,
     instance_id,
@@ -31,11 +40,12 @@ export default function QuizTaking() {
     clearAnswers,
   } = useQuizStore();
 
-  const listRef = useRef<any>(null); // Add ref for LegendList
+  const listRef = useRef<any>(null);
 
   useFocusEffect(
     useCallback(() => {
       clearAnswers();
+      hasSubmittedRef.current = false;
       console.log("Quiz Taking Mounted, answers reset.");
     }, [clearAnswers]),
   );
@@ -47,81 +57,81 @@ export default function QuizTaking() {
     error,
   } = useQuery(createQuizQuestionsOptions(quiz_id, instance_id));
 
-  useEffect(() => {
-    // 30 minutes in milliseconds
-    const QuizMinutes = 45 * 60 * 1000;
-    const tenMinutesInSeconds = 10 * 60; // 600 seconds
-    let hasVibrated = false; // Track if we've already vibrated
+  // Submission mutation
+  const submitMutation = useMutation({
+    ...createQuizAnswersOptions(queryClient),
+    onSuccess: (data) => {
+      console.log("Quiz submitted successfully:", data);
+      setShowResultModal(true);
+    },
+    onError: (error: Error) => {
+      Alert.alert(
+        "Submission Failed",
+        error.message || "Failed to submit quiz. Please try again.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              hasSubmittedRef.current = false;
+            },
+          },
+        ],
+      );
+    },
+  });
 
-    const timer = setTimeout(() => {
+  const performSubmission = useCallback(
+    (reason: string) => {
       if (hasSubmittedRef.current) return;
 
       hasSubmittedRef.current = true;
+      setSubmissionReason(reason);
 
-      console.log("45 minutes passed — auto submitting quiz");
-
-      router.replace({
-        pathname: "/(course_tabs)/quiz",
-        params: {
-          showResult: "true",
-          SubmissionReason: "Ran out of time (45 minutes)",
-        },
+      submitMutation.mutate({
+        quiz_id,
+        instance_id,
+        answers: selectedAnswers,
       });
-    }, QuizMinutes);
+    },
+    [quiz_id, instance_id, selectedAnswers, submitMutation],
+  );
+
+  useEffect(() => {
+    if (hasSubmittedRef.current) return;
 
     const interval = setInterval(() => {
       setSecondsLeft((prev) => {
-        const newValue = prev <= 1 ? 0 : prev - 1;
-
-        // Vibrate when exactly 10 minutes remaining
-        if (newValue === tenMinutesInSeconds && !hasVibrated) {
-          hasVibrated = true;
-          // Vibrate for 500ms
-          if ("vibrate" in navigator) {
-            Vibration.vibrate(500);
-          }
-          console.log("10 minutes remaining - vibrating");
-        }
-
-        if (newValue === 0) {
+        if (prev <= 1) {
           clearInterval(interval);
+          performSubmission("Ran out of time (60 minutes)");
+          return 0;
         }
 
-        return newValue;
+        if (prev === 600) {
+          Vibration.vibrate(500);
+          console.log("10 minute remaining");
+        }
+
+        return prev - 1;
       });
     }, 1000);
 
-    // Cleanup timer on unmount
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
-  }, [router]);
+    return () => clearInterval(interval);
+  }, [performSubmission]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener(
       "change",
       (nextAppState: AppStateStatus) => {
         if (appState.current === "active" && nextAppState === "background") {
-          if (hasSubmittedRef.current) return;
-
-          hasSubmittedRef.current = true;
-
-          router.replace({
-            pathname: "/(course_tabs)/quiz",
-            params: {
-              showResult: "true",
-              SubmissionReason: "Auto-submitted due to app going to background",
-            },
-          });
+          performSubmission("Auto-submitted due to app going to background");
         }
-
         appState.current = nextAppState;
       },
     );
 
     return () => subscription.remove();
-  }, [router]);
+  }, [performSubmission]);
 
   if (isLoading) {
     return (
@@ -146,16 +156,7 @@ export default function QuizTaking() {
     const answeredCount = Object.keys(selectedAnswers).length;
 
     if (answeredCount === questions.length) {
-      hasSubmittedRef.current = true;
-
-      router.replace({
-        pathname: "/(course_tabs)/quiz",
-        params: {
-          showResult: "true",
-          SubmissionReason: "Manually submitted by user",
-        },
-      });
-
+      performSubmission("Manually submitted by user");
       console.log("Submitted Answers:", selectedAnswers);
     } else {
       const firstUnansweredIndex = questions.findIndex(
@@ -181,6 +182,11 @@ export default function QuizTaking() {
         ],
       );
     }
+  };
+
+  const handleModalClose = () => {
+    setShowResultModal(false);
+    router.replace("/(course_tabs)/quiz");
   };
 
   const renderQuestion = ({ item }: LegendListRenderItemProps<Question>) => {
@@ -239,8 +245,9 @@ export default function QuizTaking() {
           :{(secondsLeft % 60).toString().padStart(2, "0")}
         </Text>
       </View>
+
       <LegendList
-        ref={listRef} // Add ref here
+        ref={listRef}
         data={questionsData?.questions || []}
         renderItem={renderQuestion}
         keyExtractor={(item) => item.item_id.toString()}
@@ -248,6 +255,7 @@ export default function QuizTaking() {
         extraData={{ selectedAnswers }}
         recycleItems
       />
+
       <View>
         <Text className="text-center text-gray-600 my-2">
           {Object.keys(selectedAnswers).length} of{" "}
@@ -256,10 +264,23 @@ export default function QuizTaking() {
         <Pressable
           className="mx-auto mb-3 px-6 py-3 mt-3 bg-blue-600 rounded-lg active:bg-blue-700"
           onPress={handleSubmitQuiz}
+          disabled={submitMutation.isPending}
         >
-          <Text className="font-semibold text-white">Submit</Text>
+          {submitMutation.isPending ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="font-semibold text-white">Submit</Text>
+          )}
         </Pressable>
       </View>
+
+      <QuizSubmissionModal
+        visible={showResultModal}
+        onClose={handleModalClose}
+        submissionReason={submissionReason}
+        resultData={submitMutation.data}
+        isLoading={submitMutation.isPending}
+      />
     </SafeAreaView>
   );
 }
