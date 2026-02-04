@@ -9,8 +9,8 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import React from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -30,6 +30,7 @@ export default function Quiz() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery(createListQuizzesOptions(course_id!));
 
   const quizzes = quizzesData?.quizzes || [];
@@ -47,6 +48,12 @@ export default function Quiz() {
     {} as Record<string, QuizDetails[]>,
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      console.log("Quiz screen focused - refetching quiz list");
+      refetch();
+    }, [refetch]),
+  );
   // Define the correct order for exam periods
   const periodOrder: Record<string, number> = {
     Prelim: 1,
@@ -157,7 +164,7 @@ export default function Quiz() {
                 color="#f97316"
               />
             </View>
-            <Text className="text-sm text-gray-700 font-medium">45 mins</Text>
+            <Text className="text-sm text-gray-700 font-medium">60 mins</Text>
           </View>
         </View>
 
@@ -170,10 +177,7 @@ export default function Quiz() {
             <View>
               <Text className="text-xs text-gray-500 mb-1">Your Score</Text>
               <Text className="text-2xl font-bold text-green-600">
-                {quiz.score ?? "N/A"}
-                <Text className="text-sm text-gray-400">
-                  /{quiz.total_items}
-                </Text>
+                {quiz.score ?? "N/A"}%
               </Text>
             </View>
 
