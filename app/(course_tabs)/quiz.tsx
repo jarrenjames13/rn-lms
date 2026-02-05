@@ -35,6 +35,7 @@ export default function Quiz() {
 
   const quizzes = quizzesData?.quizzes || [];
   const instanceId = quizzesData?.instance_id || null;
+
   // Group quizzes by exam_period
   const groupedQuizzes = quizzes.reduce(
     (acc, quiz) => {
@@ -54,6 +55,7 @@ export default function Quiz() {
       refetch();
     }, [refetch]),
   );
+
   // Define the correct order for exam periods
   const periodOrder: Record<string, number> = {
     Prelim: 1,
@@ -109,107 +111,196 @@ export default function Quiz() {
   };
 
   // Render a single quiz card
-  const renderQuizCard = (quiz: QuizDetails) => (
-    <View
-      key={quiz.quiz_id}
-      className="bg-white rounded-xl shadow-md overflow-hidden mb-3 border border-gray-100"
-    >
-      {/* Status Badge */}
-      <View className="absolute top-3 right-3 z-10">
-        {quiz.is_taken ? (
-          <View className="bg-green-100 px-3 py-1 rounded-full">
-            <Text className="text-green-700 text-xs font-semibold">
-              Completed
-            </Text>
-          </View>
-        ) : (
-          <View className="bg-blue-100 px-3 py-1 rounded-full">
-            <Text className="text-blue-700 text-xs font-semibold">
-              Available
-            </Text>
-          </View>
-        )}
-      </View>
+  const renderQuizCard = (quiz: QuizDetails) => {
+    const attemptsMade = quiz.attempts_made || 0;
+    const remainingAttempts = 5 - attemptsMade;
+    const maxAttemptsReached = attemptsMade >= 5;
+    const isPassing = quiz.score !== null && quiz.score >= 75;
 
-      {/* Main Content */}
-      <View className="p-4">
-        {/* Title */}
-        <Text className="text-lg font-bold text-gray-800 mb-2 pr-20">
-          {quiz.quiz_name}
-        </Text>
-
-        {/* Description */}
-        <Text className="text-sm text-gray-600 mb-4 leading-5">
-          {quiz.description}
-        </Text>
-
-        {/* Quiz Info Row */}
-        <View className="flex-row items-center space-x-4 mb-3">
-          {/* Total Items */}
-          <View className="flex-row items-center pr-1">
-            <View className="bg-red-50 p-1.5 rounded-lg mr-1">
-              <Entypo name="clipboard" size={16} color="#ef4444" />
+    return (
+      <View
+        key={quiz.quiz_id}
+        className="bg-white rounded-xl shadow-md overflow-hidden mb-3 border border-gray-100"
+      >
+        {/* Status Badge */}
+        <View className="absolute top-3 right-3 z-10">
+          {maxAttemptsReached ? (
+            <View
+              className={`${isPassing ? "bg-green-100" : "bg-red-100"} px-3 py-1 rounded-full`}
+            >
+              <Text
+                className={`${isPassing ? "text-green-700" : "text-red-700"} text-xs font-semibold`}
+              >
+                Completed ({attemptsMade}/5)
+              </Text>
             </View>
-            <Text className="text-sm text-gray-700 font-medium">
-              {quiz.total_items} {quiz.total_items === 1 ? "item" : "items"}
-            </Text>
-          </View>
-
-          {/* Duration */}
-          <View className="flex-row items-center px-1">
-            <View className="bg-orange-50 p-1.5 rounded-lg mr-1">
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={16}
-                color="#f97316"
-              />
+          ) : quiz.is_taken ? (
+            <View className="bg-yellow-100 px-3 py-1 rounded-full">
+              <Text className="text-yellow-700 text-xs font-semibold">
+                {remainingAttempts} attempt{remainingAttempts !== 1 ? "s" : ""}{" "}
+                left
+              </Text>
             </View>
-            <Text className="text-sm text-gray-700 font-medium">60 mins</Text>
-          </View>
+          ) : (
+            <View className="bg-blue-100 px-3 py-1 rounded-full">
+              <Text className="text-blue-700 text-xs font-semibold">
+                Not Started
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* Divider */}
-        {quiz.is_taken && <View className="border-t border-gray-200 my-3" />}
+        {/* Main Content */}
+        <View className="p-4">
+          {/* Title */}
+          <Text className="text-lg font-bold text-gray-800 mb-2 pr-24">
+            {quiz.quiz_name}
+          </Text>
 
-        {/* Score Section (if taken) */}
-        {quiz.is_taken && (
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-xs text-gray-500 mb-1">Your Score</Text>
-              <Text className="text-2xl font-bold text-green-600">
-                {quiz.score ?? "N/A"}%
+          {/* Description */}
+          <Text className="text-sm text-gray-600 mb-4 leading-5">
+            {quiz.description}
+          </Text>
+
+          {/* Quiz Info Row */}
+          <View className="flex-row items-center space-x-4 mb-3">
+            {/* Total Items */}
+            <View className="flex-row items-center pr-1">
+              <View className="bg-red-50 p-1.5 rounded-lg mr-1">
+                <Entypo name="clipboard" size={16} color="#ef4444" />
+              </View>
+              <Text className="text-sm text-gray-700 font-medium">
+                {quiz.total_items} {quiz.total_items === 1 ? "item" : "items"}
               </Text>
             </View>
 
-            {quiz.completed_at && (
-              <View className="items-end">
-                <Text className="text-xs text-gray-500 mb-1">Completed</Text>
-                <Text className="text-xs text-gray-700 font-medium">
-                  {new Date(quiz.completed_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+            {/* Duration */}
+            <View className="flex-row items-center px-1">
+              <View className="bg-orange-50 p-1.5 rounded-lg mr-1">
+                <MaterialCommunityIcons
+                  name="clock-outline"
+                  size={16}
+                  color="#f97316"
+                />
+              </View>
+              <Text className="text-sm text-gray-700 font-medium">60 mins</Text>
+            </View>
+
+            {/* Attempts Badge */}
+            {!quiz.is_taken && (
+              <View className="flex-row items-center px-1">
+                <View className="bg-blue-50 p-1.5 rounded-lg mr-1">
+                  <MaterialCommunityIcons
+                    name="rotate-3d-variant"
+                    size={16}
+                    color="#3b82f6"
+                  />
+                </View>
+                <Text className="text-sm text-gray-700 font-medium">
+                  5 attempts
                 </Text>
               </View>
             )}
           </View>
-        )}
 
-        {/* Action Button (if not taken) */}
-        {!quiz.is_taken && (
-          <View className="mt-3">
-            <Pressable
-              className="bg-blue-500 active:bg-blue-700 py-3 rounded-lg items-center mx-auto px-6"
-              onPress={() => handlePress(quiz)}
-            >
-              <Text className="text-white font-semibold">Start Quiz</Text>
-            </Pressable>
-          </View>
-        )}
+          {/* Attempts Info Badge (for started but not completed) */}
+          {quiz.is_taken && !maxAttemptsReached && (
+            <View className="bg-blue-50 px-3 py-2 rounded-lg mb-3">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-sm text-blue-700 font-medium">
+                  Attempts: {attemptsMade}/5
+                </Text>
+                <Text className="text-xs text-blue-600">
+                  {remainingAttempts} remaining
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Divider */}
+          {quiz.is_taken && <View className="border-t border-gray-200 my-3" />}
+
+          {/* Score Section (if taken) */}
+          {quiz.is_taken && (
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-xs text-gray-500 mb-1">
+                  {maxAttemptsReached ? "Final Score" : "Current Score"}
+                </Text>
+                <Text
+                  className={`text-2xl font-bold ${isPassing ? "text-green-600" : "text-red-600"}`}
+                >
+                  {quiz.score ?? "N/A"}%
+                </Text>
+              </View>
+
+              {quiz.completed_at && (
+                <View className="items-end">
+                  <Text className="text-xs text-gray-500 mb-1">
+                    Last Attempt
+                  </Text>
+                  <Text className="text-xs text-gray-700 font-medium">
+                    {new Date(quiz.last_attempted_at + "Z").toLocaleString(
+                      "en-PH",
+                      {
+                        timeZone: "Asia/Manila",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          {!maxAttemptsReached && (
+            <View className="mt-3">
+              {quiz.is_taken ? (
+                // Retake Button
+                <Pressable
+                  className="bg-yellow-500 active:bg-yellow-600 py-3 rounded-lg items-center mx-auto px-6"
+                  onPress={() => handlePress(quiz)}
+                >
+                  <View className="flex-row items-center">
+                    <MaterialCommunityIcons
+                      name="rotate-3d-variant"
+                      size={18}
+                      color="white"
+                    />
+                    <Text className="text-white font-semibold ml-2">
+                      Retake Quiz
+                    </Text>
+                  </View>
+                </Pressable>
+              ) : (
+                // Start Button
+                <Pressable
+                  className="bg-blue-500 active:bg-blue-700 py-3 rounded-lg items-center mx-auto px-6"
+                  onPress={() => handlePress(quiz)}
+                >
+                  <Text className="text-white font-semibold">Start Quiz</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* Max Attempts Reached Message */}
+          {maxAttemptsReached && (
+            <View className="mt-3 bg-gray-100 px-3 py-2 rounded-lg">
+              <Text className="text-center text-gray-600 text-sm">
+                All attempts used
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   // Render grouped quizzes
   const renderGroupedQuizzes = () => {
@@ -262,12 +353,12 @@ export default function Quiz() {
               <MaterialCommunityIcons
                 name="rotate-3d-variant"
                 size={18}
-                color="red"
+                color="green"
               />{" "}
-              - No retakes. Make sure to review your answers before submitting.
+              - You have 5 attempts per quiz to improve your score.
             </Text>
             <Text className="text-gray-600 py-1">
-              <MaterialIcons name="schedule-send" size={18} color="green" /> -
+              <MaterialIcons name="schedule-send" size={18} color="red" /> -
               Auto submit when time is up.
             </Text>
           </View>
