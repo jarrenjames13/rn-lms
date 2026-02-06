@@ -243,10 +243,41 @@ export interface StudentQuizzes {
     description: string;
     total_items: number;
     is_taken: boolean;
+    attempts_made: number;
+    last_attempted_at: string | null;
     score: number | null;
     completed_at: string | null;
   }[];
   instance_id: number;
+}
+
+export interface StudentExams {
+  exams: {
+    exam_id: number;
+    exam_name: string;
+    exam_period: string;
+    description: string;
+    total_items: number;
+    category: string;
+    is_taken: boolean;
+    score: number | null;
+    completed_at: string | null;
+    status: string;
+  }[];
+  instance_id: number;
+}
+
+export interface ExamDetails {
+  exam_id: number;
+  exam_name: string;
+  exam_period: string;
+  description: string;
+  total_items: number;
+  category: string;
+  is_taken: boolean;
+  score: number | null;
+  completed_at: string | null;
+  status: string;
 }
 
 export interface QuizDetails {
@@ -256,6 +287,8 @@ export interface QuizDetails {
   description: string;
   total_items: number;
   is_taken: boolean;
+  attempts_made: number;
+  last_attempted_at: string | null;
   score: number | null;
   completed_at: string | null;
 }
