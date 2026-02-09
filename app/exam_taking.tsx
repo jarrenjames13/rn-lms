@@ -2,8 +2,8 @@ import createExamAnswersOptions from "@/api/QueryOptions/examAnswersOptions";
 import createExamQuestionsOptions from "@/api/QueryOptions/examQuestionsOptions";
 import ExamSubmissionModal from "@/components/ExamSubmissionModal";
 import { useExamStore } from "@/store/useExamStore";
-import type { OptionKey, Question } from "@/types/api";
-import { Ionicons } from "@expo/vector-icons";
+import type { ExamQuestion, OptionKey } from "@/types/api";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -20,10 +20,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const QUIZ_DURATION_SECONDS = 60 * 60;
+const EXAM_DURATION_SECONDS = 120 * 60;
 
-export default function QuizTaking() {
-  const [secondsLeft, setSecondsLeft] = useState(QUIZ_DURATION_SECONDS);
+export default function ExamTaking() {
+  const [secondsLeft, setSecondsLeft] = useState(EXAM_DURATION_SECONDS);
   const [showResultModal, setShowResultModal] = useState(false);
   const [submissionReason, setSubmissionReason] = useState("");
 
@@ -46,7 +46,6 @@ export default function QuizTaking() {
     useCallback(() => {
       clearAnswers();
       hasSubmittedRef.current = false;
-      console.log("Quiz Taking Mounted, answers reset.");
     }, [clearAnswers]),
   );
 
@@ -57,33 +56,18 @@ export default function QuizTaking() {
     error,
   } = useQuery(createExamQuestionsOptions(exam_id, instance_id));
 
-  // Submission mutation
   const submitMutation = useMutation({
     ...createExamAnswersOptions(queryClient),
-    onSuccess: (data) => {
-      console.log("Exam submitted successfully:", data);
-      setShowResultModal(true);
-    },
+    onSuccess: () => setShowResultModal(true),
     onError: (error: Error) => {
-      Alert.alert(
-        "Submission Failed",
-        error.message || "Failed to submit exam. Please try again.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              hasSubmittedRef.current = false;
-            },
-          },
-        ],
-      );
+      Alert.alert("Submission Failed", error.message);
+      hasSubmittedRef.current = false;
     },
   });
 
   const performSubmission = useCallback(
     (reason: string) => {
       if (hasSubmittedRef.current) return;
-
       hasSubmittedRef.current = true;
       setSubmissionReason(reason);
 
@@ -108,11 +92,7 @@ export default function QuizTaking() {
           return 0;
         }
 
-        if (prev === 600) {
-          Vibration.vibrate(500);
-          console.log("10 minute remaining");
-        }
-
+        if (prev === 600) Vibration.vibrate(500);
         return prev - 1;
       });
     }, 1000);
@@ -121,23 +101,21 @@ export default function QuizTaking() {
   }, [performSubmission]);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      (nextAppState: AppStateStatus) => {
-        if (appState.current === "active" && nextAppState === "background") {
-          performSubmission("tab_switch");
-        }
-        appState.current = nextAppState;
-      },
-    );
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (appState.current === "active" && next === "background") {
+        performSubmission("tab_switch");
+      }
+      appState.current = next;
+    });
 
-    return () => subscription.remove();
+    return () => sub.remove();
   }, [performSubmission]);
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#8b5cf6" />
+      <SafeAreaView className="flex-1 justify-center items-center bg-gray-50">
+        <ActivityIndicator size="large" color="#EF4444" />
+        <Text className="mt-4 text-gray-600">Loading exam questions…</Text>
       </SafeAreaView>
     );
   }
@@ -145,139 +123,182 @@ export default function QuizTaking() {
   if (isError) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center">
-        <Text>Error loading quiz questions: {(error as Error).message}</Text>
+        <Text>{(error as Error).message}</Text>
       </SafeAreaView>
     );
   }
 
-  const handleSubmitExam = () => {
-    if (hasSubmittedRef.current) return;
+  const questions = questionsData?.questions || [];
+  const answeredCount = Object.keys(selectedAnswers).length;
+  const totalQuestions = questions.length;
+  const progress = (answeredCount / totalQuestions) * 100;
+  const minutes = Math.floor(secondsLeft / 60);
+  const seconds = secondsLeft % 60;
+  const isLowTime = secondsLeft <= 600;
 
-    const questions = questionsData?.questions || [];
-    const answeredCount = Object.keys(selectedAnswers).length;
-
-    if (answeredCount === questions.length) {
-      performSubmission("manual");
-      //   console.log("Submitted Answers:", selectedAnswers);
-    } else {
-      const firstUnansweredIndex = questions.findIndex(
-        (q) => !selectedAnswers[q.item_id],
-      );
-
-      Alert.alert(
-        "Incomplete Exam",
-        "Please answer all questions before submitting.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              if (firstUnansweredIndex !== -1 && listRef.current) {
-                listRef.current.scrollToIndex({
-                  index: firstUnansweredIndex,
-                  animated: true,
-                  viewPosition: 0.2,
-                });
-              }
-            },
-          },
-        ],
-      );
-    }
-  };
-
-  const handleModalClose = () => {
-    setShowResultModal(false);
-    router.replace("/(course_tabs)/exams");
-  };
-
-  const renderQuestion = ({ item }: LegendListRenderItemProps<Question>) => {
+  const renderQuestion = ({
+    item,
+  }: LegendListRenderItemProps<ExamQuestion>) => {
     const optionKeys: OptionKey[] = ["A", "B", "C", "D"];
     const isAnswered = !!selectedAnswers[item.item_id];
 
     return (
-      <View className="p-4 mb-4 bg-white rounded-lg">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-lg font-semibold flex-1">
-            {item.question_number}. {item.question}
-          </Text>
-          {!isAnswered && (
-            <View className="bg-red-100 px-2 py-1 rounded">
-              <Text className="text-xs text-red-600 font-medium">
-                Unanswered
+      <View className="mb-4 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <View
+          style={{ backgroundColor: isAnswered ? "#FEF2F2" : "#F9FAFB" }}
+          className="px-5 py-4 border-b border-gray-100"
+        >
+          <View className="flex-row items-center mb-2">
+            <View
+              style={{
+                backgroundColor: isAnswered ? "#EF4444" : "#9CA3AF",
+              }}
+              className="w-8 h-8 rounded-lg items-center justify-center mr-2"
+            >
+              <Text className="text-white font-bold text-sm">
+                {item.question_number}
               </Text>
             </View>
-          )}
+
+            <View
+              className={`px-3 py-1 rounded-full ${
+                isAnswered ? "bg-green-100" : "bg-red-100"
+              }`}
+            >
+              <Text
+                className={`text-xs font-bold ${
+                  isAnswered ? "text-green-700" : "text-red-700"
+                }`}
+              >
+                {isAnswered ? "ANSWERED" : "UNANSWERED"}
+              </Text>
+            </View>
+          </View>
+
+          <Text className="text-base font-semibold text-gray-900">
+            {item.question_text}
+          </Text>
         </View>
 
-        {optionKeys.map((key) => {
-          const isSelected = selectedAnswers[item.item_id] === key;
-          return (
-            <Pressable
-              key={key}
-              className={`p-3 mb-2 border rounded-lg ${
-                isSelected ? "bg-blue-200 border-blue-600" : "border-gray-300"
-              }`}
-              onPress={() => {
-                setSelectedAnswers({
-                  ...selectedAnswers,
-                  [item.item_id]: key,
-                });
-              }}
-            >
-              <Text>
-                {key}. {item.options[key]}
-              </Text>
-            </Pressable>
-          );
-        })}
+        <View className="p-5">
+          {optionKeys.map((key) => {
+            const isSelected = selectedAnswers[item.item_id] === key;
+
+            return (
+              <Pressable
+                key={key}
+                onPress={() =>
+                  setSelectedAnswers({
+                    ...selectedAnswers,
+                    [item.item_id]: key,
+                  })
+                }
+                className={`mb-3 rounded-xl border-2 p-4 flex-row items-center ${
+                  isSelected ? "border-red-500 bg-red-50" : "border-gray-200"
+                }`}
+              >
+                <View
+                  className={`w-6 h-6 rounded-full border-2 mr-3 ${
+                    isSelected ? "border-red-500 bg-red-500" : "border-gray-300"
+                  }`}
+                />
+                <Text className="flex-1 text-base">
+                  {key}. {item.options[key]}
+                </Text>
+                {isSelected && (
+                  <MaterialIcons
+                    name="check-circle"
+                    size={22}
+                    color="#EF4444"
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView className="flex-1">
-      <View className="py-3">
-        <Text className="text-center mt-2 text-blue-700 text-lg font-semibold">
-          <Ionicons name="alarm" size={21} color="Blue" />
-          Time Left:{" "}
-          {Math.floor(secondsLeft / 60)
-            .toString()
-            .padStart(2, "0")}
-          :{(secondsLeft % 60).toString().padStart(2, "0")}
+    <SafeAreaView className="flex-1 bg-gray-50">
+      {/* Timer */}
+      <View
+        style={{ backgroundColor: isLowTime ? "#FEE2E2" : "#EF4444" }}
+        className="px-6 py-4"
+      >
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1">
+            <View
+              style={{
+                backgroundColor: isLowTime
+                  ? "#991B1B"
+                  : "rgba(255, 255, 255, 0.25)",
+              }}
+              className="w-12 h-12 rounded-xl items-center justify-center mr-3"
+            >
+              <Ionicons
+                name={isLowTime ? "warning" : "timer"}
+                size={24}
+                color={isLowTime ? "#FEE2E2" : "white"}
+              />
+            </View>
+            <View>
+              <Text
+                style={{ color: isLowTime ? "#991B1B" : "white" }}
+                className="text-xs font-semibold mb-1"
+              >
+                {isLowTime ? "TIME RUNNING OUT!" : "TIME REMAINING"}
+              </Text>
+              <Text
+                style={{ color: isLowTime ? "#7F1D1D" : "white" }}
+                className="text-2xl font-bold"
+              >
+                {minutes.toString().padStart(2, "0")}:
+                {seconds.toString().padStart(2, "0")}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Progress */}
+      <View className="bg-white px-6 py-4 border-b">
+        <Text className="text-sm font-semibold">
+          {answeredCount}/{totalQuestions} answered
         </Text>
+        <View className="h-3 bg-gray-200 rounded-full mt-2">
+          <View
+            className="h-full rounded-full bg-red-500"
+            style={{ width: `${progress}%` }}
+          />
+        </View>
       </View>
 
       <LegendList
         ref={listRef}
-        data={questionsData?.questions || []}
+        data={questions}
         renderItem={renderQuestion}
         keyExtractor={(item) => item.item_id.toString()}
-        contentContainerClassName="p-4"
-        extraData={{ selectedAnswers }}
-        recycleItems
+        contentContainerClassName="p-6"
+        extraData={selectedAnswers}
       />
 
-      <View>
-        <Text className="text-center text-gray-600 my-2">
-          {Object.keys(selectedAnswers).length} of{" "}
-          {questionsData?.questions.length} answered
-        </Text>
+      {/* Submit */}
+      <View className="bg-white border-t px-6 py-4">
         <Pressable
-          className="mx-auto mb-3 px-6 py-3 mt-3 bg-blue-600 rounded-lg active:bg-blue-700"
-          onPress={handleSubmitExam}
-          disabled={submitMutation.isPending}
+          className={`py-4 rounded-xl items-center ${
+            answeredCount === totalQuestions ? "bg-red-500" : "bg-gray-300"
+          }`}
+          onPress={() => performSubmission("manual")}
         >
-          {submitMutation.isPending ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="font-semibold text-white">Submit</Text>
-          )}
+          <Text className="text-white font-bold text-base">Submit Exam</Text>
         </Pressable>
       </View>
 
       <ExamSubmissionModal
         visible={showResultModal}
-        onClose={handleModalClose}
+        onClose={() => router.replace("/(course_tabs)/exams")}
         submissionReason={submissionReason}
         resultData={submitMutation.data}
         isLoading={submitMutation.isPending}
