@@ -313,3 +313,14 @@ export interface Question {
 export interface QuestionsResponse {
   questions: Question[];
 }
+
+export interface ExamQuestion {
+  question_number: number;
+  item_id: number;
+  question_text: string;
+  options: Options;
+}
+
+export interface ExamQuestionsResponse {
+  questions: ExamQuestion[];
+}
