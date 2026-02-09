@@ -1,4 +1,4 @@
-import { QuestionsResponse } from "@/types/api";
+import { ExamQuestionsResponse } from "@/types/api";
 import { getData } from "@/utils/fetcher";
 
 export const fetchExamQuestions = async (
@@ -6,11 +6,11 @@ export const fetchExamQuestions = async (
   instanceId: number,
 ) => {
   try {
-    const res = await getData<QuestionsResponse>(
+    const res = await getData<ExamQuestionsResponse>(
       `/modules/student-exam-questions-unique/${examId}/${instanceId}`,
       {},
     );
-    const data: QuestionsResponse = res.data;
+    const data: ExamQuestionsResponse = res.data;
     return data;
   } catch (error: any) {
     throw new Error(
