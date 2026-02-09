@@ -4,9 +4,11 @@ import {
   LogoutResponse,
   VerifyUser,
 } from "@/types/api";
+
 import { BASE_URL } from "@/utils/constants";
 import { setLogoutCallback } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
+import NetInfo from "@react-native-community/netinfo";
 import axios, { isAxiosError } from "axios";
 import * as SecureStore from "expo-secure-store";
 import {
@@ -34,6 +36,7 @@ interface AuthProps {
   };
   onLogin?: (payload: LoginPayload) => Promise<void>;
   onLogout?: () => Promise<void>;
+  isConnected?: boolean | null;
 }
 
 const AuthContext = createContext<AuthProps>({});
@@ -62,7 +65,9 @@ export const AuthProvider = ({ children }: any) => {
     isLoading: true,
   });
 
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const appState = useRef(AppState.currentState);
+  const hasShownConnectionToast = useRef(false);
 
   const clearAuth = useCallback(async () => {
     await SecureStore.deleteItemAsync("access_token");
@@ -77,6 +82,30 @@ export const AuthProvider = ({ children }: any) => {
       user: null,
       isLoading: false,
     });
+  }, []);
+
+  // Check internet connection
+  const checkConnection = useCallback(async (): Promise<boolean> => {
+    try {
+      const state = await NetInfo.fetch();
+      const connected = state.isConnected ?? false;
+      setIsConnected(connected);
+
+      if (!connected && !hasShownConnectionToast.current) {
+        showToast({
+          type: "error",
+          title: "No Internet Connection",
+          message: "Please check your internet connection and try again.",
+        });
+        hasShownConnectionToast.current = true;
+      }
+
+      return connected;
+    } catch (error) {
+      console.log("Connection check error:", error);
+      setIsConnected(false);
+      return false;
+    }
   }, []);
 
   // Helper function to refresh tokens
@@ -119,6 +148,14 @@ export const AuthProvider = ({ children }: any) => {
   const verifyUser = useCallback(async () => {
     try {
       console.log("Verifying user...");
+
+      // Check internet connection first
+      const hasConnection = await checkConnection();
+      if (!hasConnection) {
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
+        return;
+      }
+
       const access_token = await SecureStore.getItemAsync("access_token");
       const refresh_token = await SecureStore.getItemAsync("refresh_token");
 
@@ -212,32 +249,94 @@ export const AuthProvider = ({ children }: any) => {
       console.log("Verify user error:", error);
       await clearAuth();
     }
-  }, [refreshAccessToken, clearAuth]);
+  }, [refreshAccessToken, clearAuth, checkConnection]);
 
   const handleAppStateChange = useCallback(
-    (nextAppState: AppStateStatus) => {
+    async (nextAppState: AppStateStatus) => {
       // Only verify when transitioning from background/inactive to active
       if (
         appState.current.match(/inactive|background/) &&
-        nextAppState === "active" &&
-        authState.access_token &&
-        authState.refresh_token
+        nextAppState === "active"
       ) {
-        console.log("App became active from background, verifying user...");
-        verifyUser();
+        console.log("App became active from background...");
+
+        // Check connection when app becomes active
+        const hasConnection = await checkConnection();
+
+        if (
+          hasConnection &&
+          authState.access_token &&
+          authState.refresh_token
+        ) {
+          console.log("Verifying user...");
+          verifyUser();
+        }
       }
 
       appState.current = nextAppState;
     },
-    [authState.access_token, authState.refresh_token, verifyUser],
+    [
+      authState.access_token,
+      authState.refresh_token,
+      verifyUser,
+      checkConnection,
+    ],
   );
 
+  // Initial connection check and verify user on mount
   useEffect(() => {
-    // Register logout callback for apiClient
     setLogoutCallback(clearAuth);
 
-    verifyUser();
-  }, [clearAuth, verifyUser]);
+    const initialize = async () => {
+      const hasConnection = await checkConnection();
+      if (hasConnection) {
+        await verifyUser();
+      } else {
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    initialize();
+  }, [clearAuth, verifyUser, checkConnection]);
+
+  // Listen to network state changes
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const wasConnected = isConnected;
+      const nowConnected = state.isConnected ?? false;
+      setIsConnected(nowConnected);
+
+      if (wasConnected === false && nowConnected === true) {
+        // Connection restored
+        showToast({
+          type: "success",
+          title: "Connection Restored",
+          message: "Internet connection is back.",
+        });
+        hasShownConnectionToast.current = false;
+
+        // Re-verify user when connection is restored
+        if (authState.access_token && authState.refresh_token) {
+          verifyUser();
+        }
+      } else if (wasConnected === true && nowConnected === false) {
+        // Connection lost
+        showToast({
+          type: "error",
+          title: "Connection Lost",
+          message: "No internet connection.",
+        });
+        hasShownConnectionToast.current = true;
+      }
+    });
+
+    return () => unsubscribe();
+  }, [
+    isConnected,
+    authState.access_token,
+    authState.refresh_token,
+    verifyUser,
+  ]);
 
   // Listen to app state changes to verify user when app comes to foreground
   useEffect(() => {
@@ -258,6 +357,13 @@ export const AuthProvider = ({ children }: any) => {
         title: "Login Failed",
         message: "Please provide both external ID and password.",
       });
+      return;
+    }
+
+    // Check internet connection before attempting login
+    const hasConnection = await checkConnection();
+    if (!hasConnection) {
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
       return;
     }
 
@@ -330,6 +436,9 @@ export const AuthProvider = ({ children }: any) => {
 
   const logout = async () => {
     try {
+      // Check internet connection before attempting logout
+      const hasConnection = await checkConnection();
+
       const refresh_token = await SecureStore.getItemAsync("refresh_token");
 
       if (!refresh_token) {
@@ -337,30 +446,41 @@ export const AuthProvider = ({ children }: any) => {
         return;
       }
 
-      const res = await axios.post<LogoutResponse>(
-        `${BASE_URL}/auth/logout`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${refresh_token}` },
-        },
-      );
+      // Only attempt API logout if connected
+      if (hasConnection) {
+        const res = await axios.post<LogoutResponse>(
+          `${BASE_URL}/auth/logout`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${refresh_token}` },
+          },
+        );
 
-      const data = res.data;
+        const data = res.data;
 
-      await clearAuth();
+        await clearAuth();
 
-      if (res.status === 200 && "success" in data && data.success) {
+        if (res.status === 200 && "success" in data && data.success) {
+          showToast({
+            type: "success",
+            title: "Logout Successful",
+            message: data.message,
+          });
+        } else {
+          showToast({
+            type: "error",
+            title: "Logout Failed",
+            message:
+              "detail" in data ? data.detail : "An unknown error occurred.",
+          });
+        }
+      } else {
+        // Clear auth locally even without internet
+        await clearAuth();
         showToast({
           type: "success",
-          title: "Logout Successful",
-          message: data.message,
-        });
-      } else {
-        showToast({
-          type: "error",
-          title: "Logout Failed",
-          message:
-            "detail" in data ? data.detail : "An unknown error occurred.",
+          title: "Logged Out",
+          message: "You have been logged out locally.",
         });
       }
     } catch (error: any) {
@@ -393,6 +513,7 @@ export const AuthProvider = ({ children }: any) => {
     onLogin: login,
     onLogout: logout,
     verifyUser,
+    isConnected,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
