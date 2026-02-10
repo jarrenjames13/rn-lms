@@ -259,6 +259,7 @@ export interface StudentExams {
     description: string;
     total_items: number;
     category: string;
+    submission_instruction: string;
     is_taken: boolean;
     score: number | null;
     completed_at: string | null;
@@ -274,6 +275,7 @@ export interface ExamDetails {
   description: string;
   total_items: number;
   category: string;
+  submission_instruction: string;
   is_taken: boolean;
   score: number | null;
   completed_at: string | null;
