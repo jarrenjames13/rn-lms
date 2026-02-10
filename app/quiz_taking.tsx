@@ -1,4 +1,4 @@
-import createQuizAnswersOptions from "@/api/QueryOptions/QuizAnswersOption";
+import createQuizAnswersOptions from "@/api/QueryOptions/quizAnswersOption";
 import createQuizQuestionsOptions from "@/api/QueryOptions/quizQuestionsOptions";
 import QuizSubmissionModal from "@/components/QuizSubmissionModal";
 import { useQuizStore } from "@/store/useQuizStore";
