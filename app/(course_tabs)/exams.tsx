@@ -2,6 +2,7 @@ import createListExamsOptions from "@/api/QueryOptions/listExamsOption";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useExamStore } from "@/store/useExamStore";
 
+import SubmissionModal from "@/components/SubmissionModal";
 import { ExamDetails } from "@/types/api";
 import {
   Entypo,
@@ -15,6 +16,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -28,6 +30,8 @@ export default function Exams() {
   const { setExamId, setInstanceId } = useExamStore();
   const { course_id } = useCourseStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedExamForSubmission, setSelectedExamForSubmission] =
+    useState<ExamDetails | null>(null);
 
   const {
     data: examsData,
@@ -119,6 +123,18 @@ export default function Exams() {
   };
 
   const handlePress = (exam: ExamDetails) => {
+    // Check if this is a submission-type exam
+    if (exam.category.toLowerCase() === "submission") {
+      // Ensure we have an instanceId before opening modal
+      if (!instanceId) {
+        Alert.alert("Error", "Unable to submit exam. Instance ID not found.");
+        return;
+      }
+      setSelectedExamForSubmission(exam);
+      return;
+    }
+
+    // Otherwise, proceed with normal exam taking flow
     setExamId(exam.exam_id);
     if (instanceId !== null) {
       setInstanceId(instanceId);
@@ -129,6 +145,8 @@ export default function Exams() {
   // Render a single exam card
   const renderExamCard = (exam: ExamDetails) => {
     const isPassing = exam.score !== null && exam.score >= 75;
+    const isSubmissionType = exam.category.toLowerCase() === "submission";
+    const isGraded = exam.score !== null; // If score exists, it's been graded
 
     return (
       <View
@@ -139,9 +157,18 @@ export default function Exams() {
         <View className="bg-gray-50 px-5 py-4 border-b border-gray-100">
           <View className="flex-row justify-between items-start">
             <View className="flex-1 pr-4">
-              <Text className="text-lg font-bold text-gray-900 mb-1">
-                {exam.exam_name}
-              </Text>
+              <View className="flex-row items-center mb-1 flex-wrap">
+                <Text className="text-lg font-bold text-gray-900">
+                  {exam.exam_name}
+                </Text>
+                {isSubmissionType && (
+                  <View className="ml-2 bg-purple-100 px-2 py-1 rounded-md">
+                    <Text className="text-[10px] font-bold text-purple-700">
+                      SUBMISSION
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text className="text-sm text-gray-600 leading-5">
                 {exam.description}
               </Text>
@@ -166,15 +193,21 @@ export default function Exams() {
                       style={{ color: isPassing ? "#065F46" : "#991B1B" }}
                       className="text-xs font-bold ml-1"
                     >
-                      COMPLETED
+                      {isSubmissionType
+                        ? isGraded
+                          ? "GRADED"
+                          : "SUBMITTED"
+                        : "COMPLETED"}
                     </Text>
                   </View>
-                  <Text
-                    style={{ color: isPassing ? "#065F46" : "#991B1B" }}
-                    className="text-[10px] font-medium mt-0.5 text-center"
-                  >
-                    {isPassing ? "Passed" : "Failed"}
-                  </Text>
+                  {isGraded && (
+                    <Text
+                      style={{ color: isPassing ? "#065F46" : "#991B1B" }}
+                      className="text-[10px] font-medium mt-0.5 text-center"
+                    >
+                      {isPassing ? "Passed" : "Failed"}
+                    </Text>
+                  )}
                 </View>
               ) : (
                 <View
@@ -183,7 +216,7 @@ export default function Exams() {
                 >
                   <View className="flex-row items-center">
                     <MaterialIcons
-                      name="assignment"
+                      name={isSubmissionType ? "cloud-upload" : "assignment"}
                       size={18}
                       color="#1E40AF"
                     />
@@ -198,7 +231,7 @@ export default function Exams() {
                     style={{ color: "#1E40AF" }}
                     className="text-[10px] font-medium mt-0.5 text-center"
                   >
-                    Not taken
+                    {isSubmissionType ? "Not submitted" : "Not taken"}
                   </Text>
                 </View>
               )}
@@ -208,36 +241,38 @@ export default function Exams() {
 
         {/* Main Content */}
         <View className="p-5">
-          {/* Exam Info Grid */}
-          <View className="flex-row flex-wrap gap-3 mb-4">
-            {/* Total Items */}
-            <View className="flex-1 min-w-[45%] bg-red-50 rounded-xl p-3 border border-red-100">
-              <View className="flex-row items-center mb-1">
-                <MaterialIcons name="assignment" size={16} color="#EF4444" />
-                <Text className="text-xs text-gray-600 ml-1 font-medium">
-                  Questions
+          {/* Exam Info Grid - Only show for non-submission exams */}
+          {!isSubmissionType && (
+            <View className="flex-row flex-wrap gap-3 mb-4">
+              {/* Total Items */}
+              <View className="flex-1 min-w-[45%] bg-red-50 rounded-xl p-3 border border-red-100">
+                <View className="flex-row items-center mb-1">
+                  <MaterialIcons name="assignment" size={16} color="#EF4444" />
+                  <Text className="text-xs text-gray-600 ml-1 font-medium">
+                    Questions
+                  </Text>
+                </View>
+                <Text className="text-xl font-bold text-gray-900">
+                  {exam.total_items}
                 </Text>
               </View>
-              <Text className="text-xl font-bold text-gray-900">
-                {exam.total_items}
-              </Text>
-            </View>
 
-            {/* Duration */}
-            <View className="flex-1 min-w-[45%] bg-purple-50 rounded-xl p-3 border border-purple-100">
-              <View className="flex-row items-center mb-1">
-                <MaterialCommunityIcons
-                  name="clock-outline"
-                  size={16}
-                  color="#8B5CF6"
-                />
-                <Text className="text-xs text-gray-600 ml-1 font-medium">
-                  Duration
-                </Text>
+              {/* Duration */}
+              <View className="flex-1 min-w-[45%] bg-purple-50 rounded-xl p-3 border border-purple-100">
+                <View className="flex-row items-center mb-1">
+                  <MaterialCommunityIcons
+                    name="clock-outline"
+                    size={16}
+                    color="#8B5CF6"
+                  />
+                  <Text className="text-xs text-gray-600 ml-1 font-medium">
+                    Duration
+                  </Text>
+                </View>
+                <Text className="text-xl font-bold text-gray-900">120 min</Text>
               </View>
-              <Text className="text-xl font-bold text-gray-900">120 min</Text>
             </View>
-          </View>
+          )}
 
           {/* Important Notice for Available Exams */}
           {!exam.is_taken && (
@@ -260,7 +295,9 @@ export default function Exams() {
                     ONE ATTEMPT ONLY
                   </Text>
                   <Text className="text-xs text-gray-700 leading-5">
-                    You only have one chance to take this exam. Review all
+                    You only have one chance to{" "}
+                    {isSubmissionType ? "submit" : "take"} this{" "}
+                    {isSubmissionType ? "activity" : "exam"}. Review all
                     materials before starting.
                   </Text>
                 </View>
@@ -268,8 +305,8 @@ export default function Exams() {
             </View>
           )}
 
-          {/* Score Section (if taken) */}
-          {exam.is_taken && (
+          {/* Score Section (if graded) */}
+          {isGraded && (
             <View className="bg-gray-50 rounded-xl p-4 mb-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
@@ -309,7 +346,7 @@ export default function Exams() {
                   <View className="items-end">
                     <View className="bg-white rounded-lg px-3 py-2 border border-gray-200">
                       <Text className="text-[10px] text-gray-500 mb-1 font-medium">
-                        Completed On
+                        {isSubmissionType ? "Submitted On" : "Completed On"}
                       </Text>
                       <Text className="text-xs text-gray-700 font-semibold">
                         {new Date(exam.completed_at).toLocaleDateString(
@@ -337,6 +374,33 @@ export default function Exams() {
             </View>
           )}
 
+          {/* Submitted but not graded message (submission types only) */}
+          {exam.is_taken &&
+            isSubmissionType &&
+            !isGraded &&
+            exam.completed_at && (
+              <View className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
+                <View className="flex-row items-center">
+                  <MaterialIcons name="schedule" size={20} color="#2563EB" />
+                  <View className="flex-1 ml-3">
+                    <Text className="text-sm font-bold text-blue-900 mb-1">
+                      Awaiting Grading
+                    </Text>
+                    <Text className="text-xs text-blue-700">
+                      Submitted on{" "}
+                      {new Date(exam.completed_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
           {/* Action Button (if not taken) */}
           {!exam.is_taken && (
             <View>
@@ -345,10 +409,29 @@ export default function Exams() {
                 onPress={() => handlePress(exam)}
               >
                 <View className="flex-row items-center">
-                  <MaterialIcons name="play-arrow" size={24} color="white" />
-                  <Text className="text-white font-bold text-base ml-1">
-                    Start Exam
-                  </Text>
+                  {isSubmissionType ? (
+                    <>
+                      <MaterialIcons
+                        name="cloud-upload"
+                        size={24}
+                        color="white"
+                      />
+                      <Text className="text-white font-bold text-base ml-1">
+                        Submit
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <MaterialIcons
+                        name="play-arrow"
+                        size={24}
+                        color="white"
+                      />
+                      <Text className="text-white font-bold text-base ml-1">
+                        Start Exam
+                      </Text>
+                    </>
+                  )}
                 </View>
               </Pressable>
             </View>
@@ -360,7 +443,11 @@ export default function Exams() {
               <View className="flex-row items-center justify-center">
                 <Ionicons name="lock-closed" size={16} color="#6B7280" />
                 <Text className="text-center text-gray-600 text-sm font-medium ml-2">
-                  Exam completed - No retakes allowed
+                  {isSubmissionType
+                    ? isGraded
+                      ? "Graded - No resubmission allowed"
+                      : "Submitted - Awaiting grading"
+                    : "Exam completed - No retakes allowed"}
                 </Text>
               </View>
             </View>
@@ -575,6 +662,16 @@ export default function Exams() {
         {/* Bottom Spacing */}
         <View className="h-6" />
       </ScrollView>
+
+      {/* Submission Modal */}
+      {selectedExamForSubmission && instanceId && (
+        <SubmissionModal
+          visible={!!selectedExamForSubmission}
+          onClose={() => setSelectedExamForSubmission(null)}
+          exam={selectedExamForSubmission}
+          instanceId={instanceId}
+        />
+      )}
     </SafeAreaView>
   );
 }
