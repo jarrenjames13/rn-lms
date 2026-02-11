@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import createEnrollmentsOptions from "../../api/QueryOptions/enrollmentsOptions";
 
 export default function Index() {
@@ -249,110 +250,117 @@ export default function Index() {
   );
 
   return (
-    <ScrollView
-      className="flex-1 bg-gray-50"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={["#EF4444"]}
-        />
-      }
-    >
-      {/* Header Section */}
-      <View className="bg-white pt-14 pb-8 px-6 border-b border-gray-100">
-        <View className="flex-row items-center justify-between mb-2">
-          <View>
-            <Text className="text-sm text-gray-500 mb-1">Welcome back,</Text>
-            <Text className="text-2xl font-bold text-gray-900">
-              {authState?.user?.full_name || "Student"}!
-            </Text>
-          </View>
-          <View className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-purple-600 items-center justify-center">
-            <Text className="text-white text-lg font-bold">
-              {authState?.user?.full_name?.charAt(0) || "S"}
-            </Text>
-          </View>
-        </View>
-
-        {/* Stats Cards */}
-        <View className="flex-row mt-6 space-x-3">
-          <View className="flex-1 bg-lavender-50 rounded-xl p-4">
-            <Text className="text-2xl font-bold text-purple-700">
-              {activeEnrollments.length}
-            </Text>
-            <Text className="text-xs text-purple-600 mt-1">Active Courses</Text>
-          </View>
-          <View className="flex-1 bg-gray-50 rounded-xl p-4">
-            <Text className="text-2xl font-bold text-gray-800">
-              {completedEnrollments.length}
-            </Text>
-            <Text className="text-xs text-gray-600 mt-1">Completed</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Main Content */}
-      <View className="px-5 pb-6">
-        {/* Active Courses Section */}
-        {activeEnrollments.length > 0 && (
-          <View className="mt-6">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-gray-900">
-                My Courses
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <ScrollView
+        className="flex-1 bg-gray-50"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#EF4444"]}
+          />
+        }
+      >
+        {/* Header Section */}
+        <View className="bg-white pt-6 pb-8 px-6 border-b border-gray-100">
+          <View className="flex-row items-center justify-between mb-2">
+            <View>
+              <Text className="text-sm text-gray-500 mb-1">Welcome back,</Text>
+              <Text className="text-2xl font-bold text-gray-900">
+                {authState?.user?.full_name || "Student"}!
               </Text>
-              <View className="bg-red-500 px-3 py-1 rounded-full">
-                <Text className="text-white text-xs font-semibold">
-                  {activeEnrollments.length} Active
+            </View>
+            <View className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-purple-600 items-center justify-center">
+              <Text className="text-white text-lg font-bold">
+                {authState?.user?.full_name?.charAt(0) || "S"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Stats Cards */}
+          <View className="flex-row mt-6 space-x-3">
+            <View className="flex-1 bg-lavender-50 rounded-xl p-4">
+              <Text className="text-2xl font-bold text-purple-700">
+                {activeEnrollments.length}
+              </Text>
+              <Text className="text-xs text-purple-600 mt-1">
+                Active Courses
+              </Text>
+            </View>
+            <View className="flex-1 bg-gray-50 rounded-xl p-4">
+              <Text className="text-2xl font-bold text-gray-800">
+                {completedEnrollments.length}
+              </Text>
+              <Text className="text-xs text-gray-600 mt-1">Completed</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Main Content */}
+        <View className="px-5 pb-6">
+          {/* Active Courses Section */}
+          {activeEnrollments.length > 0 && (
+            <View className="mt-6">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-xl font-bold text-gray-900">
+                  My Courses
                 </Text>
+                <View className="bg-red-500 px-3 py-1 rounded-full">
+                  <Text className="text-white text-xs font-semibold">
+                    {activeEnrollments.length} Active
+                  </Text>
+                </View>
               </View>
-            </View>
-            {activeEnrollments.map((enrollment) => (
-              <CourseCard
-                key={enrollment.enrollment_id}
-                enrollment={enrollment}
-                isCompleted={false}
-              />
-            ))}
-          </View>
-        )}
-
-        {activeEnrollments.length === 0 && (
-          <View className="mt-6">
-            <Text className="text-xl font-bold text-gray-900 mb-4">
-              My Courses
-            </Text>
-            <EmptyState message="No active courses at the moment. Check back soon for new enrollments!" />
-          </View>
-        )}
-
-        {/* Completed Courses Section */}
-        {(completedEnrollments.length > 0 || activeEnrollments.length > 0) && (
-          <View className="mt-8">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-gray-900">Completed</Text>
-              {completedEnrollments.length > 0 && (
-                <Text className="text-sm text-gray-500">
-                  {completedEnrollments.length} course
-                  {completedEnrollments.length !== 1 ? "s" : ""}
-                </Text>
-              )}
-            </View>
-            {completedEnrollments.length === 0 ? (
-              <EmptyState message="Complete your first course to see it here!" />
-            ) : (
-              completedEnrollments.map((enrollment) => (
+              {activeEnrollments.map((enrollment) => (
                 <CourseCard
                   key={enrollment.enrollment_id}
                   enrollment={enrollment}
-                  isCompleted={true}
+                  isCompleted={false}
                 />
-              ))
-            )}
-          </View>
-        )}
-      </View>
-    </ScrollView>
+              ))}
+            </View>
+          )}
+
+          {activeEnrollments.length === 0 && (
+            <View className="mt-6">
+              <Text className="text-xl font-bold text-gray-900 mb-4">
+                My Courses
+              </Text>
+              <EmptyState message="No active courses at the moment. Check back soon for new enrollments!" />
+            </View>
+          )}
+
+          {/* Completed Courses Section */}
+          {(completedEnrollments.length > 0 ||
+            activeEnrollments.length > 0) && (
+            <View className="mt-8">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-xl font-bold text-gray-900">
+                  Completed
+                </Text>
+                {completedEnrollments.length > 0 && (
+                  <Text className="text-sm text-gray-500">
+                    {completedEnrollments.length} course
+                    {completedEnrollments.length !== 1 ? "s" : ""}
+                  </Text>
+                )}
+              </View>
+              {completedEnrollments.length === 0 ? (
+                <EmptyState message="Complete your first course to see it here!" />
+              ) : (
+                completedEnrollments.map((enrollment) => (
+                  <CourseCard
+                    key={enrollment.enrollment_id}
+                    enrollment={enrollment}
+                    isCompleted={true}
+                  />
+                ))
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
