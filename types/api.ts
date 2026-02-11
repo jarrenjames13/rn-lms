@@ -326,3 +326,59 @@ export interface ExamQuestion {
 export interface ExamQuestionsResponse {
   questions: ExamQuestion[];
 }
+
+export interface ActivityGrade {
+  activity_title: string;
+  module_position: number;
+  activity_position: number;
+  grade?: number;
+  status: string;
+  submitted_at?: string;
+  feedback?: string;
+  activity_type: string;
+}
+
+export interface QuizGrade {
+  exam_name: string;
+  exam_period: string;
+  score: number;
+  total_questions: number;
+  correct_answers: number;
+  completed_at: string | null;
+}
+
+export interface ExamGrade {
+  exam_name: string;
+  exam_period: string;
+  score: number;
+  total_questions: number;
+  correct_answers: number;
+  completed_at: string | null;
+  submission_reason?: string;
+}
+
+export interface GradeSummary {
+  count: number;
+  graded_count: number;
+  average: number;
+  highest: number;
+  lowest: number;
+}
+
+export interface GradesSummary {
+  activities: GradeSummary;
+  quizzes: GradeSummary;
+  exams: GradeSummary;
+}
+export interface CourseInfo {
+  course_code: string;
+  course_title: string;
+}
+export interface ComprehensiveGradesResponse {
+  course_info: CourseInfo;
+  activity_grades: ActivityGrade[];
+  quiz_grades: QuizGrade[];
+  exam_grades: ExamGrade[];
+  summary: GradesSummary;
+  overall_grade: number;
+}
