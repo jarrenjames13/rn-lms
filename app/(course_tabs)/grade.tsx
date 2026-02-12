@@ -241,14 +241,15 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
                   {cat.label}
                 </Text>
                 <Text className="text-xs text-gray-500">
-                  {cat.summary.graded_count}/{cat.summary.count} graded
+                  {cat.label === "Activities"
+                    ? `${cat.summary.graded_count}/${cat.summary.count} graded`
+                    : `${cat.summary.count} ${cat.label.toLowerCase()} completed`}
                 </Text>
               </View>
               <Text className={`text-2xl font-black ${cat.scoreClass}`}>
                 {cat.summary.average.toFixed(1)}%
               </Text>
             </View>
-
             <ProgressBar
               value={cat.summary.average}
               colorClass={cat.barClass}
