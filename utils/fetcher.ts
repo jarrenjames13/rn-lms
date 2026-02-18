@@ -54,7 +54,7 @@ const refreshToken = async (): Promise<string> => {
         headers: {
           Authorization: `Bearer ${refreshTokenValue}`,
         },
-      }
+      },
     );
 
     const newAccessToken = response.data.access_token;
@@ -98,7 +98,7 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor to handle 401/422 errors (token expiration)
@@ -154,27 +154,27 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 // Helper to build URL with query parameters
 const buildUrlWithParams = (
   url: string,
-  params: Record<string, string | number | boolean> = {}
+  params: Record<string, string | number | boolean> = {},
 ): string => {
   const queryString = new URLSearchParams(
-    Object.entries(params).map(([key, value]) => [key, String(value)])
+    Object.entries(params).map(([key, value]) => [key, String(value)]),
   ).toString();
   return queryString ? `${url}?${queryString}` : url;
 };
 
 // Unified request function
 const request = async <T = any>(
-  method: "get" | "post" | "patch" | "delete",
+  method: "get" | "post" | "patch" | "delete" | "put",
   url: string,
   data?: any,
   params: Record<string, string | number | boolean> = {},
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
 ) => {
   try {
     const fullUrl = buildUrlWithParams(url, params);
@@ -200,23 +200,29 @@ const request = async <T = any>(
 export const getData = <T = any>(
   url: string,
   params: Record<string, string | number | boolean> = {},
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
 ) => request<T>("get", url, undefined, params, headers);
 
 export const postData = <T = any>(
   url: string,
   data: any,
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
 ) => request<T>("post", url, data, {}, headers);
 
 export const patchData = <T = any>(
   url: string,
-  data: any,
-  headers: Record<string, string> = {}
+  data?: any,
+  headers: Record<string, string> = {},
 ) => request<T>("patch", url, data, {}, headers);
+
+export const putData = <T = any>(
+  url: string,
+  data?: any,
+  headers: Record<string, string> = {},
+) => request<T>("put", url, data, {}, headers);
 
 export const deleteData = <T = any>(
   url: string,
   params: Record<string, string | number | boolean> = {},
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
 ) => request<T>("delete", url, undefined, params, headers);

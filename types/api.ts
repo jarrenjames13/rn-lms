@@ -382,3 +382,33 @@ export interface ComprehensiveGradesResponse {
   summary: GradesSummary;
   overall_grade: number;
 }
+
+export interface Replies {
+  success: boolean;
+  message: string;
+  parent_id: number;
+  page: number;
+  per_page: number;
+  total: number;
+  replies: {
+    id: number;
+    comment: string;
+    user_id: number;
+    full_name: string;
+    status: string;
+    created_at: string;
+    updated_at?: string;
+    updated_by?: number;
+    mentioned_user_id?: number;
+    mentioned_user_name?: string;
+    file_path?: string;
+    like: number;
+    love: number;
+    haha: number;
+    sad: number;
+    wow: number;
+    dislike: number;
+    total_reacts: number;
+    user_reaction?: string;
+  }[];
+}
