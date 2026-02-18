@@ -1,11 +1,11 @@
-import createExamAnswersOptions from "@/api/QueryOptions/examAnswersOptions";
+import { useExamAnswers } from "@/api/QueryOptions/examAnswersMutation";
 import createExamQuestionsOptions from "@/api/QueryOptions/examQuestionsOptions";
 import ExamSubmissionModal from "@/components/ExamSubmissionModal";
 import { useExamStore } from "@/store/useExamStore";
 import type { ExamQuestion, OptionKey } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -30,7 +30,6 @@ export default function ExamTaking() {
   const appState = useRef(AppState.currentState);
   const hasSubmittedRef = useRef(false);
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const {
     exam_id,
@@ -56,9 +55,10 @@ export default function ExamTaking() {
     error,
   } = useQuery(createExamQuestionsOptions(exam_id, instance_id));
 
-  const submitMutation = useMutation({
-    ...createExamAnswersOptions(queryClient),
-    onSuccess: () => setShowResultModal(true),
+  const submitMutation = useExamAnswers({
+    onSuccess: () => {
+      setShowResultModal(true);
+    },
     onError: (error: Error) => {
       Alert.alert("Submission Failed", error.message);
       hasSubmittedRef.current = false;

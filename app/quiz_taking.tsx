@@ -1,11 +1,14 @@
-import createQuizAnswersOptions from "@/api/QueryOptions/quizAnswersOption";
+import {
+  QuizSubmitResponse,
+  useQuizAnswers,
+} from "@/api/QueryOptions/quizAnswersMutation";
 import createQuizQuestionsOptions from "@/api/QueryOptions/quizQuestionsOptions";
 import QuizSubmissionModal from "@/components/QuizSubmissionModal";
 import { useQuizStore } from "@/store/useQuizStore";
 import type { OptionKey, Question } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -30,7 +33,6 @@ export default function QuizTaking() {
   const appState = useRef(AppState.currentState);
   const hasSubmittedRef = useRef(false);
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const {
     quiz_id,
@@ -58,25 +60,11 @@ export default function QuizTaking() {
   } = useQuery(createQuizQuestionsOptions(quiz_id, instance_id));
 
   // Submission mutation
-  const submitMutation = useMutation({
-    ...createQuizAnswersOptions(queryClient),
-    onSuccess: (data) => {
-      console.log("Quiz submitted successfully:", data);
+
+  const submitMutation = useQuizAnswers({
+    onSuccess: (data: QuizSubmitResponse) => {
+      console.log("quiz submitted Successfully:", data);
       setShowResultModal(true);
-    },
-    onError: (error: Error) => {
-      Alert.alert(
-        "Submission Failed",
-        error.message || "Failed to submit quiz. Please try again.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              hasSubmittedRef.current = false;
-            },
-          },
-        ],
-      );
     },
   });
 

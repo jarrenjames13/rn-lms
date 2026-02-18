@@ -1,5 +1,7 @@
+import createCommentsOptions from "@/api/QueryOptions/commentsOptions";
 import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
+import CommentItem from "@/components/commentItem";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useModuleStore } from "@/store/useModuleStore";
 import {
@@ -8,10 +10,12 @@ import {
   CourseProgress,
   CourseQuickStats,
 } from "@/types/api";
+import { getAccessToken } from "@/utils/accessToken";
 import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { LegendList } from "@legendapp/list";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -27,8 +31,29 @@ import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOpti
 export default function Overview() {
   const [comment, setComment] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
-  const { course_id } = useCourseStore();
+  const { course_id, instance_id } = useCourseStore();
   const { setModuleData } = useModuleStore();
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const loadToken = async () => {
+      const token = await getAccessToken();
+
+      console.log("Access token loaded:", token ? "✓" : "✗");
+    };
+
+    loadToken();
+  }, []);
+
+  const {
+    data: commentsData,
+    isLoading: loadingComments,
+    error: commentsError,
+    refetch: refetchComments,
+  } = useQuery({
+    ...createCommentsOptions(instance_id!, undefined, page, 5),
+    enabled: !!instance_id,
+  });
 
   const {
     data: courseDetails,
@@ -89,13 +114,18 @@ export default function Overview() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refetch(), refetchStats(), refetchProgress()]);
+      await Promise.all([
+        refetch(),
+        refetchStats(),
+        refetchProgress(),
+        refetchComments(),
+      ]);
     } catch (error) {
       console.log("Refresh error:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [refetch, refetchStats, refetchProgress]);
+  }, [refetch, refetchStats, refetchProgress, refetchComments]);
 
   if (loadingDetails || loadingStats || loadingProgress) {
     return (
@@ -161,6 +191,12 @@ export default function Overview() {
     },
   };
 
+  // Helper function to get top 3 reactions
+
+  const getTotalPages = () => {
+    if (!commentsData) return 1;
+    return Math.ceil(commentsData.total / commentsData.per_page);
+  };
   // Progress Ring Component
   const ProgressRing = ({ percentage }: { percentage: number }) => (
     <View className="relative items-center justify-center">
@@ -471,11 +507,142 @@ export default function Overview() {
               </View>
             </View>
 
-            {/* Comments List Placeholder */}
-            <View className="mt-6">
-              <Text className="text-sm text-gray-500 text-center py-8">
-                No comments yet. Be the first to share your thoughts!
-              </Text>
+            {/* Comments List */}
+            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+              <View className="flex-row items-center mb-4">
+                <Ionicons name="chatbubbles" size={24} color="#EF4444" />
+                <Text className="font-bold text-lg text-gray-800 ml-2">
+                  Discussion
+                </Text>
+                {commentsData && (
+                  <View className="ml-auto bg-red-50 rounded-full px-3 py-0.5">
+                    <Text className="text-xs text-red-500 font-semibold">
+                      {commentsData.total} comments
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Compose box */}
+              <View className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
+                <TextInput
+                  placeholder="Share your thoughts about this course..."
+                  placeholderTextColor="#9CA3AF"
+                  value={comment}
+                  onChangeText={setComment}
+                  multiline
+                  numberOfLines={4}
+                  className="text-gray-800 text-base min-h-[100px]"
+                  style={{ textAlignVertical: "top" }}
+                />
+
+                <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200">
+                  <Pressable className="flex-row items-center bg-gray-100 active:bg-gray-200 rounded-lg py-2 px-4">
+                    <AntDesign name="picture" size={18} color="#374151" />
+                    <Text className="text-gray-700 ml-2 text-sm font-medium">
+                      Attach Image
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    className="flex-row items-center bg-red-500 active:bg-red-600 rounded-lg py-2 px-6"
+                    disabled={!comment.trim()}
+                    style={{ opacity: comment.trim() ? 1 : 0.5 }}
+                    onPress={() => {
+                      // TODO: wire up post comment mutation
+                    }}
+                  >
+                    <Text className="text-white font-semibold mr-2">Post</Text>
+                    <AntDesign name="send" size={16} color="white" />
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Comments List via LegendList */}
+              {loadingComments ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : commentsError ? (
+                <Text className="text-red-500 text-center">
+                  Failed to load comments
+                </Text>
+              ) : commentsData?.comments.length === 0 ? (
+                <View className="py-10 items-center">
+                  <Ionicons
+                    name="chatbubble-ellipses-outline"
+                    size={40}
+                    color="#D1D5DB"
+                  />
+                  <Text className="text-sm text-gray-400 mt-3 text-center">
+                    No comments yet.{"\n"}Be the first to share your thoughts!
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <LegendList
+                    data={commentsData?.comments ?? []}
+                    keyExtractor={(item) => String(item.id)}
+                    renderItem={({ item }) => (
+                      <CommentItem
+                        item={item}
+                        // currentUserId={yourCurrentUserId} // pass logged-in user id for owner checks
+                        onEdit={(comment) => {
+                          // TODO: open edit modal / pre-fill compose box
+                          console.log("Edit comment", comment.id);
+                        }}
+                        onDelete={(commentId) => {
+                          // TODO: call delete mutation
+                          console.log("Delete comment", commentId);
+                        }}
+                        onReact={(commentId, reaction) => {
+                          // TODO: call react mutation
+                          console.log(
+                            "React",
+                            reaction,
+                            "on comment",
+                            commentId,
+                          );
+                        }}
+                        onReply={(comment) => {
+                          // TODO: pre-fill compose box with @mention
+                          console.log("Reply to comment", comment.id);
+                        }}
+                      />
+                    )}
+                    estimatedItemSize={150}
+                    // LegendList-specific: recycles items for performance
+                    recycleItems
+                    // Disable built-in scroll since we're inside a ScrollView
+                    scrollEnabled={false}
+                  />
+
+                  {/* Pagination */}
+                  {getTotalPages() > 1 && (
+                    <View className="flex-row justify-center items-center mt-4 gap-2">
+                      <Pressable
+                        onPress={() => setPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={page === 1}
+                        className="bg-gray-100 py-2 px-4 rounded-lg"
+                        style={{ opacity: page === 1 ? 0.5 : 1 }}
+                      >
+                        <Text className="text-gray-700">Previous</Text>
+                      </Pressable>
+                      <Text className="text-sm text-gray-500 px-2">
+                        {page} / {getTotalPages()}
+                      </Text>
+                      <Pressable
+                        onPress={() =>
+                          setPage((prev) => Math.min(prev + 1, getTotalPages()))
+                        }
+                        disabled={page === getTotalPages()}
+                        style={{ opacity: page === getTotalPages() ? 0.5 : 1 }}
+                        className="bg-gray-100 py-2 px-4 rounded-lg"
+                      >
+                        <Text className="text-gray-700">Next</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </>
+              )}
             </View>
           </View>
         </View>

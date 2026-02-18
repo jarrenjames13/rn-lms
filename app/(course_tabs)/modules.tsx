@@ -1,6 +1,6 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
 import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
-import { createTrackSectionOptions } from "@/api/QueryOptions/trackSectionOption";
+import { useTrackSection } from "@/api/QueryOptions/trackSectionMutation";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
 import ModuleProgressBar from "@/components/ModuleProgressBar";
 import { useModuleStore } from "@/store/useModuleStore";
@@ -18,7 +18,7 @@ import {
   renderHTMLContent,
 } from "@/utils/RenderHTML";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import React, { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -86,16 +86,15 @@ export default function Modules() {
     });
   }, [moduleData, activitiesQueries, progressQueries]);
 
-  const trackSectionMutation = useMutation(
-    createTrackSectionOptions(queryClient),
-  );
+  const { mutate, isPending } = useTrackSection();
 
   const toggleSection = (sectionId: number) => {
     const isOpening = openSectionId !== sectionId;
     setOpenSectionId(isOpening ? sectionId : null);
 
-    if (isOpening && sectionRefs.current[sectionId]) {
-      trackSectionMutation.mutate({ section_id: sectionId });
+    if (isOpening && sectionRefs.current[sectionId] && !isPending) {
+      mutate({ section_id: sectionId });
+
       setTimeout(() => {
         sectionRefs.current[sectionId]?.measureLayout(
           scrollViewRef.current as any,
