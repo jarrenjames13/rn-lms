@@ -1,4 +1,4 @@
-import type { QuizSubmitResponse } from "@/api/QueryOptions/quizAnswersOption";
+import type { QuizSubmitResponse } from "@/api/QueryOptions/quizAnswersMutation";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";

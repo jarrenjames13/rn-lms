@@ -1,4 +1,4 @@
-import { ExamSubmitResponse } from "@/api/QueryOptions/examAnswersOptions";
+import { ExamSubmitResponse } from "@/api/QueryOptions/examAnswersMutation";
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";

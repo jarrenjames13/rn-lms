@@ -1,8 +1,7 @@
 import type { SubmitExamFilesParams } from "@/api/QueryFunctions/postSubmissionFile";
-import { createSubmissionFileOptions } from "@/api/QueryOptions/submissionFileOptions";
+import { useSubmissionFile } from "@/api/QueryOptions/submissionFileMutation";
 import { ExamDetails } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
 import React, { useState } from "react";
 import {
@@ -36,12 +35,9 @@ export default function SubmissionModal({
   instanceId,
 }: SubmissionModalProps) {
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
-  const queryClient = useQueryClient();
 
   // Use the existing mutation options
-  const submitExamMutation = useMutation(
-    createSubmissionFileOptions(queryClient),
-  );
+  const { mutate, isPending } = useSubmissionFile();
 
   const handlePickDocuments = async () => {
     try {
@@ -116,7 +112,7 @@ export default function SubmissionModal({
               files: selectedFiles,
             };
 
-            submitExamMutation.mutate(params, {
+            mutate(params, {
               onSuccess: (data) => {
                 Alert.alert(
                   "Success",
@@ -197,7 +193,7 @@ export default function SubmissionModal({
               <Pressable
                 onPress={onClose}
                 className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center"
-                disabled={submitExamMutation.isPending}
+                disabled={isPending}
               >
                 <Ionicons name="close" size={24} color="white" />
               </Pressable>
@@ -271,9 +267,7 @@ export default function SubmissionModal({
                 {/* Upload Button */}
                 <Pressable
                   onPress={handlePickDocuments}
-                  disabled={
-                    selectedFiles.length >= 10 || submitExamMutation.isPending
-                  }
+                  disabled={selectedFiles.length >= 10 || isPending}
                   className={`border-2 border-dashed rounded-2xl p-8 items-center ${
                     selectedFiles.length >= 10
                       ? "border-gray-300 bg-gray-50"
@@ -331,7 +325,7 @@ export default function SubmissionModal({
                         </View>
                         <Pressable
                           onPress={() => handleRemoveFile(index)}
-                          disabled={submitExamMutation.isPending}
+                          disabled={isPending}
                           className="w-8 h-8 bg-red-50 rounded-lg items-center justify-center active:bg-red-100"
                         >
                           <Ionicons name="trash" size={18} color="#EF4444" />
@@ -348,16 +342,14 @@ export default function SubmissionModal({
           <View className="p-6 bg-gray-50 border-t border-gray-200">
             <Pressable
               onPress={handleSubmit}
-              disabled={
-                selectedFiles.length === 0 || submitExamMutation.isPending
-              }
+              disabled={selectedFiles.length === 0 || isPending}
               className={`py-4 rounded-xl items-center ${
-                selectedFiles.length === 0 || submitExamMutation.isPending
+                selectedFiles.length === 0 || isPending
                   ? "bg-gray-300"
                   : "bg-red-500 active:bg-red-600"
               }`}
             >
-              {submitExamMutation.isPending ? (
+              {isPending ? (
                 <View className="flex-row items-center">
                   <ActivityIndicator size="small" color="white" />
                   <Text className="text-white font-bold text-base ml-2">
@@ -376,7 +368,7 @@ export default function SubmissionModal({
 
             <Pressable
               onPress={onClose}
-              disabled={submitExamMutation.isPending}
+              disabled={isPending}
               className="mt-3 py-3 items-center"
             >
               <Text className="text-gray-600 font-semibold">Cancel</Text>
