@@ -2,6 +2,7 @@ import createCommentsOptions from "@/api/QueryOptions/commentsOptions";
 import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
 import CommentItem from "@/components/commentItem";
+import { useAuth } from "@/context/authContext";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useModuleStore } from "@/store/useModuleStore";
 import {
@@ -34,6 +35,9 @@ export default function Overview() {
   const { course_id, instance_id } = useCourseStore();
   const { setModuleData } = useModuleStore();
   const [page, setPage] = useState(1);
+  const { authState } = useAuth();
+
+  const user_id = authState?.user?.user_id;
 
   useEffect(() => {
     const loadToken = async () => {
@@ -523,41 +527,6 @@ export default function Overview() {
                 )}
               </View>
 
-              {/* Compose box */}
-              <View className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
-                <TextInput
-                  placeholder="Share your thoughts about this course..."
-                  placeholderTextColor="#9CA3AF"
-                  value={comment}
-                  onChangeText={setComment}
-                  multiline
-                  numberOfLines={4}
-                  className="text-gray-800 text-base min-h-[100px]"
-                  style={{ textAlignVertical: "top" }}
-                />
-
-                <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200">
-                  <Pressable className="flex-row items-center bg-gray-100 active:bg-gray-200 rounded-lg py-2 px-4">
-                    <AntDesign name="picture" size={18} color="#374151" />
-                    <Text className="text-gray-700 ml-2 text-sm font-medium">
-                      Attach Image
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    className="flex-row items-center bg-red-500 active:bg-red-600 rounded-lg py-2 px-6"
-                    disabled={!comment.trim()}
-                    style={{ opacity: comment.trim() ? 1 : 0.5 }}
-                    onPress={() => {
-                      // TODO: wire up post comment mutation
-                    }}
-                  >
-                    <Text className="text-white font-semibold mr-2">Post</Text>
-                    <AntDesign name="send" size={16} color="white" />
-                  </Pressable>
-                </View>
-              </View>
-
               {/* Comments List via LegendList */}
               {loadingComments ? (
                 <ActivityIndicator size="small" color="#EF4444" />
@@ -584,7 +553,7 @@ export default function Overview() {
                     renderItem={({ item }) => (
                       <CommentItem
                         item={item}
-                        // currentUserId={yourCurrentUserId} // pass logged-in user id for owner checks
+                        currentUserId={user_id}
                         onEdit={(comment) => {
                           // TODO: open edit modal / pre-fill compose box
                           console.log("Edit comment", comment.id);
