@@ -12,6 +12,16 @@ export interface commentVariables {
   instance_id: number;
 }
 
+export type CommentResponse = {
+  success: boolean;
+  message: string;
+  comment_id: number;
+  parent_id: number | null;
+  redirected: boolean;
+  original_parent_id: number | null;
+  mentioned_user_id: number | null;
+};
+
 export const postComment = async ({
   formData,
   instance_id,
@@ -21,7 +31,9 @@ export const postComment = async ({
       `/comment-section/${instance_id}`,
       formData,
     );
-    return response.data;
+    const data: CommentResponse = response.data;
+
+    return data;
   } catch (error: any) {
     throw new Error(
       error?.response?.data?.detail ||
