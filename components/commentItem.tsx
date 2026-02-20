@@ -210,9 +210,9 @@ function ReplyItem({
             uri: imageUrl,
             headers: { Authorization: `Bearer ${accessToken}` },
           }}
-          style={{ width: "100%", height: 140 }}
+          style={{ width: 140, height: 140 }}
           className="rounded-xl mt-2"
-          contentFit="cover"
+          contentFit="contain"
         />
       )}
 
@@ -364,7 +364,7 @@ export default function CommentItem({
             uri: imageUrl,
             headers: { Authorization: `Bearer ${accessToken}` },
           }}
-          style={{ width: "100%", height: 192 }}
+          style={{ width: 140, height: 192 }}
           className="rounded-xl mt-3"
           contentFit="cover"
         />
