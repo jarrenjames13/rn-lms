@@ -1,3 +1,4 @@
+import { usePostComment } from "@/api/QueryOptions/commentMutation";
 import createCommentsOptions from "@/api/QueryOptions/commentsOptions";
 import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
@@ -15,6 +16,8 @@ import { getAccessToken } from "@/utils/accessToken";
 import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
 import { useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -28,7 +31,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
-
 export default function Overview() {
   const [comment, setComment] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
@@ -36,9 +38,32 @@ export default function Overview() {
   const { setModuleData } = useModuleStore();
   const [page, setPage] = useState(1);
   const { authState } = useAuth();
-
+  const { mutate: postComment, isPending: postingComment } = usePostComment();
   const user_id = authState?.user?.user_id;
+  const [selectedImage, setSelectedImage] = useState<{
+    uri: string;
+    name: string;
+    type: string;
+  } | null>(null);
 
+  //image picker handler
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: false,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const asset = result.assets[0];
+      setSelectedImage({
+        uri: asset.uri,
+        name: asset.fileName ?? `image_${Date.now()}.jpg`,
+        type: asset.mimeType ?? "image/jpeg",
+      });
+    }
+  };
   useEffect(() => {
     const loadToken = async () => {
       const token = await getAccessToken();
@@ -288,6 +313,32 @@ export default function Overview() {
     </View>
   );
 
+  const handlePostComment = () => {
+    //don't post without image or comment text
+    if (!comment.trim() && !selectedImage) return;
+    if (!instance_id) return;
+
+    postComment(
+      {
+        formData: {
+          comment: comment.trim() || "",
+          image: selectedImage || undefined,
+        },
+        instance_id,
+      },
+      {
+        onSuccess: () => {
+          setComment("");
+          setSelectedImage(null);
+          refetchComments();
+        },
+        onError: (error) => {
+          console.log("Failed to post comment:", error);
+        },
+      },
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView
@@ -492,21 +543,58 @@ export default function Overview() {
                 style={{ textAlignVertical: "top" }}
               />
 
+              {/* Image preview with remove button */}
+              {selectedImage && (
+                <View className="mt-3 relative">
+                  <Image
+                    source={{ uri: selectedImage.uri }}
+                    style={{ width: 140, height: 140 }}
+                    className="rounded-xl"
+                    contentFit="contain"
+                  />
+                  <Pressable
+                    onPress={() => setSelectedImage(null)}
+                    className="absolute top-2 right-2 bg-black/50 rounded-full w-7 h-7 items-center justify-center"
+                  >
+                    <Ionicons name="close" size={16} color="white" />
+                  </Pressable>
+                </View>
+              )}
+
               <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200">
-                <Pressable className="flex-row items-center bg-gray-100 active:bg-gray-200 rounded-lg py-2 px-4">
+                <Pressable
+                  onPress={handlePickImage} // ← wired up now
+                  className="flex-row items-center bg-gray-100 active:bg-gray-200 rounded-lg py-2 px-4"
+                >
                   <AntDesign name="picture" size={18} color="#374151" />
                   <Text className="text-gray-700 ml-2 text-sm font-medium">
-                    Attach Image
+                    {selectedImage ? "Change Image" : "Attach Image"}
                   </Text>
                 </Pressable>
 
                 <Pressable
+                  onPress={handlePostComment} // ← wired up now
                   className="flex-row items-center bg-red-500 active:bg-red-600 rounded-lg py-2 px-6"
-                  disabled={!comment.trim()}
-                  style={{ opacity: comment.trim() ? 1 : 0.5 }}
+                  disabled={
+                    (!comment.trim() && !selectedImage) || postingComment
+                  }
+                  style={{
+                    opacity:
+                      (comment.trim() || selectedImage) && !postingComment
+                        ? 1
+                        : 0.5,
+                  }}
                 >
-                  <Text className="text-white font-semibold mr-2">Post</Text>
-                  <AntDesign name="send" size={16} color="white" />
+                  {postingComment ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Text className="text-white font-semibold mr-2">
+                        Post
+                      </Text>
+                      <AntDesign name="send" size={16} color="white" />
+                    </>
+                  )}
                 </Pressable>
               </View>
             </View>
