@@ -1,18 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postComment } from "../QueryFunctions/postComment";
+import { updateComment } from "../QueryFunctions/updateComment";
 
-export const useComment = () => {
+export const useUpdateComment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: postComment,
+    mutationFn: updateComment,
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["comments"],
       });
     },
     onError: (error: any) => {
-      console.error("Failed to post comment:", error);
+      console.error("Failed to update comment:", error);
     },
   });
 };
