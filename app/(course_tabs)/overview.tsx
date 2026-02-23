@@ -2,6 +2,7 @@ import { usePostComment } from "@/api/QueryOptions/commentMutation";
 import createCommentsOptions from "@/api/QueryOptions/commentsOptions";
 import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
+import { useSoftDeleteComment } from "@/api/QueryOptions/softDeleteCommentMutation";
 import CommentItem from "@/components/commentItem";
 import { useAuth } from "@/context/authContext";
 import { useCourseStore } from "@/store/useCourseStore";
@@ -22,6 +23,7 @@ import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -38,6 +40,7 @@ export default function Overview() {
   const { setModuleData } = useModuleStore();
   const [page, setPage] = useState(1);
   const { authState } = useAuth();
+  const { mutate: deleteComment } = useSoftDeleteComment();
   const { mutate: postComment, isPending: postingComment } = usePostComment();
   const user_id = authState?.user?.user_id;
   const [selectedImage, setSelectedImage] = useState<{
@@ -336,6 +339,34 @@ export default function Overview() {
           console.log("Failed to post comment:", error);
         },
       },
+    );
+  };
+
+  const handleDeleteComment = (commentId: number) => {
+    Alert.alert(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            deleteComment(commentId, {
+              onSuccess: () => {
+                refetchComments();
+              },
+              onError: (error) => {
+                console.log("Delete failed:", error);
+              },
+            });
+          },
+        },
+      ],
+      { cancelable: true },
     );
   };
 
@@ -647,8 +678,7 @@ export default function Overview() {
                           console.log("Edit comment", comment.id);
                         }}
                         onDelete={(commentId) => {
-                          // TODO: call delete mutation
-                          console.log("Delete comment", commentId);
+                          handleDeleteComment(commentId);
                         }}
                         onReact={(commentId, reaction) => {
                           // TODO: call react mutation
