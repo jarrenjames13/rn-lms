@@ -20,13 +20,13 @@ export default function QuizSubmissionModal({
 }: QuizSubmissionModalProps) {
   const getScoreColor = (percentage: number) => {
     if (percentage >= 80) return "text-green-600";
-    if (percentage >= 60) return "text-yellow-600";
+    if (percentage >= 75) return "text-yellow-600";
     return "text-red-600";
   };
 
   const getScoreBgColor = (percentage: number) => {
     if (percentage >= 80) return "bg-green-50";
-    if (percentage >= 60) return "bg-yellow-50";
+    if (percentage >= 75) return "bg-yellow-50";
     return "bg-red-50";
   };
 
