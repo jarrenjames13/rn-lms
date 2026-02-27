@@ -8,7 +8,7 @@ export const usePostComment = () => {
     mutationFn: postComment,
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["comments"],
+        queryKey: ["comments", "replies"],
       });
     },
     onError: (error: any) => {
