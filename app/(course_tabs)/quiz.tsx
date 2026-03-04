@@ -1,4 +1,5 @@
 import createListQuizzesOptions from "@/api/QueryOptions/listQuizzesOptions";
+import Skeleton from "@/components/skeletons/Skeleton";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useQuizStore } from "@/store/useQuizStore";
 import { QuizDetails } from "@/types/api";
@@ -13,7 +14,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -21,6 +21,74 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// Skeleton Components
+const QuizCardSkeleton = () => (
+  <View className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4 border border-gray-100">
+    {/* Header */}
+    <View className="bg-gray-50 px-5 py-4 border-b border-gray-100">
+      <View className="flex-row justify-between items-start">
+        <View className="flex-1 pr-4">
+          <Skeleton height={20} width="70%" style={{ marginBottom: 8 }} />
+          <Skeleton height={14} width="90%" style={{ marginBottom: 6 }} />
+          <Skeleton height={14} width="80%" />
+        </View>
+        <Skeleton height={48} width={70} borderRadius={12} />
+      </View>
+    </View>
+
+    {/* Content */}
+    <View className="p-5">
+      {/* Info Grid */}
+      <View className="flex-row flex-wrap gap-3 mb-4">
+        <Skeleton height={70} width="48%" borderRadius={12} />
+        <Skeleton height={70} width="48%" borderRadius={12} />
+      </View>
+
+      {/* Button */}
+      <Skeleton height={48} width="100%" borderRadius={12} />
+    </View>
+  </View>
+);
+
+const QuizPeriodSkeleton = () => (
+  <View className="mb-6">
+    {/* Header */}
+    <View className="bg-gray-300 px-5 py-4 rounded-t-2xl">
+      <View className="flex-row items-center">
+        <Skeleton
+          height={40}
+          width={40}
+          borderRadius={12}
+          style={{ marginRight: 12 }}
+          baseColor="rgba(255, 255, 255, 0.3)"
+          highlightColor="rgba(255, 255, 255, 0.5)"
+        />
+        <View>
+          <Skeleton
+            height={24}
+            width={100}
+            style={{ marginBottom: 4 }}
+            baseColor="rgba(255, 255, 255, 0.3)"
+            highlightColor="rgba(255, 255, 255, 0.5)"
+          />
+          <Skeleton
+            height={14}
+            width={70}
+            baseColor="rgba(255, 255, 255, 0.3)"
+            highlightColor="rgba(255, 255, 255, 0.5)"
+          />
+        </View>
+      </View>
+    </View>
+
+    {/* Content */}
+    <View className="bg-gray-50 p-4 rounded-b-2xl border-x border-b border-gray-200">
+      <QuizCardSkeleton />
+      <QuizCardSkeleton />
+    </View>
+  </View>
+);
 
 export default function Quiz() {
   const router = useRouter();
@@ -56,13 +124,6 @@ export default function Quiz() {
       {} as Record<string, QuizDetails[]>,
     );
   }, [quizzesData]);
-
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     console.log("Quiz screen focused - refetching quiz list");
-  //     refetch();
-  //   }, [refetch]),
-  // );
 
   // Pull to refresh
   const onRefresh = useCallback(async () => {
@@ -478,19 +539,6 @@ export default function Quiz() {
     });
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#EF4444" />
-          <Text className="text-gray-600 mt-4 text-base">
-            Loading quizzes...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
@@ -603,7 +651,14 @@ export default function Quiz() {
           </View>
 
           {/* Quizzes List */}
-          {renderGroupedQuizzes()}
+          {isLoading ? (
+            <>
+              <QuizPeriodSkeleton />
+              <QuizPeriodSkeleton />
+            </>
+          ) : (
+            renderGroupedQuizzes()
+          )}
         </View>
 
         {/* Bottom Spacing */}
