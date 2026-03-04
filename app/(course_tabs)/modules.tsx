@@ -1,8 +1,10 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
+import createCourseDetailsOptions from "@/api/QueryOptions/courseDetailsOptions";
 import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
 import { useTrackSection } from "@/api/QueryOptions/trackSectionMutation";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
 import ModuleProgressBar from "@/components/ModuleProgressBar";
+import { useCourseStore } from "@/store/useCourseStore";
 import { useModuleStore } from "@/store/useModuleStore";
 import {
   ActivityWithGrade,
@@ -18,10 +20,10 @@ import {
   renderHTMLContent,
 } from "@/utils/RenderHTML";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
-import React, { useMemo, useRef, useState } from "react";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -30,18 +32,94 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// Skeleton components
+import ActivitySkeleton from "@/components/skeletons/activitySkeleton";
+import ModuleSkeleton from "@/components/skeletons/moduleSkeleton";
+import SectionSkeleton from "@/components/skeletons/sectionSkeleton";
+
 export default function Modules() {
-  const { moduleData } = useModuleStore();
+  const { course_id } = useCourseStore();
+  const { moduleData, setModuleData } = useModuleStore();
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
   const [selectedActivity, setSelectedActivity] =
     useState<SingleActivity | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [parsedCache, setParsedCache] = useState<
+    Map<number, { title: string; description: string }>
+  >(new Map());
   const scrollViewRef = useRef<ScrollView>(null);
   const sectionRefs = useRef<{ [key: number]: View | null }>({});
 
-  //query client
   const queryClient = useQueryClient();
+  const { mutate, isPending } = useTrackSection();
+
+  // Fetch course details (including modules) when the screen is focused
+  const {
+    data: courseDetails,
+    isLoading: loadingModules,
+    refetch: refetchModules,
+  } = useQuery({
+    ...createCourseDetailsOptions(course_id!),
+    enabled: !!course_id,
+  });
+
+  // Update module store when data changes
+  useFocusEffect(
+    useCallback(() => {
+      if (course_id) {
+        refetchModules();
+      }
+    }, [course_id, refetchModules]),
+  );
+
+  // Sync courseDetails to moduleData store
+  React.useEffect(() => {
+    if (courseDetails?.modules) {
+      setModuleData(courseDetails.modules);
+    }
+  }, [courseDetails, setModuleData]);
+
+  // Parse HTML for modules progressively (non-blocking)
+  React.useEffect(() => {
+    if (!moduleData) return;
+
+    // Parse modules one at a time with small delays to keep UI responsive
+    const parseModules = async () => {
+      for (let i = 0; i < moduleData.length; i++) {
+        const module = moduleData[i];
+
+        // Skip if already parsed
+        if (parsedCache.has(module.module_id)) continue;
+
+        // Parse this module
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            try {
+              const parsed = parseHTML(module.content_html);
+              const title = extractTitleFromParsed(parsed);
+              const description = extractDescriptionFromParsed(parsed);
+
+              setParsedCache((prev) =>
+                new Map(prev).set(module.module_id, { title, description }),
+              );
+            } catch (error) {
+              console.error("Error parsing module:", error);
+              setParsedCache((prev) =>
+                new Map(prev).set(module.module_id, {
+                  title: "Untitled Module",
+                  description: "No description available",
+                }),
+              );
+            }
+            resolve(null);
+          }, 0); // Let UI breathe between parses
+        });
+      }
+    };
+
+    parseModules();
+  }, [moduleData, parsedCache]);
 
   // Fetch activities for all modules in parallel
   const activitiesQueries = useQueries({
@@ -49,6 +127,7 @@ export default function Modules() {
       createActivitiesOptions(module.module_id),
     ),
   });
+
   // Fetch progress for all modules in parallel
   const progressQueries = useQueries({
     queries: (moduleData || []).map((module) =>
@@ -56,37 +135,35 @@ export default function Modules() {
     ),
   });
 
-  // Parse modules and attach their activities
+  // Combine modules with activities and progress (no parsing here!)
   const parsedModules = useMemo(() => {
     if (!moduleData) return [];
 
     return moduleData.map((module, index) => {
-      const parsed = parseHTML(module.content_html);
-      const title = extractTitleFromParsed(parsed);
-      const description = extractDescriptionFromParsed(parsed);
+      // Get cached parsed data or use placeholders
+      const cached = parsedCache.get(module.module_id);
+      const parsedTitle = cached?.title || "Loading...";
+      const parsedDescription = cached?.description || "Loading description...";
 
-      // Get activities for this specific module
       const queryResult = activitiesQueries[index];
       const activitiesData: ActivityWithGrade | undefined = queryResult?.data;
       const activities: SingleActivity[] = activitiesData?.activities || [];
-      // attach module progress data to all modules
+
       const progressResult = progressQueries[index];
       const progressData: ModuleProgress | undefined = progressResult?.data;
       const progress = progressData || null;
 
       return {
         ...module,
-        parsedTitle: title,
-        parsedDescription: description,
+        parsedTitle,
+        parsedDescription,
         progress,
         activities,
         isLoadingActivities: queryResult?.isLoading || false,
         activitiesError: queryResult?.isError || false,
       };
     });
-  }, [moduleData, activitiesQueries, progressQueries]);
-
-  const { mutate, isPending } = useTrackSection();
+  }, [moduleData, activitiesQueries, progressQueries, parsedCache]);
 
   const toggleSection = (sectionId: number) => {
     const isOpening = openSectionId !== sectionId;
@@ -94,15 +171,11 @@ export default function Modules() {
 
     if (isOpening && sectionRefs.current[sectionId] && !isPending) {
       mutate({ section_id: sectionId });
-
       setTimeout(() => {
         sectionRefs.current[sectionId]?.measureLayout(
           scrollViewRef.current as any,
           (x, y) => {
-            scrollViewRef.current?.scrollTo({
-              y: y - 20,
-              animated: true,
-            });
+            scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
           },
           () => console.log("measureLayout failed"),
         );
@@ -124,6 +197,7 @@ export default function Modules() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
+      setParsedCache(new Map()); // Clear cache on refresh
       await queryClient.invalidateQueries();
     } catch (error) {
       console.log("Refresh error:", error);
@@ -146,20 +220,14 @@ export default function Modules() {
   };
 
   const renderActivity = (activity: SingleActivity) => {
-    // Each activity evaluates independently based on its own properties
     const hasSubmission = activity.has_submission === true;
     const isGraded = activity.is_graded === true;
-
-    // Can only submit if never submitted before
     const canSubmit = !hasSubmission;
-
-    // Determine button text based on status
     const getButtonText = () => {
       if (isGraded) return "Activity Graded";
       if (hasSubmission) return "Activity Submitted";
       return "Submit Activity";
     };
-
     const statusColors = activity.status
       ? getStatusColor(activity.status)
       : null;
@@ -175,7 +243,6 @@ export default function Modules() {
             <Text className="text-base font-bold text-gray-900 mb-1">
               {activity.title}
             </Text>
-            {/* Activity Type Badge */}
             <View className="flex-row items-center mt-1">
               <View
                 style={{ backgroundColor: "#FAF5FF" }}
@@ -201,9 +268,8 @@ export default function Modules() {
           )}
         </View>
 
-        {/* Status Badges Row */}
+        {/* Status Badges */}
         <View className="flex-row flex-wrap gap-2 mb-3">
-          {/* Status Badge */}
           {activity.status && statusColors && (
             <View
               style={{ backgroundColor: statusColors.bg }}
@@ -228,8 +294,6 @@ export default function Modules() {
               </Text>
             </View>
           )}
-
-          {/* Pending Review Badge */}
           {activity.has_submission && !activity.is_graded && (
             <View
               style={{ backgroundColor: "#FEF3C7" }}
@@ -274,7 +338,7 @@ export default function Modules() {
           </Text>
         </View>
 
-        {/* Feedback Section */}
+        {/* Feedback */}
         {activity.feedback && (
           <View
             style={{ backgroundColor: "#EFF6FF" }}
@@ -352,24 +416,18 @@ export default function Modules() {
             <View
               key={section.section_id}
               className="mb-3"
-              ref={(ref) => {
+              ref={(ref: View | null): void => {
                 sectionRefs.current[section.section_id] = ref;
               }}
             >
               <Pressable
                 onPress={() => toggleSection(section.section_id)}
-                className={`rounded-xl p-4 border ${
-                  isOpen
-                    ? "bg-red-50 border-red-200"
-                    : "bg-white border-gray-200"
-                }`}
+                className={`rounded-xl p-4 border ${isOpen ? "bg-red-50 border-red-200" : "bg-white border-gray-200"}`}
               >
                 <View className="flex-row justify-between items-center">
                   <View className="flex-row items-center flex-1">
                     <View
-                      className={`w-8 h-8 rounded-lg items-center justify-center mr-3 ${
-                        isOpen ? "bg-red-500" : "bg-gray-100"
-                      }`}
+                      className={`w-8 h-8 rounded-lg items-center justify-center mr-3 ${isOpen ? "bg-red-500" : "bg-gray-100"}`}
                     >
                       <MaterialIcons
                         name="article"
@@ -378,17 +436,13 @@ export default function Modules() {
                       />
                     </View>
                     <Text
-                      className={`text-sm font-semibold flex-1 ${
-                        isOpen ? "text-red-900" : "text-gray-800"
-                      }`}
+                      className={`text-sm font-semibold flex-1 ${isOpen ? "text-red-900" : "text-gray-800"}`}
                     >
                       {section.title}
                     </Text>
                   </View>
                   <View
-                    className={`w-6 h-6 rounded-full items-center justify-center ${
-                      isOpen ? "bg-red-500" : "bg-gray-200"
-                    }`}
+                    className={`w-6 h-6 rounded-full items-center justify-center ${isOpen ? "bg-red-500" : "bg-gray-200"}`}
                   >
                     <MaterialIcons
                       name={
@@ -432,14 +486,8 @@ export default function Modules() {
           Module Activities
         </Text>
       </View>
-
       {module.isLoadingActivities ? (
-        <View className="bg-gray-50 rounded-xl p-6 items-center">
-          <ActivityIndicator size="small" color="#EF4444" />
-          <Text className="text-sm text-gray-500 mt-2">
-            Loading activities...
-          </Text>
-        </View>
+        Array.from({ length: 2 }).map((_, i) => <ActivitySkeleton key={i} />)
       ) : module.activitiesError ? (
         <View className="bg-red-50 border border-red-200 rounded-xl p-4">
           <View className="flex-row items-center justify-center">
@@ -467,22 +515,6 @@ export default function Modules() {
     </View>
   );
 
-  if (parsedModules.length === 0) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <View className="flex-1 justify-center items-center px-6">
-          <MaterialIcons name="school" size={80} color="#D1D5DB" />
-          <Text className="text-xl font-bold text-gray-800 text-center mt-4">
-            No Modules Available
-          </Text>
-          <Text className="text-sm text-gray-500 text-center mt-2">
-            Modules will appear here once they are added to this course.
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView
@@ -501,60 +533,64 @@ export default function Modules() {
         }
       >
         <View className="p-4">
-          {parsedModules.map((module, index) => (
-            <View
-              key={module.module_id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 overflow-hidden"
-            >
-              {/* Module Header with accent */}
-              <View className="bg-red-500 px-5 py-4">
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center mr-3">
-                    <Text className="text-white font-bold text-lg">
-                      {index + 1}
-                    </Text>
+          {loadingModules || !moduleData
+            ? Array.from({ length: 2 }).map((_, i) => (
+                <ModuleSkeleton key={i} />
+              ))
+            : parsedModules.map((module, index) => (
+                <View
+                  key={module.module_id}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 overflow-hidden"
+                >
+                  {/* Module Header */}
+                  <View className="bg-red-500 px-5 py-4">
+                    <View className="flex-row items-center">
+                      <View className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center mr-3">
+                        <Text className="text-white font-bold text-lg">
+                          {index + 1}
+                        </Text>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-xs text-white/80 font-medium mb-1">
+                          MODULE {index + 1}
+                        </Text>
+                        <Text className="text-xl font-bold text-white">
+                          {module.parsedTitle}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-xs text-white/80 font-medium mb-1">
-                      MODULE {index + 1}
-                    </Text>
-                    <Text className="text-xl font-bold text-white">
-                      {module.parsedTitle || "Untitled Module"}
-                    </Text>
+
+                  <View className="p-5">
+                    <View className="bg-gray-50 rounded-xl p-4 mb-4">
+                      <Text className="text-sm text-gray-700 leading-6">
+                        {module.parsedDescription}
+                      </Text>
+                    </View>
+
+                    {module.progress && (
+                      <View className="mb-4">
+                        <ModuleProgressBar
+                          progress={module.progress}
+                          showDetails
+                        />
+                      </View>
+                    )}
+
+                    {module.sections
+                      ? renderModuleSections(module)
+                      : Array.from({ length: 2 }).map((_, i) => (
+                          <SectionSkeleton key={i} />
+                        ))}
+
+                    {renderModuleActivities(module)}
                   </View>
                 </View>
-              </View>
-
-              <View className="p-5">
-                {/* Module Description */}
-                <View className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <Text className="text-sm text-gray-700 leading-6">
-                    {module.parsedDescription || "No description available"}
-                  </Text>
-                </View>
-
-                {/* Module Progress Bar */}
-                {module.progress && (
-                  <View className="mb-4">
-                    <ModuleProgressBar progress={module.progress} showDetails />
-                  </View>
-                )}
-
-                {/* Module Sections */}
-                {renderModuleSections(module)}
-
-                {/* Module Activities */}
-                {renderModuleActivities(module)}
-              </View>
-            </View>
-          ))}
+              ))}
         </View>
-
-        {/* Bottom Spacing */}
         <View className="h-6" />
       </ScrollView>
 
-      {/* Activity Submission Modal */}
       <ActivitySubmissionModal
         visible={isModalVisible}
         activity={selectedActivity}
