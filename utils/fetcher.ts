@@ -158,7 +158,7 @@ apiClient.interceptors.response.use(
 );
 
 // Helper to build URL with query parameters
-const buildUrlWithParams = (
+export const buildUrlWithParams = (
   url: string,
   params: Record<string, string | number | boolean> = {},
 ): string => {
