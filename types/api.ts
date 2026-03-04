@@ -229,6 +229,7 @@ export interface Module {
 export interface ParsedModule extends Module {
   parsedTitle: string;
   parsedDescription: string;
+  isParsing?: boolean;
   progress: ModuleProgress | null;
   activities: SingleActivity[];
   isLoadingActivities: boolean;
