@@ -1,89 +1,37 @@
-import { usePostComment } from "@/api/QueryOptions/commentMutation";
 import createCommentsOptions from "@/api/QueryOptions/commentsOptions";
 import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
-import { useSoftDeleteComment } from "@/api/QueryOptions/softDeleteCommentMutation";
-import CommentItem from "@/components/commentItem";
-import { useAuth } from "@/context/authContext";
+import CommentsModal from "@/components/commentsModal";
+import Skeleton from "@/components/skeletons/Skeleton";
 import { useCourseStore } from "@/store/useCourseStore";
-import { useModuleStore } from "@/store/useModuleStore";
 import {
   CourseAllDetails,
   CourseDetails,
   CourseProgress,
   CourseQuickStats,
 } from "@/types/api";
-import { getAccessToken } from "@/utils/accessToken";
-import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { LegendList } from "@legendapp/list";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
+
 export default function Overview() {
-  const [comment, setComment] = useState<string>("");
   const [refreshing, setRefreshing] = useState(false);
+  const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const { course_id, instance_id } = useCourseStore();
-  const { setModuleData } = useModuleStore();
-  const [page, setPage] = useState(1);
-  const { authState } = useAuth();
-  const { mutate: deleteComment } = useSoftDeleteComment();
-  const { mutate: postComment, isPending: postingComment } = usePostComment();
-  const user_id = authState?.user?.user_id;
-  const [selectedImage, setSelectedImage] = useState<{
-    uri: string;
-    name: string;
-    type: string;
-  } | null>(null);
+  // const { setModuleData } = useModuleStore();
 
-  //image picker handler
-  const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsMultipleSelection: false,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-
-    if (!result.canceled && result.assets.length > 0) {
-      const asset = result.assets[0];
-      setSelectedImage({
-        uri: asset.uri,
-        name: asset.fileName ?? `image_${Date.now()}.jpg`,
-        type: asset.mimeType ?? "image/jpeg",
-      });
-    }
-  };
-  useEffect(() => {
-    const loadToken = async () => {
-      const token = await getAccessToken();
-
-      console.log("Access token loaded:", token ? "✓" : "✗");
-    };
-
-    loadToken();
-  }, []);
-
-  const {
-    data: commentsData,
-    isLoading: loadingComments,
-    error: commentsError,
-    refetch: refetchComments,
-  } = useQuery({
-    ...createCommentsOptions(instance_id!, undefined, page, 5),
+  const { data: commentsData, refetch: refetchComments } = useQuery({
+    ...createCommentsOptions(instance_id!, undefined, 1, 5),
     enabled: !!instance_id,
   });
 
@@ -97,13 +45,21 @@ export default function Overview() {
     enabled: !!course_id,
   });
 
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     if (course_id) {
+  //       refetch();
+  //       setModuleData(courseDetails?.modules || []);
+  //     }
+  //   }, [course_id, refetch, courseDetails?.modules, setModuleData]),
+  // );
+
   useFocusEffect(
     useCallback(() => {
       if (course_id) {
         refetch();
-        setModuleData(courseDetails?.modules || []);
       }
-    }, [course_id, refetch, courseDetails?.modules, setModuleData]),
+    }, [course_id, refetch]),
   );
 
   const {
@@ -159,17 +115,6 @@ export default function Overview() {
     }
   }, [refetch, refetchStats, refetchProgress, refetchComments]);
 
-  if (loadingDetails || loadingStats || loadingProgress) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#EF4444" />
-        <Text className="mt-4 text-gray-600 text-base">
-          Loading course details...
-        </Text>
-      </View>
-    );
-  }
-
   if (detailsError || statsError || progressError) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 px-6">
@@ -223,12 +168,6 @@ export default function Overview() {
     },
   };
 
-  // Helper function to get top 3 reactions
-
-  const getTotalPages = () => {
-    if (!commentsData) return 1;
-    return Math.ceil(commentsData.total / commentsData.per_page);
-  };
   // Progress Ring Component
   const ProgressRing = ({ percentage }: { percentage: number }) => (
     <View className="relative items-center justify-center">
@@ -316,60 +255,6 @@ export default function Overview() {
     </View>
   );
 
-  const handlePostComment = () => {
-    //don't post without image or comment text
-    if (!comment.trim() && !selectedImage) return;
-    if (!instance_id) return;
-
-    postComment(
-      {
-        formData: {
-          comment: comment.trim() || "",
-          image: selectedImage || undefined,
-        },
-        instance_id,
-      },
-      {
-        onSuccess: () => {
-          setComment("");
-          setSelectedImage(null);
-          refetchComments();
-        },
-        onError: (error) => {
-          console.log("Failed to post comment:", error);
-        },
-      },
-    );
-  };
-
-  const handleDeleteComment = (commentId: number) => {
-    Alert.alert(
-      "Delete Comment",
-      "Are you sure you want to delete this comment?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            deleteComment(commentId, {
-              onSuccess: () => {
-                refetchComments();
-              },
-              onError: (error) => {
-                console.log("Delete failed:", error);
-              },
-            });
-          },
-        },
-      ],
-      { cancelable: true },
-    );
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView
@@ -379,364 +264,334 @@ export default function Overview() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#EF4444"]} // Android
-            tintColor="#EF4444" // iOS
-            title="Pull to refresh" // iOS
-            titleColor="#6B7280" // iOS
+            colors={["#EF4444"]}
+            tintColor="#EF4444"
+            title="Pull to refresh"
+            titleColor="#6B7280"
           />
         }
       >
-        {/* Header Section - Fixed with proper background */}
-        <View className="bg-red-500 px-6 pt-6 pb-8">
-          <View
-            style={{ backgroundColor: "rgba(255, 255, 255, 0.15)" }}
-            className="rounded-2xl p-5"
-          >
-            <View className="flex-row items-center mb-3">
-              <View
-                style={{ backgroundColor: "rgba(255, 255, 255, 0.25)" }}
-                className="px-3 py-1 rounded-full"
-              >
-                <Text className="text-white text-xs font-semibold">
-                  {course.course_code || "N/A"}
-                </Text>
-              </View>
-            </View>
-            <Text className="text-2xl font-bold text-white mb-2">
-              {course.course_title || "Course Title Unavailable"}
-            </Text>
-            <Text
-              style={{ color: "rgba(255, 255, 255, 0.95)" }}
-              className="text-sm leading-5"
+        {/* Header Section */}
+        {loadingDetails ? (
+          <View className="bg-red-500 px-6 pt-6 pb-8">
+            <View
+              style={{ backgroundColor: "rgba(255, 255, 255, 0.15)" }}
+              className="rounded-2xl p-5"
             >
-              {course.description || "No description available."}
-            </Text>
+              <Skeleton
+                height={24}
+                width={100}
+                style={{ marginBottom: 12 }}
+                baseColor="rgba(255, 255, 255, 0.2)"
+                highlightColor="rgba(255, 255, 255, 0.3)"
+              />
+              <Skeleton
+                height={32}
+                width="80%"
+                style={{ marginBottom: 12 }}
+                baseColor="rgba(255, 255, 255, 0.2)"
+                highlightColor="rgba(255, 255, 255, 0.3)"
+              />
+              <Skeleton
+                height={16}
+                width="100%"
+                style={{ marginBottom: 8 }}
+                baseColor="rgba(255, 255, 255, 0.2)"
+                highlightColor="rgba(255, 255, 255, 0.3)"
+              />
+              <Skeleton
+                height={16}
+                width="90%"
+                baseColor="rgba(255, 255, 255, 0.2)"
+                highlightColor="rgba(255, 255, 255, 0.3)"
+              />
+            </View>
           </View>
-        </View>
+        ) : (
+          <View className="bg-red-500 px-6 pt-6 pb-8">
+            <View
+              style={{ backgroundColor: "rgba(255, 255, 255, 0.15)" }}
+              className="rounded-2xl p-5"
+            >
+              <View className="flex-row items-center mb-3">
+                <View
+                  style={{ backgroundColor: "rgba(255, 255, 255, 0.25)" }}
+                  className="px-3 py-1 rounded-full"
+                >
+                  <Text className="text-white text-xs font-semibold">
+                    {course.course_code || "N/A"}
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-2xl font-bold text-white mb-2">
+                {course.course_title || "Course Title Unavailable"}
+              </Text>
+              <Text
+                style={{ color: "rgba(255, 255, 255, 0.95)" }}
+                className="text-sm leading-5"
+              >
+                {course.description || "No description available."}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View className="px-6 mt-6">
           {/* Overall Progress Card */}
-          <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-            <Text className="text-lg font-bold text-gray-800 mb-4">
-              Overall Progress
-            </Text>
-
-            <View className="items-center mb-6">
-              <ProgressRing
-                percentage={Math.round(progress.overall_progress)}
-              />
+          {loadingProgress ? (
+            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+              <Skeleton height={24} width={150} style={{ marginBottom: 16 }} />
+              <View className="items-center mb-6">
+                <Skeleton height={128} width={128} borderRadius={64} />
+              </View>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <View key={i} className="mb-4">
+                  <Skeleton
+                    height={14}
+                    width="100%"
+                    style={{ marginBottom: 8 }}
+                  />
+                  <Skeleton height={8} width="100%" />
+                </View>
+              ))}
             </View>
+          ) : (
+            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+              <Text className="text-lg font-bold text-gray-800 mb-4">
+                Overall Progress
+              </Text>
 
-            <View>
-              <ProgressItem
-                icon="folder"
-                label="Sections"
-                completed={progress.components.sections.completed}
-                total={progress.components.sections.total}
-                percentage={Math.round(progress.components.sections.percentage)}
-              />
-              <ProgressItem
-                icon="assignment"
-                label="Activities"
-                completed={progress.components.activities.completed}
-                total={progress.components.activities.total}
-                percentage={Math.round(
-                  progress.components.activities.percentage,
-                )}
-              />
-              <ProgressItem
-                icon="quiz"
-                label="Quizzes"
-                completed={progress.components.quizzes.completed}
-                total={progress.components.quizzes.total}
-                percentage={Math.round(progress.components.quizzes.percentage)}
-              />
-              <ProgressItem
-                icon="school"
-                label="Exams"
-                completed={progress.components.exams.completed}
-                total={progress.components.exams.total}
-                percentage={Math.round(progress.components.exams.percentage)}
-              />
+              <View className="items-center mb-6">
+                <ProgressRing
+                  percentage={Math.round(progress.overall_progress)}
+                />
+              </View>
+
+              <View>
+                <ProgressItem
+                  icon="folder"
+                  label="Sections"
+                  completed={progress.components.sections.completed}
+                  total={progress.components.sections.total}
+                  percentage={Math.round(
+                    progress.components.sections.percentage,
+                  )}
+                />
+                <ProgressItem
+                  icon="assignment"
+                  label="Activities"
+                  completed={progress.components.activities.completed}
+                  total={progress.components.activities.total}
+                  percentage={Math.round(
+                    progress.components.activities.percentage,
+                  )}
+                />
+                <ProgressItem
+                  icon="quiz"
+                  label="Quizzes"
+                  completed={progress.components.quizzes.completed}
+                  total={progress.components.quizzes.total}
+                  percentage={Math.round(
+                    progress.components.quizzes.percentage,
+                  )}
+                />
+                <ProgressItem
+                  icon="school"
+                  label="Exams"
+                  completed={progress.components.exams.completed}
+                  total={progress.components.exams.total}
+                  percentage={Math.round(progress.components.exams.percentage)}
+                />
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Course Statistics */}
-          <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-            <Text className="text-lg font-bold text-gray-800 mb-4">
-              Course Statistics
-            </Text>
-
-            <View className="flex-row gap-3 mb-3">
-              <StatCard
-                icon="library-books"
-                label="Modules"
-                value={stats.modules}
-                bgColor="#FEF2F2"
-              />
-              <StatCard
-                icon="quiz"
-                label="Quizzes"
-                value={stats.quizzes}
-                bgColor="#FAF5FF"
-              />
-            </View>
-
-            <View className="flex-row gap-3 mb-3">
-              <StatCard
-                icon="school"
-                label="Exams"
-                value={stats.exams}
-                bgColor="#EFF6FF"
-              />
-              <StatCard
-                icon="assignment-turned-in"
-                label="Submissions"
-                value={stats.submissions}
-                bgColor="#F0FDF4"
-              />
-            </View>
-
-            {/* Overall Grade Highlight */}
-            <View
-              style={{ backgroundColor: "#FEF2F2" }}
-              className="rounded-xl p-4 mt-3 border border-red-100"
-            >
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <View className="w-12 h-12 bg-red-500 rounded-full items-center justify-center mr-4">
-                    <MaterialIcons name="star" size={24} color="white" />
-                  </View>
-                  <View>
-                    <Text className="text-sm text-gray-600">Overall Grade</Text>
-                    <Text className="text-3xl font-bold text-gray-800">
-                      {stats.overall_grade}%
-                    </Text>
-                  </View>
-                </View>
-                <View
-                  style={{
-                    backgroundColor:
-                      stats.overall_grade >= 90
-                        ? "#D1FAE5"
-                        : stats.overall_grade >= 75
-                          ? "#DBEAFE"
-                          : stats.overall_grade >= 60
-                            ? "#FEF3C7"
-                            : "#FEE2E2",
-                  }}
-                  className="px-4 py-2 rounded-full"
-                >
-                  <Text
-                    style={{
-                      color:
-                        stats.overall_grade >= 90
-                          ? "#065F46"
-                          : stats.overall_grade >= 75
-                            ? "#1E40AF"
-                            : stats.overall_grade >= 60
-                              ? "#92400E"
-                              : "#991B1B",
-                    }}
-                    className="text-xs font-semibold"
-                  >
-                    {stats.overall_grade >= 90
-                      ? "Excellent"
-                      : stats.overall_grade >= 75
-                        ? "Good"
-                        : stats.overall_grade >= 60
-                          ? "Fair"
-                          : "Needs Improvement"}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Comment Section */}
-          <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-            <View className="flex-row items-center mb-4">
-              <Ionicons name="chatbubbles" size={24} color="#EF4444" />
-              <Text className="font-bold text-lg text-gray-800 ml-2">
-                Discussion
-              </Text>
-            </View>
-
-            <View className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-              <TextInput
-                placeholder="Share your thoughts about this course..."
-                placeholderTextColor="#9CA3AF"
-                value={comment}
-                onChangeText={setComment}
-                multiline
-                numberOfLines={4}
-                className="text-gray-800 text-base min-h-[100px]"
-                style={{ textAlignVertical: "top" }}
-              />
-
-              {/* Image preview with remove button */}
-              {selectedImage && (
-                <View className="mt-3 relative">
-                  <Image
-                    source={{ uri: selectedImage.uri }}
-                    style={{ width: 140, height: 140 }}
-                    className="rounded-xl"
-                    contentFit="contain"
-                  />
-                  <Pressable
-                    onPress={() => setSelectedImage(null)}
-                    className="absolute top-2 right-2 bg-black/50 rounded-full w-7 h-7 items-center justify-center"
-                  >
-                    <Ionicons name="close" size={16} color="white" />
-                  </Pressable>
-                </View>
-              )}
-
-              <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200">
-                <Pressable
-                  onPress={handlePickImage} // ← wired up now
-                  className="flex-row items-center bg-gray-100 active:bg-gray-200 rounded-lg py-2 px-4"
-                >
-                  <AntDesign name="picture" size={18} color="#374151" />
-                  <Text className="text-gray-700 ml-2 text-sm font-medium">
-                    {selectedImage ? "Change Image" : "Attach Image"}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={handlePostComment} // ← wired up now
-                  className="flex-row items-center bg-red-500 active:bg-red-600 rounded-lg py-2 px-6"
-                  disabled={
-                    (!comment.trim() && !selectedImage) || postingComment
-                  }
-                  style={{
-                    opacity:
-                      (comment.trim() || selectedImage) && !postingComment
-                        ? 1
-                        : 0.5,
-                  }}
-                >
-                  {postingComment ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <>
-                      <Text className="text-white font-semibold mr-2">
-                        Post
-                      </Text>
-                      <AntDesign name="send" size={16} color="white" />
-                    </>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Comments List */}
+          {loadingStats ? (
             <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-              <View className="flex-row items-center mb-4">
-                <Ionicons name="chatbubbles" size={24} color="#EF4444" />
-                <Text className="font-bold text-lg text-gray-800 ml-2">
-                  Discussion
-                </Text>
-                {commentsData && (
-                  <View className="ml-auto bg-red-50 rounded-full px-3 py-0.5">
-                    <Text className="text-xs text-red-500 font-semibold">
-                      {commentsData.total} comments
+              <Skeleton height={24} width={150} style={{ marginBottom: 16 }} />
+              <View className="flex-row gap-3 mb-3">
+                <Skeleton height={100} width="48%" />
+                <Skeleton height={100} width="48%" />
+              </View>
+              <View className="flex-row gap-3 mb-3">
+                <Skeleton height={100} width="48%" />
+                <Skeleton height={100} width="48%" />
+              </View>
+              <Skeleton height={100} width="100%" />
+            </View>
+          ) : (
+            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+              <Text className="text-lg font-bold text-gray-800 mb-4">
+                Course Statistics
+              </Text>
+
+              <View className="flex-row gap-3 mb-3">
+                <StatCard
+                  icon="library-books"
+                  label="Modules"
+                  value={stats.modules}
+                  bgColor="#FEF2F2"
+                />
+                <StatCard
+                  icon="quiz"
+                  label="Quizzes"
+                  value={stats.quizzes}
+                  bgColor="#FAF5FF"
+                />
+              </View>
+
+              <View className="flex-row gap-3 mb-3">
+                <StatCard
+                  icon="school"
+                  label="Exams"
+                  value={stats.exams}
+                  bgColor="#EFF6FF"
+                />
+                <StatCard
+                  icon="assignment-turned-in"
+                  label="Submissions"
+                  value={stats.submissions}
+                  bgColor="#F0FDF4"
+                />
+              </View>
+
+              {/* Overall Grade Highlight */}
+              <View
+                style={{ backgroundColor: "#FEF2F2" }}
+                className="rounded-xl p-4 mt-3 border border-red-100"
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <View className="w-12 h-12 bg-red-500 rounded-full items-center justify-center mr-4">
+                      <MaterialIcons name="star" size={24} color="white" />
+                    </View>
+                    <View>
+                      <Text className="text-sm text-gray-600">
+                        Overall Grade
+                      </Text>
+                      <Text className="text-3xl font-bold text-gray-800">
+                        {stats.overall_grade}%
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={{
+                      backgroundColor:
+                        stats.overall_grade >= 90
+                          ? "#D1FAE5"
+                          : stats.overall_grade >= 75
+                            ? "#DBEAFE"
+                            : stats.overall_grade >= 60
+                              ? "#FEF3C7"
+                              : "#FEE2E2",
+                    }}
+                    className="px-4 py-2 rounded-full"
+                  >
+                    <Text
+                      style={{
+                        color:
+                          stats.overall_grade >= 90
+                            ? "#065F46"
+                            : stats.overall_grade >= 75
+                              ? "#1E40AF"
+                              : stats.overall_grade >= 60
+                                ? "#92400E"
+                                : "#991B1B",
+                      }}
+                      className="text-xs font-semibold"
+                    >
+                      {stats.overall_grade >= 90
+                        ? "Excellent"
+                        : stats.overall_grade >= 75
+                          ? "Good"
+                          : stats.overall_grade >= 60
+                            ? "Fair"
+                            : "Needs Improvement"}
                     </Text>
                   </View>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Discussion Preview Card */}
+          <Pressable
+            onPress={() => setCommentsModalVisible(true)}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6 active:bg-gray-50"
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-3">
+                <View className="w-12 h-12 bg-red-50 rounded-full items-center justify-center">
+                  <Ionicons name="chatbubbles" size={24} color="#EF4444" />
+                </View>
+                <View>
+                  <Text className="font-bold text-lg text-gray-800">
+                    Discussion
+                  </Text>
+                  <Text className="text-sm text-gray-500 mt-0.5">
+                    {commentsData?.total || 0} comment
+                    {commentsData?.total !== 1 ? "s" : ""}
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-sm font-medium text-red-500">
+                  View Discussion
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color="#EF4444" />
+              </View>
+            </View>
+
+            {/* Preview of latest comments */}
+            {commentsData && commentsData.comments.length > 0 && (
+              <View className="mt-4 pt-4 border-t border-gray-100">
+                <View className="flex-row items-start gap-3">
+                  <View className="w-8 h-8 rounded-full bg-red-500 items-center justify-center">
+                    <Text className="text-xs font-bold text-white">
+                      {commentsData.comments[0].full_name
+                        .charAt(0)
+                        .toUpperCase()}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-gray-800">
+                      {commentsData.comments[0].full_name}
+                    </Text>
+                    <Text
+                      className="text-sm text-gray-600 mt-1"
+                      numberOfLines={2}
+                    >
+                      {commentsData.comments[0].comment}
+                    </Text>
+                  </View>
+                </View>
+                {commentsData.total > 1 && (
+                  <Text className="text-xs text-gray-400 mt-2">
+                    + {commentsData.total - 1} more comment
+                    {commentsData.total - 1 !== 1 ? "s" : ""}
+                  </Text>
                 )}
               </View>
-
-              {/* Comments List via LegendList */}
-              {loadingComments ? (
-                <ActivityIndicator size="small" color="#EF4444" />
-              ) : commentsError ? (
-                <Text className="text-red-500 text-center">
-                  Failed to load comments
-                </Text>
-              ) : commentsData?.comments.length === 0 ? (
-                <View className="py-10 items-center">
-                  <Ionicons
-                    name="chatbubble-ellipses-outline"
-                    size={40}
-                    color="#D1D5DB"
-                  />
-                  <Text className="text-sm text-gray-400 mt-3 text-center">
-                    No comments yet.{"\n"}Be the first to share your thoughts!
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  <LegendList
-                    data={commentsData?.comments ?? []}
-                    keyExtractor={(item) => String(item.id)}
-                    renderItem={({ item }) => (
-                      <CommentItem
-                        item={item}
-                        currentUserId={user_id}
-                        onEdit={(comment) => {
-                          // TODO: open edit modal / pre-fill compose box
-                          console.log("Edit comment", comment.id);
-                        }}
-                        onDelete={(commentId) => {
-                          handleDeleteComment(commentId);
-                        }}
-                        onReact={(commentId, reaction) => {
-                          // TODO: call react mutation
-                          console.log(
-                            "React",
-                            reaction,
-                            "on comment",
-                            commentId,
-                          );
-                        }}
-                        onReply={(comment) => {
-                          // TODO: pre-fill compose box with @mention
-                          console.log("Reply to comment", comment.id);
-                        }}
-                      />
-                    )}
-                    estimatedItemSize={150}
-                    // LegendList-specific: recycles items for performance
-                    recycleItems
-                    // Disable built-in scroll since we're inside a ScrollView
-                    scrollEnabled={false}
-                  />
-
-                  {/* Pagination */}
-                  {getTotalPages() > 1 && (
-                    <View className="flex-row justify-center items-center mt-4 gap-2">
-                      <Pressable
-                        onPress={() => setPage((prev) => Math.max(prev - 1, 1))}
-                        disabled={page === 1}
-                        className="bg-gray-100 py-2 px-4 rounded-lg"
-                        style={{ opacity: page === 1 ? 0.5 : 1 }}
-                      >
-                        <Text className="text-gray-700">Previous</Text>
-                      </Pressable>
-                      <Text className="text-sm text-gray-500 px-2">
-                        {page} / {getTotalPages()}
-                      </Text>
-                      <Pressable
-                        onPress={() =>
-                          setPage((prev) => Math.min(prev + 1, getTotalPages()))
-                        }
-                        disabled={page === getTotalPages()}
-                        style={{ opacity: page === getTotalPages() ? 0.5 : 1 }}
-                        className="bg-gray-100 py-2 px-4 rounded-lg"
-                      >
-                        <Text className="text-gray-700">Next</Text>
-                      </Pressable>
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
-          </View>
+            )}
+          </Pressable>
         </View>
 
         {/* Bottom Spacing */}
         <View className="h-6" />
       </ScrollView>
+
+      {/* Comments Modal */}
+      {instance_id && (
+        <CommentsModal
+          visible={commentsModalVisible}
+          onClose={() => {
+            setCommentsModalVisible(false);
+            refetchComments();
+          }}
+          instanceId={instance_id}
+        />
+      )}
     </SafeAreaView>
   );
 }
