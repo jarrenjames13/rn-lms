@@ -7,8 +7,14 @@ export const usePostComment = () => {
   return useMutation({
     mutationFn: postComment,
     onSuccess: async () => {
+      // Invalidate all queries starting with "comments"
       await queryClient.invalidateQueries({
-        queryKey: ["comments", "replies"],
+        queryKey: ["comments"],
+      });
+
+      // Invalidate all queries starting with "replies"
+      await queryClient.invalidateQueries({
+        queryKey: ["replies"],
       });
     },
     onError: (error: any) => {
