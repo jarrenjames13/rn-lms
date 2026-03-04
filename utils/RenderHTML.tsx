@@ -121,7 +121,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
     node: ParsedNode,
     index: number = 0,
     parentTag?: string,
-    isNested: boolean = false
+    isNested: boolean = false,
   ): React.ReactNode => {
     // Handle text nodes
     if (node.type === "text") {
@@ -130,7 +130,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
       return React.createElement(
         Text,
         { key: index, className: "text-base mx-1" },
-        content
+        content,
       );
     }
 
@@ -150,7 +150,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
       const isTextComponent = Tag === Text;
       const children = node.children
         ?.map((child, idx) =>
-          renderNode(child, idx, node.name, isTextComponent)
+          renderNode(child, idx, node.name, isTextComponent),
         )
         .filter(Boolean);
 
@@ -169,7 +169,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
           Text,
           { key: index, className: className },
           bullet,
-          children
+          children,
         );
       }
 
@@ -180,7 +180,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
           { key: index },
           " ",
           React.createElement(Text, { className: className }, children),
-          " "
+          " ",
         );
       }
 
@@ -192,14 +192,14 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
         return React.createElement(
           Text,
           { key: index, className: className },
-          children
+          children,
         );
       }
 
       return React.createElement(
         Tag,
         { key: index, className: className },
-        children
+        children,
       );
     }
 
