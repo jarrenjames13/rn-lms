@@ -1,11 +1,11 @@
 import createComprehensiveGradesOptions from "@/api/QueryOptions/comprehensiveGradesOptions";
+import Skeleton from "@/components/skeletons/Skeleton";
 import { useCourseStore } from "@/store/useCourseStore";
 import { ComprehensiveGradesResponse } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -122,6 +122,173 @@ const SummaryStatRow = ({
         <Text className="text-xs text-gray-500 mt-0.5">{item.label}</Text>
       </View>
     ))}
+  </View>
+);
+
+// ─── Skeleton Components ──────────────────────────────────────────────────────
+
+const OverviewSkeleton = () => (
+  <View>
+    {/* Overall Grade Card Skeleton */}
+    <View className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
+      <View className="bg-red-500 px-5 pt-4 pb-6">
+        <Skeleton
+          height={12}
+          width={120}
+          style={{ marginBottom: 8 }}
+          baseColor="rgba(255, 255, 255, 0.2)"
+          highlightColor="rgba(255, 255, 255, 0.3)"
+        />
+        <Skeleton
+          height={16}
+          width="80%"
+          baseColor="rgba(255, 255, 255, 0.2)"
+          highlightColor="rgba(255, 255, 255, 0.3)"
+        />
+      </View>
+
+      <View className="flex-row items-end px-5 pt-4 pb-5 -mt-3">
+        <View className="flex-1 mr-4">
+          <Skeleton height={72} width={120} style={{ marginBottom: 8 }} />
+          <Skeleton height={12} width="60%" style={{ marginBottom: 12 }} />
+          <Skeleton height={4} width="100%" />
+        </View>
+        <Skeleton height={64} width={64} borderRadius={16} />
+      </View>
+
+      <View className="flex-row border-t border-gray-200">
+        {[1, 2, 3].map((i) => (
+          <View
+            key={i}
+            className={`flex-1 items-center py-3 ${i < 3 ? "border-r border-gray-200" : ""}`}
+          >
+            <Skeleton height={16} width={40} style={{ marginBottom: 4 }} />
+            <Skeleton height={12} width={60} />
+          </View>
+        ))}
+      </View>
+    </View>
+
+    {/* Category Cards Skeleton */}
+    <Skeleton height={12} width={150} style={{ marginBottom: 12 }} />
+    {[1, 2, 3].map((i) => (
+      <View
+        key={i}
+        className="bg-white rounded-2xl border border-gray-200 mb-3 p-4"
+      >
+        <View className="flex-row items-center mb-3">
+          <Skeleton
+            height={36}
+            width={36}
+            borderRadius={12}
+            style={{ marginRight: 12 }}
+          />
+          <View className="flex-1">
+            <Skeleton height={16} width="60%" style={{ marginBottom: 4 }} />
+            <Skeleton height={12} width="40%" />
+          </View>
+          <Skeleton height={28} width={60} />
+        </View>
+        <Skeleton height={4} width="100%" style={{ marginBottom: 12 }} />
+        <View className="flex-row">
+          {[1, 2, 3].map((j) => (
+            <View
+              key={j}
+              className={`flex-1 items-center ${j < 3 ? "border-r border-gray-200" : ""}`}
+            >
+              <Skeleton height={16} width={40} style={{ marginBottom: 4 }} />
+              <Skeleton height={12} width={50} />
+            </View>
+          ))}
+        </View>
+      </View>
+    ))}
+  </View>
+);
+
+const ActivityCardSkeleton = () => (
+  <View className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden">
+    <View className="flex-row">
+      <View className="w-1 bg-gray-300" />
+      <View className="flex-1 p-4">
+        <View className="flex-row justify-between items-start mb-2">
+          <View className="flex-1 pr-3">
+            <Skeleton height={14} width="80%" style={{ marginBottom: 8 }} />
+            <View className="flex-row items-center" style={{ gap: 6 }}>
+              <Skeleton height={20} width={60} borderRadius={12} />
+              <Skeleton height={12} width={60} />
+            </View>
+          </View>
+          <Skeleton height={56} width={56} borderRadius={16} />
+        </View>
+        <Skeleton height={4} width="100%" style={{ marginBottom: 12 }} />
+        <View className="flex-row items-center justify-between">
+          <Skeleton height={20} width={70} borderRadius={12} />
+          <Skeleton height={12} width={80} />
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+const AssessmentCardSkeleton = () => (
+  <View className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden">
+    <View className="flex-row">
+      <View className="w-1 bg-gray-300" />
+      <View className="flex-1 p-4">
+        <View className="flex-row justify-between items-start mb-3">
+          <View className="flex-1 pr-3">
+            <Skeleton height={14} width="70%" style={{ marginBottom: 6 }} />
+            <Skeleton height={12} width="50%" />
+          </View>
+          <Skeleton height={56} width={56} borderRadius={16} />
+        </View>
+        <Skeleton height={4} width="100%" style={{ marginBottom: 12 }} />
+        <View className="bg-gray-100 rounded-xl overflow-hidden mb-3">
+          <View className="flex-row">
+            {[1, 2, 3].map((i) => (
+              <View
+                key={i}
+                className={`flex-1 items-center py-2.5 ${i < 3 ? "border-r border-gray-200" : ""}`}
+              >
+                <Skeleton height={16} width={30} style={{ marginBottom: 4 }} />
+                <Skeleton height={12} width={40} />
+              </View>
+            ))}
+          </View>
+        </View>
+        <Skeleton height={12} width="60%" />
+      </View>
+    </View>
+  </View>
+);
+
+const ListSkeleton = ({
+  count = 3,
+  type = "activity",
+}: {
+  count?: number;
+  type?: "activity" | "assessment";
+}) => (
+  <View>
+    <View className="bg-white rounded-2xl border border-gray-200 flex-row mb-4 overflow-hidden">
+      {[1, 2, 3].map((i) => (
+        <View
+          key={i}
+          className={`flex-1 items-center py-3 ${i < 3 ? "border-r border-gray-200" : ""}`}
+        >
+          <Skeleton height={16} width={40} style={{ marginBottom: 4 }} />
+          <Skeleton height={12} width={50} />
+        </View>
+      ))}
+    </View>
+    {Array.from({ length: count }).map((_, i) =>
+      type === "assessment" ? (
+        <AssessmentCardSkeleton key={i} />
+      ) : (
+        <ActivityCardSkeleton key={i} />
+      ),
+    )}
   </View>
 );
 
@@ -643,18 +810,7 @@ export default function ComprehensiveGradesScreen() {
     createComprehensiveGradesOptions(course_id!),
   );
 
-  if (isLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#EF4444" />
-          <Text className="text-gray-400 text-sm mt-3">Loading grades...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (isError || !data) {
+  if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
         <View className="flex-1 items-center justify-center px-8">
@@ -685,20 +841,28 @@ export default function ComprehensiveGradesScreen() {
         {/* Crimson accent line */}
         <View className="h-0.5 bg-red-500" />
 
-        <View className="px-5 pt-4 pb-0">
-          <Text className="text-xs text-red-500 font-bold tracking-widest mb-0.5">
-            {data.course_info.course_code}
-          </Text>
-          <Text
-            className="text-xl font-black text-gray-900 leading-tight"
-            numberOfLines={1}
-          >
-            {data.course_info.course_title}
-          </Text>
-          <Text className="text-xs text-gray-500 mt-0.5 mb-4">
-            Academic Performance Report
-          </Text>
-        </View>
+        {isLoading ? (
+          <View className="px-5 pt-4 pb-0">
+            <Skeleton height={12} width={80} style={{ marginBottom: 6 }} />
+            <Skeleton height={24} width="70%" style={{ marginBottom: 6 }} />
+            <Skeleton height={12} width={150} style={{ marginBottom: 16 }} />
+          </View>
+        ) : data ? (
+          <View className="px-5 pt-4 pb-0">
+            <Text className="text-xs text-red-500 font-bold tracking-widest mb-0.5">
+              {data.course_info.course_code}
+            </Text>
+            <Text
+              className="text-xl font-black text-gray-900 leading-tight"
+              numberOfLines={1}
+            >
+              {data.course_info.course_title}
+            </Text>
+            <Text className="text-xs text-gray-500 mt-0.5 mb-4">
+              Academic Performance Report
+            </Text>
+          </View>
+        ) : null}
 
         {/* Tab bar */}
         <View className="flex-row">
@@ -742,10 +906,27 @@ export default function ComprehensiveGradesScreen() {
           />
         }
       >
-        {activeTab === "overview" && <OverviewTab data={data} />}
-        {activeTab === "activities" && <ActivitiesTab data={data} />}
-        {activeTab === "quizzes" && <QuizzesTab data={data} />}
-        {activeTab === "exams" && <ExamsTab data={data} />}
+        {isLoading ? (
+          <>
+            {activeTab === "overview" && <OverviewSkeleton />}
+            {activeTab === "activities" && (
+              <ListSkeleton count={3} type="activity" />
+            )}
+            {activeTab === "quizzes" && (
+              <ListSkeleton count={2} type="assessment" />
+            )}
+            {activeTab === "exams" && (
+              <ListSkeleton count={2} type="assessment" />
+            )}
+          </>
+        ) : data ? (
+          <>
+            {activeTab === "overview" && <OverviewTab data={data} />}
+            {activeTab === "activities" && <ActivitiesTab data={data} />}
+            {activeTab === "quizzes" && <QuizzesTab data={data} />}
+            {activeTab === "exams" && <ExamsTab data={data} />}
+          </>
+        ) : null}
 
         <View className="h-8" />
       </ScrollView>
