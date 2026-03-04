@@ -1,3 +1,4 @@
+import Skeleton from "@/components/skeletons/Skeleton";
 import { useAuth } from "@/context/authContext";
 import { useCourseStore } from "@/store/useCourseStore";
 import { Enrollment } from "@/types/api";
@@ -15,6 +16,57 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createEnrollmentsOptions from "../../api/QueryOptions/enrollmentsOptions";
+
+// Skeleton Components
+const CourseCardSkeleton = () => (
+  <View className="bg-white rounded-2xl mb-4 shadow-sm border border-gray-100 overflow-hidden">
+    {/* Color Accent Bar */}
+    <View className="h-2 bg-gray-200" />
+
+    <View className="p-5">
+      {/* Title */}
+      <Skeleton height={24} width="80%" style={{ marginBottom: 12 }} />
+
+      {/* Info Grid */}
+      <View className="space-y-3 mb-4">
+        <View className="flex-row items-center">
+          <Skeleton
+            height={32}
+            width={32}
+            borderRadius={16}
+            style={{ marginRight: 12 }}
+          />
+          <View className="flex-1">
+            <Skeleton height={12} width={40} style={{ marginBottom: 4 }} />
+            <Skeleton height={16} width={100} />
+          </View>
+        </View>
+
+        <View className="flex-row items-center">
+          <Skeleton
+            height={32}
+            width={32}
+            borderRadius={16}
+            style={{ marginRight: 12 }}
+          />
+          <View className="flex-1">
+            <Skeleton height={12} width={60} style={{ marginBottom: 4 }} />
+            <Skeleton height={16} width="80%" />
+          </View>
+        </View>
+      </View>
+
+      {/* Progress Bar */}
+      <View className="mb-4">
+        <Skeleton height={12} width="40%" style={{ marginBottom: 8 }} />
+        <Skeleton height={8} width="100%" borderRadius={4} />
+      </View>
+
+      {/* Button */}
+      <Skeleton height={48} width="100%" borderRadius={12} />
+    </View>
+  </View>
+);
 
 export default function Index() {
   const router = useRouter();
@@ -50,17 +102,6 @@ export default function Index() {
     await refetch();
     setRefreshing(false);
   }, [refetch]);
-
-  if (isEnrollmentsLoading || authState?.isLoading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#EF4444" />
-        <Text className="mt-4 text-gray-600 text-base">
-          Loading your courses...
-        </Text>
-      </View>
-    );
-  }
 
   if (enrollmentsError) {
     return (
@@ -224,7 +265,7 @@ export default function Index() {
               <ActivityIndicator color="white" size="small" />
             ) : (
               <>
-                <AntDesign arrowright size={18} color="white" />
+                <AntDesign name="arrow-right" size={18} color="white" />
                 <Text className="text-white text-base font-semibold ml-2">
                   {isCompleted ? "Review Course" : "Continue Learning"}
                 </Text>
@@ -263,101 +304,138 @@ export default function Index() {
         }
       >
         {/* Header Section */}
-        <View className="bg-white pt-6 pb-8 px-6 border-b border-gray-100">
-          <View className="flex-row items-center justify-between mb-2">
-            <View>
-              <Text className="text-sm text-gray-500 mb-1">Welcome back,</Text>
-              <Text className="text-2xl font-bold text-gray-900">
-                {authState?.user?.full_name || "Student"}!
-              </Text>
+        {isEnrollmentsLoading || authState?.isLoading ? (
+          <View className="bg-white pt-6 pb-8 px-6 border-b border-gray-100">
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-1">
+                <Skeleton height={14} width={100} style={{ marginBottom: 8 }} />
+                <Skeleton height={28} width="60%" />
+              </View>
+              <Skeleton height={48} width={48} borderRadius={24} />
             </View>
-            <View className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-purple-600 items-center justify-center">
-              <Text className="text-white text-lg font-bold">
-                {authState?.user?.full_name?.charAt(0) || "S"}
-              </Text>
-            </View>
-          </View>
 
-          {/* Stats Cards */}
-          <View className="flex-row mt-6 space-x-3">
-            <View className="flex-1 bg-lavender-50 rounded-xl p-4">
-              <Text className="text-2xl font-bold text-purple-700">
-                {activeEnrollments.length}
-              </Text>
-              <Text className="text-xs text-purple-600 mt-1">
-                Active Courses
-              </Text>
-            </View>
-            <View className="flex-1 bg-gray-50 rounded-xl p-4">
-              <Text className="text-2xl font-bold text-gray-800">
-                {completedEnrollments.length}
-              </Text>
-              <Text className="text-xs text-gray-600 mt-1">Completed</Text>
+            {/* Stats Cards Skeleton */}
+            <View className="flex-row mt-6 space-x-3">
+              <View className="flex-1">
+                <Skeleton height={80} width="100%" borderRadius={12} />
+              </View>
+              <View className="flex-1">
+                <Skeleton height={80} width="100%" borderRadius={12} />
+              </View>
             </View>
           </View>
-        </View>
+        ) : (
+          <View className="bg-white pt-6 pb-8 px-6 border-b border-gray-100">
+            <View className="flex-row items-center justify-between mb-2">
+              <View>
+                <Text className="text-sm text-gray-500 mb-1">
+                  Welcome back,
+                </Text>
+                <Text className="text-2xl font-bold text-gray-900">
+                  {authState?.user?.full_name || "Student"}!
+                </Text>
+              </View>
+              <View className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-purple-600 items-center justify-center">
+                <Text className="text-white text-lg font-bold">
+                  {authState?.user?.full_name?.charAt(0) || "S"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Stats Cards */}
+            <View className="flex-row mt-6 space-x-3">
+              <View className="flex-1 bg-lavender-50 rounded-xl p-4">
+                <Text className="text-2xl font-bold text-purple-700">
+                  {activeEnrollments.length}
+                </Text>
+                <Text className="text-xs text-purple-600 mt-1">
+                  Active Courses
+                </Text>
+              </View>
+              <View className="flex-1 bg-gray-50 rounded-xl p-4">
+                <Text className="text-2xl font-bold text-gray-800">
+                  {completedEnrollments.length}
+                </Text>
+                <Text className="text-xs text-gray-600 mt-1">Completed</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Main Content */}
         <View className="px-5 pb-6">
           {/* Active Courses Section */}
-          {activeEnrollments.length > 0 && (
+          {isEnrollmentsLoading || authState?.isLoading ? (
             <View className="mt-6">
               <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-xl font-bold text-gray-900">
-                  My Courses
-                </Text>
-                <View className="bg-red-500 px-3 py-1 rounded-full">
-                  <Text className="text-white text-xs font-semibold">
-                    {activeEnrollments.length} Active
-                  </Text>
+                <Skeleton height={24} width={120} />
+                <Skeleton height={24} width={80} borderRadius={12} />
+              </View>
+              <CourseCardSkeleton />
+              <CourseCardSkeleton />
+            </View>
+          ) : (
+            <>
+              {activeEnrollments.length > 0 && (
+                <View className="mt-6">
+                  <View className="flex-row items-center justify-between mb-4">
+                    <Text className="text-xl font-bold text-gray-900">
+                      My Courses
+                    </Text>
+                    <View className="bg-red-500 px-3 py-1 rounded-full">
+                      <Text className="text-white text-xs font-semibold">
+                        {activeEnrollments.length} Active
+                      </Text>
+                    </View>
+                  </View>
+                  {activeEnrollments.map((enrollment) => (
+                    <CourseCard
+                      key={enrollment.enrollment_id}
+                      enrollment={enrollment}
+                      isCompleted={false}
+                    />
+                  ))}
                 </View>
-              </View>
-              {activeEnrollments.map((enrollment) => (
-                <CourseCard
-                  key={enrollment.enrollment_id}
-                  enrollment={enrollment}
-                  isCompleted={false}
-                />
-              ))}
-            </View>
-          )}
-
-          {activeEnrollments.length === 0 && (
-            <View className="mt-6">
-              <Text className="text-xl font-bold text-gray-900 mb-4">
-                My Courses
-              </Text>
-              <EmptyState message="No active courses at the moment. Check back soon for new enrollments!" />
-            </View>
-          )}
-
-          {/* Completed Courses Section */}
-          {(completedEnrollments.length > 0 ||
-            activeEnrollments.length > 0) && (
-            <View className="mt-8">
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-xl font-bold text-gray-900">
-                  Completed
-                </Text>
-                {completedEnrollments.length > 0 && (
-                  <Text className="text-sm text-gray-500">
-                    {completedEnrollments.length} course
-                    {completedEnrollments.length !== 1 ? "s" : ""}
-                  </Text>
-                )}
-              </View>
-              {completedEnrollments.length === 0 ? (
-                <EmptyState message="Complete your first course to see it here!" />
-              ) : (
-                completedEnrollments.map((enrollment) => (
-                  <CourseCard
-                    key={enrollment.enrollment_id}
-                    enrollment={enrollment}
-                    isCompleted={true}
-                  />
-                ))
               )}
-            </View>
+
+              {activeEnrollments.length === 0 && (
+                <View className="mt-6">
+                  <Text className="text-xl font-bold text-gray-900 mb-4">
+                    My Courses
+                  </Text>
+                  <EmptyState message="No active courses at the moment. Check back soon for new enrollments!" />
+                </View>
+              )}
+
+              {/* Completed Courses Section */}
+              {(completedEnrollments.length > 0 ||
+                activeEnrollments.length > 0) && (
+                <View className="mt-8">
+                  <View className="flex-row items-center justify-between mb-4">
+                    <Text className="text-xl font-bold text-gray-900">
+                      Completed
+                    </Text>
+                    {completedEnrollments.length > 0 && (
+                      <Text className="text-sm text-gray-500">
+                        {completedEnrollments.length} course
+                        {completedEnrollments.length !== 1 ? "s" : ""}
+                      </Text>
+                    )}
+                  </View>
+                  {completedEnrollments.length === 0 ? (
+                    <EmptyState message="Complete your first course to see it here!" />
+                  ) : (
+                    completedEnrollments.map((enrollment) => (
+                      <CourseCard
+                        key={enrollment.enrollment_id}
+                        enrollment={enrollment}
+                        isCompleted={true}
+                      />
+                    ))
+                  )}
+                </View>
+              )}
+            </>
           )}
         </View>
       </ScrollView>
