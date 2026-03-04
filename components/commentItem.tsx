@@ -1,15 +1,14 @@
-import createRepliesOptions from "@/api/QueryOptions/repliesOptions";
+import { createInfiniteRepliesOptions } from "@/api/QueryOptions/repliesOptions";
 import { Comment, Replies } from "@/types/api";
 import { getAccessToken } from "@/utils/accessToken";
 import { BASE_URL } from "@/utils/constants";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 type CommentData = Comment["comments"][number];
 type ReplyData = Replies["replies"][number];
 
@@ -23,7 +22,6 @@ const REACTIONS = [
 ] as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function getTopReactions(item: CommentData | ReplyData) {
   return REACTIONS.map((r) => ({ ...r, count: item[r.key] }))
     .filter((r) => r.count > 0)
@@ -46,7 +44,6 @@ function formatDate(dateStr: string) {
 }
 
 // ─── ReactionBar ─────────────────────────────────────────────────────────────
-
 function ReactionBar({
   item,
   onReact,
@@ -59,7 +56,6 @@ function ReactionBar({
 
   return (
     <View className="flex-row items-center gap-2 mt-2">
-      {/* Reaction summary bubbles */}
       {topReactions.length > 0 && (
         <View className="flex-row items-center bg-gray-100 rounded-full px-2 py-1 gap-1">
           {topReactions.map((r) => (
@@ -69,8 +65,6 @@ function ReactionBar({
           ))}
         </View>
       )}
-
-      {/* React button */}
       <View className="relative">
         <Pressable
           onPress={() => setShowPicker((v) => !v)}
@@ -85,7 +79,6 @@ function ReactionBar({
           <Text className="text-xs text-gray-500 font-medium">React</Text>
         </Pressable>
 
-        {/* Emoji picker popover */}
         {showPicker && (
           <View className="absolute bottom-9 left-0 flex-row bg-white rounded-2xl shadow-lg border border-gray-200 px-2 py-2 gap-1 z-50">
             {REACTIONS.map((r) => (
@@ -108,7 +101,6 @@ function ReactionBar({
 }
 
 // ─── ActionButtons ────────────────────────────────────────────────────────────
-
 function ActionButtons({
   onReply,
   onEdit,
@@ -156,7 +148,6 @@ function ActionButtons({
 }
 
 // ─── ReplyItem ────────────────────────────────────────────────────────────────
-
 function ReplyItem({
   reply,
   accessToken,
@@ -164,6 +155,7 @@ function ReplyItem({
   onEdit,
   onDelete,
   onReact,
+  onReply,
 }: {
   reply: ReplyData;
   accessToken: string | null;
@@ -171,13 +163,13 @@ function ReplyItem({
   onEdit?: (reply: ReplyData) => void;
   onDelete?: (replyId: number) => void;
   onReact?: (replyId: number, reaction: string) => void;
+  onReply?: (target: { id: number; full_name: string }) => void;
 }) {
   const imageUrl = `${BASE_URL}/comment-section/images/${reply.id}`;
   const isOwner = currentUserId === reply.user_id;
 
   return (
     <View className="ml-8 mt-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
-      {/* Mention badge */}
       {reply.mentioned_user_name && (
         <View className="flex-row items-center mb-1">
           <Text className="text-xs text-red-400 font-medium">
@@ -221,87 +213,85 @@ function ReplyItem({
         isOwner={isOwner}
         onEdit={() => onEdit?.(reply)}
         onDelete={() => onDelete?.(reply.id)}
+        onReply={() => onReply?.({ id: reply.id, full_name: reply.full_name })}
       />
     </View>
   );
 }
 
 // ─── RepliesSection ───────────────────────────────────────────────────────────
-
 function RepliesSection({
   parentId,
   accessToken,
   currentUserId,
+  onReply,
 }: {
   parentId: number;
   accessToken: string | null;
   currentUserId?: number;
+  onReply?: (target: { id: number; full_name: string }) => void;
 }) {
-  const [page, setPage] = useState(1);
   const perPage = 5;
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery(createInfiniteRepliesOptions(parentId, perPage));
 
-  const { data, isLoading, error } = useQuery({
-    ...createRepliesOptions(parentId, page, perPage),
-  });
+  const allReplies = data?.pages.flatMap((page) => page.replies) ?? [];
 
-  const totalPages = data ? Math.ceil(data.total / data.per_page) : 1;
-
-  if (isLoading) {
+  if (isLoading)
     return (
       <View className="ml-8 mt-3">
         <ActivityIndicator size="small" color="#EF4444" />
       </View>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <Text className="ml-8 mt-2 text-xs text-red-400">
         Failed to load replies.
       </Text>
     );
-  }
 
   return (
     <View>
-      {data?.replies.map((reply) => (
+      {allReplies.map((reply) => (
         <ReplyItem
           key={reply.id}
           reply={reply}
           accessToken={accessToken}
           currentUserId={currentUserId}
+          onReply={onReply}
         />
       ))}
 
-      {totalPages > 1 && (
-        <View className="ml-8 mt-2 flex-row items-center gap-2">
-          <Pressable
-            onPress={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page === 1}
-            className="bg-gray-100 px-3 py-1 rounded-lg"
-            style={{ opacity: page === 1 ? 0.4 : 1 }}
-          >
-            <Text className="text-xs text-gray-600">Prev</Text>
-          </Pressable>
-          <Text className="text-xs text-gray-400">
-            {page}/{totalPages}
-          </Text>
-          <Pressable
-            onPress={() => setPage((p) => Math.min(p + 1, totalPages))}
-            disabled={page === totalPages}
-            className="bg-gray-100 px-3 py-1 rounded-lg"
-            style={{ opacity: page === totalPages ? 0.4 : 1 }}
-          >
-            <Text className="text-xs text-gray-600">Next</Text>
-          </Pressable>
+      {isFetchingNextPage ? (
+        <View className="ml-8 mt-3 items-center">
+          <ActivityIndicator size="small" color="#EF4444" />
+          <Text className="text-xs text-gray-400 mt-1">Loading more...</Text>
         </View>
-      )}
+      ) : hasNextPage ? (
+        <Pressable
+          onPress={() => fetchNextPage()}
+          className="ml-8 mt-3 bg-gray-100 active:bg-gray-200 px-4 py-2 rounded-lg items-center"
+        >
+          <Text className="text-xs text-gray-600 font-medium">
+            Load more replies
+          </Text>
+        </Pressable>
+      ) : allReplies.length > 0 ? (
+        <View className="ml-8 mt-2">
+          <Text className="text-xs text-gray-400">No more replies</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
-// ─── CommentItem (main export) ────────────────────────────────────────────────
-
+// ─── CommentItem ──────────────────────────────────────────────────────────────
 export default function CommentItem({
   item,
   currentUserId,
@@ -315,7 +305,7 @@ export default function CommentItem({
   onEdit?: (comment: CommentData) => void;
   onDelete?: (commentId: number) => void;
   onReact?: (commentId: number, reaction: string) => void;
-  onReply?: (comment: CommentData) => void;
+  onReply?: (target: { id: number; full_name: string }) => void;
 }) {
   const [showReplies, setShowReplies] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -345,8 +335,6 @@ export default function CommentItem({
             </Text>
           </View>
         </View>
-
-        {/* Edited badge */}
         {item.updated_at && (
           <View className="bg-gray-100 rounded-full px-2 py-0.5">
             <Text className="text-xs text-gray-400">edited</Text>
@@ -370,7 +358,6 @@ export default function CommentItem({
         />
       )}
 
-      {/* Reactions */}
       <ReactionBar item={item} onReact={(key) => onReact?.(item.id, key)} />
 
       {/* Divider */}
@@ -381,14 +368,13 @@ export default function CommentItem({
         <ActionButtons
           isOwner={isOwner}
           onReply={() => {
-            onReply?.(item);
+            onReply?.({ id: item.id, full_name: item.full_name });
             if (item.total_replies > 0) setShowReplies(true);
           }}
           onEdit={() => onEdit?.(item)}
           onDelete={() => onDelete?.(item.id)}
         />
 
-        {/* Show/hide replies toggle */}
         {item.total_replies > 0 && (
           <Pressable
             onPress={() => setShowReplies((v) => !v)}
@@ -408,12 +394,12 @@ export default function CommentItem({
         )}
       </View>
 
-      {/* Replies section */}
       {showReplies && (
         <RepliesSection
           parentId={item.id}
           accessToken={accessToken}
           currentUserId={currentUserId}
+          onReply={onReply} // <- forward reply handler
         />
       )}
     </View>
