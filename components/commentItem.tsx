@@ -11,6 +11,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 // ─── Types ────────────────────────────────────────────────────────────────────
 type CommentData = Comment["comments"][number];
 type ReplyData = Replies["replies"][number];
+type EditTarget = { id: number; comment: string };
 
 const REACTIONS = [
   { emoji: "👍", key: "like" as const },
@@ -160,7 +161,7 @@ function ReplyItem({
   reply: ReplyData;
   accessToken: string | null;
   currentUserId?: number;
-  onEdit?: (reply: ReplyData) => void;
+  onEdit?: (item: EditTarget) => void;
   onDelete?: (replyId: number) => void;
   onReact?: (replyId: number, reaction: string) => void;
   onReply?: (target: { id: number; full_name: string }) => void;
@@ -189,9 +190,18 @@ function ReplyItem({
             {reply.full_name}
           </Text>
         </View>
-        <Text className="text-xs text-gray-400">
-          {formatDate(reply.created_at)}
-        </Text>
+
+        {/* Right side: timestamp + edited badge */}
+        <View className="flex-row items-center gap-2">
+          {reply.updated_at && (
+            <View className="bg-gray-100 rounded-full px-2 py-0.5">
+              <Text className="text-xs text-gray-400">edited</Text>
+            </View>
+          )}
+          <Text className="text-xs text-gray-400">
+            {formatDate(reply.created_at)}
+          </Text>
+        </View>
       </View>
 
       <Text className="text-sm text-gray-700 leading-5">{reply.comment}</Text>
@@ -211,7 +221,7 @@ function ReplyItem({
       <ReactionBar item={reply} onReact={(key) => onReact?.(reply.id, key)} />
       <ActionButtons
         isOwner={isOwner}
-        onEdit={() => onEdit?.(reply)}
+        onEdit={() => onEdit?.({ id: reply.id, comment: reply.comment })}
         onDelete={() => onDelete?.(reply.id)}
         onReply={() => onReply?.({ id: reply.id, full_name: reply.full_name })}
       />
@@ -226,12 +236,14 @@ function RepliesSection({
   currentUserId,
   onReply,
   onDelete,
+  onEdit,
 }: {
   parentId: number;
   accessToken: string | null;
   currentUserId?: number;
   onReply?: (target: { id: number; full_name: string }) => void;
   onDelete?: (replyId: number) => void;
+  onEdit?: (item: EditTarget) => void;
 }) {
   const perPage = 5;
   const {
@@ -268,6 +280,7 @@ function RepliesSection({
           currentUserId={currentUserId}
           onReply={onReply}
           onDelete={onDelete}
+          onEdit={onEdit}
         />
       ))}
 
@@ -305,7 +318,7 @@ export default function CommentItem({
 }: {
   item: CommentData;
   currentUserId?: number;
-  onEdit?: (comment: CommentData) => void;
+  onEdit?: (item: EditTarget) => void;
   onDelete?: (commentId: number) => void;
   onReact?: (commentId: number, reaction: string) => void;
   onReply?: (target: { id: number; full_name: string }) => void;
@@ -374,7 +387,7 @@ export default function CommentItem({
             onReply?.({ id: item.id, full_name: item.full_name });
             if (item.total_replies > 0) setShowReplies(true);
           }}
-          onEdit={() => onEdit?.(item)}
+          onEdit={() => onEdit?.({ id: item.id, comment: item.comment })}
           onDelete={() => onDelete?.(item.id)}
         />
 
@@ -404,6 +417,7 @@ export default function CommentItem({
           currentUserId={currentUserId}
           onReply={onReply}
           onDelete={onDelete}
+          onEdit={onEdit}
         />
       )}
     </View>
