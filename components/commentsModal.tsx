@@ -1,6 +1,7 @@
 import { usePostComment } from "@/api/QueryOptions/commentMutation";
 import { createInfiniteCommentsOptions } from "@/api/QueryOptions/commentsOptions";
 import { useSoftDeleteComment } from "@/api/QueryOptions/softDeleteCommentMutation";
+import { useUpdateComment } from "@/api/QueryOptions/updateCommentMutation";
 import CommentItem from "@/components/commentItem";
 import { useAuth } from "@/context/authContext";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
@@ -21,6 +22,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ConfirmDeleteModal from "./confirmDeleteModal";
+import EditCommentModal from "./editCommentModal";
 
 interface CommentsModalProps {
   visible: boolean;
@@ -38,6 +40,13 @@ export default function CommentsModal({
   const { mutate: postComment, isPending: postingComment } = usePostComment();
   const { mutate: deleteComment, isPending: deletingComment } =
     useSoftDeleteComment();
+  const { mutate: updateComment, isPending: updatingComment } =
+    useUpdateComment();
+  const [editTarget, setEditTarget] = useState<{
+    id: number;
+    text: string;
+  } | null>(null);
+
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -142,6 +151,29 @@ export default function CommentsModal({
     setDeleteTarget(null);
   };
 
+  const handleEditRequest = (commentId: number, currentText: string) => {
+    setEditTarget({ id: commentId, text: currentText });
+  };
+
+  const handleConfirmEdit = (newText: string) => {
+    if (!editTarget) return;
+    updateComment(
+      {
+        comment_id: editTarget.id,
+        payload: { comment: newText }, // 👈 wrap in payload
+      },
+      {
+        onSuccess: () => {
+          setEditTarget(null);
+          refetchComments();
+        },
+        onError: (error) => {
+          console.error("Failed to update comment:", error);
+        },
+      },
+    );
+  };
+
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -241,7 +273,7 @@ export default function CommentsModal({
                       item={item}
                       currentUserId={user_id}
                       onEdit={(comment) => {
-                        console.log("Edit comment", comment.id);
+                        handleEditRequest(comment.id, comment.comment);
                       }}
                       onDelete={(commentId) => {
                         handleDeleteRequest(commentId);
@@ -393,6 +425,14 @@ export default function CommentsModal({
         isLoading={deletingComment}
         title="Delete Comment?"
         description="This action cannot be undone. The comment will be permanently removed."
+      />
+
+      <EditCommentModal
+        visible={!!editTarget}
+        initialText={editTarget?.text ?? ""}
+        onConfirm={handleConfirmEdit}
+        onCancel={() => setEditTarget(null)}
+        isLoading={updatingComment}
       />
     </Modal>
   );
