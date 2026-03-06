@@ -225,11 +225,13 @@ function RepliesSection({
   accessToken,
   currentUserId,
   onReply,
+  onDelete,
 }: {
   parentId: number;
   accessToken: string | null;
   currentUserId?: number;
   onReply?: (target: { id: number; full_name: string }) => void;
+  onDelete?: (replyId: number) => void;
 }) {
   const perPage = 5;
   const {
@@ -265,6 +267,7 @@ function RepliesSection({
           accessToken={accessToken}
           currentUserId={currentUserId}
           onReply={onReply}
+          onDelete={onDelete}
         />
       ))}
 
@@ -399,7 +402,8 @@ export default function CommentItem({
           parentId={item.id}
           accessToken={accessToken}
           currentUserId={currentUserId}
-          onReply={onReply} // <- forward reply handler
+          onReply={onReply}
+          onDelete={onDelete}
         />
       )}
     </View>
