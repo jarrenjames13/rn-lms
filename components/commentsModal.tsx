@@ -1,5 +1,6 @@
 import { usePostComment } from "@/api/QueryOptions/commentMutation";
 import { createInfiniteCommentsOptions } from "@/api/QueryOptions/commentsOptions";
+import { useSoftDeleteComment } from "@/api/QueryOptions/softDeleteCommentMutation";
 import CommentItem from "@/components/commentItem";
 import { useAuth } from "@/context/authContext";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
@@ -19,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ConfirmDeleteModal from "./confirmDeleteModal";
 
 interface CommentsModalProps {
   visible: boolean;
@@ -34,6 +36,11 @@ export default function CommentsModal({
   const [comment, setComment] = useState<string>("");
   const { authState } = useAuth();
   const { mutate: postComment, isPending: postingComment } = usePostComment();
+  const { mutate: deleteComment, isPending: deletingComment } =
+    useSoftDeleteComment();
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const user_id = authState?.user?.user_id;
   const [selectedImage, setSelectedImage] = useState<{
     uri: string;
@@ -108,6 +115,31 @@ export default function CommentsModal({
         },
       },
     );
+  };
+
+  const handleDeleteRequest = (commentId: number) => {
+    setDeleteTarget(commentId);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteComment(deleteTarget, {
+      onSuccess: () => {
+        setShowDeleteModal(false);
+        setDeleteTarget(null);
+        refetchComments();
+      },
+      onError: (error) => {
+        console.error("Failed to delete comment:", error);
+        setShowDeleteModal(false);
+      },
+    });
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeleteTarget(null);
   };
 
   const handleEndReached = useCallback(() => {
@@ -212,7 +244,7 @@ export default function CommentsModal({
                         console.log("Edit comment", comment.id);
                       }}
                       onDelete={(commentId) => {
-                        console.log("Delete comment", commentId);
+                        handleDeleteRequest(commentId);
                       }}
                       onReact={(commentId, reaction) => {
                         console.log("React", reaction, "on comment", commentId);
@@ -353,6 +385,15 @@ export default function CommentsModal({
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      <ConfirmDeleteModal
+        visible={showDeleteModal}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        isLoading={deletingComment}
+        title="Delete Comment?"
+        description="This action cannot be undone. The comment will be permanently removed."
+      />
     </Modal>
   );
 }
