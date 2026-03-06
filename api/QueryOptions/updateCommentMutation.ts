@@ -10,6 +10,9 @@ export const useUpdateComment = () => {
       await queryClient.invalidateQueries({
         queryKey: ["comments"],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["replies"],
+      });
     },
     onError: (error: any) => {
       console.error("Failed to update comment:", error);
