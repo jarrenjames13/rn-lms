@@ -10,6 +10,9 @@ export const useSoftDeleteComment = () => {
       await queryClient.invalidateQueries({
         queryKey: ["comments"],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["replies"],
+      });
     },
     onError: (error: any) => {
       console.error("Failed to soft delete comment:", error);
