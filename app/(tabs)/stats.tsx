@@ -100,7 +100,7 @@ export default function Stats() {
     isFetching,
     error,
     refetch,
-  } = useQuery({ ...createStatsOptions(), enabled: false });
+  } = useQuery(createStatsOptions());
   const [refreshing, setRefreshing] = React.useState(false);
 
   // useFocusEffect(
