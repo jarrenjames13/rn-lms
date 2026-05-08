@@ -10,6 +10,12 @@ export const useCommentReactions = () => {
       await queryClient.invalidateQueries({
         queryKey: ["comments"],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["replies"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["commentReactions"],
+      });
     },
     onError: (error: any) => {
       console.error("Failed to post comment reaction:", error);

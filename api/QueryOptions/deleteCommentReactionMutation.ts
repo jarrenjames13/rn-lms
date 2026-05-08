@@ -14,6 +14,10 @@ export const useDeleteCommentReaction = () => {
       await queryClient.invalidateQueries({
         queryKey: ["replies"],
       });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["commentReactions"],
+      });
     },
     onError: (error: any) => {
       console.error("Failed to delete comment reaction:", error);

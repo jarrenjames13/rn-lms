@@ -38,7 +38,7 @@ export const fetchCommentReactions = async (
       per_page: perPage.toString(),
     });
 
-    if (reaction_type) {
+    if (reaction_type && reaction_type !== "all") {
       queryParams.append("reaction_type", reaction_type);
     }
     const response = await getData<CommentReactionsResponse>(

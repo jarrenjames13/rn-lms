@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { fetchCommentReactions } from "../QueryFunctions/fetchCommentsReactions";
 
-export default function createCommentReactionsOptions(
+export function createCommentReactionsOptions(
   comment_id: number,
   reaction_type: string,
   page: number = 1,
@@ -14,3 +14,5 @@ export default function createCommentReactionsOptions(
     staleTime: 30 * 1000,
   });
 }
+
+export default createCommentReactionsOptions;

@@ -1,7 +1,7 @@
 import { postData } from "@/utils/fetcher";
 
 export interface reactPayload {
-  reactionType: string;
+  reaction_type: string;
 }
 
 export interface CommentReactionVariables {
