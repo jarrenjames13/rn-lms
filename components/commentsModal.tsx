@@ -1,8 +1,11 @@
 import { usePostComment } from "@/api/QueryOptions/commentMutation";
 import { createInfiniteCommentsOptions } from "@/api/QueryOptions/commentsOptions";
+import { useCommentReactions } from "@/api/QueryOptions/commentsReactionMutation";
+import { useDeleteCommentReaction } from "@/api/QueryOptions/deleteCommentReactionMutation";
 import { useSoftDeleteComment } from "@/api/QueryOptions/softDeleteCommentMutation";
 import { useUpdateComment } from "@/api/QueryOptions/updateCommentMutation";
 import CommentItem from "@/components/commentItem";
+import CommentReactionsModal from "@/components/commentReactionsModal";
 import { useAuth } from "@/context/authContext";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
@@ -28,12 +31,14 @@ interface CommentsModalProps {
   visible: boolean;
   onClose: () => void;
   instanceId: number;
+  moduleId?: number;
 }
 
 export default function CommentsModal({
   visible,
   onClose,
   instanceId,
+  moduleId,
 }: CommentsModalProps) {
   const [comment, setComment] = useState<string>("");
   const { authState } = useAuth();
@@ -42,6 +47,8 @@ export default function CommentsModal({
     useSoftDeleteComment();
   const { mutate: updateComment, isPending: updatingComment } =
     useUpdateComment();
+  const { mutate: reactToComment } = useCommentReactions();
+  const { mutate: unreactToComment } = useDeleteCommentReaction();
   const [editTarget, setEditTarget] = useState<{
     id: number;
     text: string;
@@ -49,6 +56,9 @@ export default function CommentsModal({
 
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [reactionsModalData, setReactionsModalData] = useState<{
+    commentId: number;
+  } | null>(null);
 
   const user_id = authState?.user?.user_id;
   const [selectedImage, setSelectedImage] = useState<{
@@ -75,7 +85,7 @@ export default function CommentsModal({
     isFetchingNextPage,
     refetch: refetchComments,
   } = useInfiniteQuery(
-    createInfiniteCommentsOptions(instanceId, undefined, COMMENTS_PER_PAGE),
+    createInfiniteCommentsOptions(instanceId, moduleId, COMMENTS_PER_PAGE),
   );
 
   const allComments = data?.pages.flatMap((page) => page.comments) ?? [];
@@ -109,6 +119,7 @@ export default function CommentsModal({
           comment: comment.trim() || "",
           image: selectedImage || undefined,
           parent_id: replyingTo?.id || undefined,
+          module_id: moduleId,
         },
         instance_id: instanceId,
       },
@@ -279,7 +290,19 @@ export default function CommentsModal({
                         handleDeleteRequest(commentId);
                       }}
                       onReact={(commentId, reaction) => {
-                        console.log("React", reaction, "on comment", commentId);
+                        if (reaction === "") {
+                          // Unreact
+                          unreactToComment(commentId);
+                        } else {
+                          // React
+                          reactToComment({
+                            comment_id: commentId,
+                            payload: { reaction_type: reaction },
+                          });
+                        }
+                      }}
+                      onShowAllReactions={(commentId) => {
+                        setReactionsModalData({ commentId });
                       }}
                       onReply={(comment) => {
                         //handle switching
@@ -434,6 +457,14 @@ export default function CommentsModal({
         onCancel={() => setEditTarget(null)}
         isLoading={updatingComment}
       />
+
+      {reactionsModalData && (
+        <CommentReactionsModal
+          visible={!!reactionsModalData}
+          onClose={() => setReactionsModalData(null)}
+          commentId={reactionsModalData.commentId}
+        />
+      )}
     </Modal>
   );
 }
