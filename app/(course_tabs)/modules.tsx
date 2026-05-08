@@ -1,8 +1,10 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
+import createCommentsOptions from "@/api/QueryOptions/commentsOptions";
 import createCourseDetailsOptions from "@/api/QueryOptions/courseDetailsOptions";
 import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
 import { useTrackSection } from "@/api/QueryOptions/trackSectionMutation";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
+import CommentsModal from "@/components/commentsModal";
 import ModuleProgressBar from "@/components/ModuleProgressBar";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useModuleStore } from "@/store/useModuleStore";
@@ -38,12 +40,13 @@ import ModuleSkeleton from "@/components/skeletons/moduleSkeleton";
 import SectionSkeleton from "@/components/skeletons/sectionSkeleton";
 
 export default function Modules() {
-  const { course_id } = useCourseStore();
+  const { course_id, instance_id } = useCourseStore();
   const { moduleData, setModuleData } = useModuleStore();
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
   const [selectedActivity, setSelectedActivity] =
     useState<SingleActivity | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [commentsModuleId, setCommentsModuleId] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [parsedCache, setParsedCache] = useState<
     Map<number, { title: string; description: string }>
@@ -135,6 +138,17 @@ export default function Modules() {
     ),
   });
 
+  // Fetch comment counts for all modules in parallel
+  const commentCountQueries = useQueries({
+    queries: (moduleData || []).map((module) =>
+      createCommentsOptions(instance_id!, module.module_id, 1, 1),
+    ),
+    combine: (results) => ({
+      data: results.map((result) => result.data?.total ?? 0),
+      isLoading: results.some((result) => result.isLoading),
+    }),
+  });
+
   // Combine modules with activities and progress (no parsing here!)
   const parsedModules = useMemo(() => {
     if (!moduleData) return [];
@@ -153,17 +167,20 @@ export default function Modules() {
       const progressData: ModuleProgress | undefined = progressResult?.data;
       const progress = progressData || null;
 
+      const commentCount = commentCountQueries.data[index] ?? 0;
+
       return {
         ...module,
         parsedTitle,
         parsedDescription,
         progress,
         activities,
+        commentCount,
         isLoadingActivities: queryResult?.isLoading || false,
         activitiesError: queryResult?.isError || false,
       };
     });
-  }, [moduleData, activitiesQueries, progressQueries, parsedCache]);
+  }, [moduleData, activitiesQueries, progressQueries, parsedCache, commentCountQueries.data]);
 
   const toggleSection = (sectionId: number) => {
     const isOpening = openSectionId !== sectionId;
@@ -544,20 +561,35 @@ export default function Modules() {
                 >
                   {/* Module Header */}
                   <View className="bg-red-500 px-5 py-4">
-                    <View className="flex-row items-center">
-                      <View className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center mr-3">
-                        <Text className="text-white font-bold text-lg">
-                          {index + 1}
-                        </Text>
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center flex-1">
+                        <View className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center mr-3">
+                          <Text className="text-white font-bold text-lg">
+                            {index + 1}
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-xs text-white/80 font-medium mb-1">
+                            MODULE {index + 1}
+                          </Text>
+                          <Text className="text-xl font-bold text-white">
+                            {module.parsedTitle}
+                          </Text>
+                        </View>
                       </View>
-                      <View className="flex-1">
-                        <Text className="text-xs text-white/80 font-medium mb-1">
-                          MODULE {index + 1}
-                        </Text>
-                        <Text className="text-xl font-bold text-white">
-                          {module.parsedTitle}
-                        </Text>
-                      </View>
+                      <Pressable
+                        onPress={() => setCommentsModuleId(module.module_id)}
+                        className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center active:bg-white/30"
+                      >
+                        <Ionicons name="chatbubbles" size={20} color="white" />
+                        {module.commentCount > 0 && (
+                          <View className="absolute -top-1 -right-1 bg-white rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
+                            <Text className="text-red-500 text-[10px] font-bold">
+                              {module.commentCount > 99 ? '99+' : module.commentCount}
+                            </Text>
+                          </View>
+                        )}
+                      </Pressable>
                     </View>
                   </View>
 
@@ -596,6 +628,15 @@ export default function Modules() {
         activity={selectedActivity}
         onClose={handleCloseModal}
       />
+
+      {instance_id && (
+        <CommentsModal
+          visible={!!commentsModuleId}
+          onClose={() => setCommentsModuleId(null)}
+          instanceId={instance_id}
+          moduleId={commentsModuleId ?? undefined}
+        />
+      )}
     </SafeAreaView>
   );
 }
