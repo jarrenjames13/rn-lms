@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 
 export default function CourseTabsLayout() {
+  const router = useRouter();
   return (
     <Tabs
       screenOptions={{
@@ -12,12 +13,17 @@ export default function CourseTabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          headerShown: false,
           tabBarLabel: "Home",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" color={color} size={size} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault(); // don't navigate to the screen
+            router.replace("/(tabs)"); // go to main tabs instead
+          },
+        })}
       />
       <Tabs.Screen
         name="overview"
