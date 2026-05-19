@@ -1,5 +1,4 @@
 import Skeleton from "@/components/skeletons/Skeleton";
-import { NotificationBellHeader } from "@/components/NotificationBellHeader";
 import { useAuth } from "@/context/authContext";
 import { useCourseStore } from "@/store/useCourseStore";
 import { Enrollment } from "@/types/api";
@@ -336,13 +335,10 @@ export default function Index() {
                   {authState?.user?.full_name || "Student"}!
                 </Text>
               </View>
-              <View className="flex-row items-center gap-3">
-                <NotificationBellHeader />
-                <View className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-purple-600 items-center justify-center">
-                  <Text className="text-white text-lg font-bold">
-                    {authState?.user?.full_name?.charAt(0) || "S"}
-                  </Text>
-                </View>
+              <View className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-purple-600 items-center justify-center">
+                <Text className="text-white text-lg font-bold">
+                  {authState?.user?.full_name?.charAt(0) || "S"}
+                </Text>
               </View>
             </View>
 
