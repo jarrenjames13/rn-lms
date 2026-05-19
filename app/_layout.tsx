@@ -3,17 +3,14 @@ import { ToastConfig } from "@/utils/toast/toastConfig";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import React, { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import Toast from "react-native-toast-message";
 import "../global.css";
 
-const queryClient = new QueryClient();
-
-function RootLayoutNav() {
+const RootLayoutNav = React.memo(function RootLayoutNav() {
   const { authState } = useAuth();
 
-  // Show loading screen while checking auth
   if (authState?.isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -23,56 +20,39 @@ function RootLayoutNav() {
   }
 
   return (
-    <React.Fragment>
+    <>
       <StatusBar style="auto" />
       <Stack>
-        {/* Public routes - accessible when NOT authenticated */}
         <Stack.Protected guard={authState?.success !== true}>
-          <Stack.Screen
-            name="login"
-            options={{
-              headerShown: false,
-            }}
-          />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
         </Stack.Protected>
 
-        {/* Protected routes - accessible when authenticated */}
         <Stack.Protected guard={authState?.success === true}>
           <Stack.Screen
             name="(tabs)"
-            options={{
-              headerShown: false,
-              title: "LMS",
-            }}
+            options={{ headerShown: false, title: "LMS" }}
           />
           <Stack.Screen
             name="(course_tabs)"
-            options={{
-              headerShown: false,
-              title: "Course",
-            }}
+            options={{ headerShown: false, title: "Course" }}
           />
           <Stack.Screen
             name="quiz_taking"
-            options={{
-              headerShown: false,
-              title: "Take Quiz",
-            }}
+            options={{ headerShown: false, title: "Take Quiz" }}
           />
           <Stack.Screen
             name="exam_taking"
-            options={{
-              headerShown: false,
-              title: "Take Exam",
-            }}
+            options={{ headerShown: false, title: "Take Exam" }}
           />
         </Stack.Protected>
       </Stack>
-    </React.Fragment>
+    </>
   );
-}
+});
 
 export default function RootLayout() {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
