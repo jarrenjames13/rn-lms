@@ -1,4 +1,5 @@
 import createListExamsOptions from "@/api/QueryOptions/listExamsOption";
+import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useExamStore } from "@/store/useExamStore";
 
@@ -103,8 +104,8 @@ const ExamPeriodSkeleton = () => (
 
 export default function Exams() {
   const router = useRouter();
-  const { setExamId, setInstanceId } = useExamStore();
-  const { course_id } = useCourseStore();
+  const { setExamId, setInstanceId, setSessionToken } = useExamStore();
+  const { instance_id } = useCourseStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedExamForSubmission, setSelectedExamForSubmission] =
     useState<ExamDetails | null>(null);
@@ -115,7 +116,7 @@ export default function Exams() {
     isError,
     error,
     refetch,
-  } = useQuery(createListExamsOptions(course_id!));
+  } = useQuery(createListExamsOptions(instance_id!));
 
   const exams = examsData?.exams || [];
   const instanceId = examsData?.instance_id || null;
@@ -198,7 +199,7 @@ export default function Exams() {
     }
   };
 
-  const handlePress = (exam: ExamDetails) => {
+  const handlePress = async (exam: ExamDetails) => {
     // Check if this is a submission-type exam
     if (exam.category.toLowerCase() === "submission") {
       // Ensure we have an instanceId before opening modal
@@ -215,7 +216,17 @@ export default function Exams() {
     if (instanceId !== null) {
       setInstanceId(instanceId);
     }
-    router.replace("/exam_taking");
+    try {
+      const session = await startAssessmentSession({
+        assessment_id: exam.exam_id,
+        instance_id: instanceId!,
+        category: "exam",
+      });
+      setSessionToken(session.session_token);
+      router.replace("/exam_taking");
+    } catch (error: any) {
+      Alert.alert("Error", error?.response?.data?.detail || "Failed to start exam session.");
+    }
   };
 
   // Render a single exam card
