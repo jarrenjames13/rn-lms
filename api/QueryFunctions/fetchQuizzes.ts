@@ -1,10 +1,10 @@
 import { StudentQuizzes } from "@/types/api";
 import { getData } from "@/utils/fetcher";
 
-export const fetchQuizzes = async (courseId: number) => {
+export const fetchQuizzes = async (instanceId: number) => {
   try {
     const response = await getData<StudentQuizzes>(
-      `/modules/student-quizzes/${courseId}`
+      `/modules/student-quizzes/${instanceId}`
     );
     const data: StudentQuizzes = response.data;
     return data;

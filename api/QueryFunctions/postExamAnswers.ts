@@ -5,6 +5,7 @@ export type ExamSubmitPayload = {
   instance_id: number;
   answers: Record<number, string>;
   submission_reason: string;
+  session_token: string;
 };
 
 export const postExamAnswers = async (payload: ExamSubmitPayload) => {
