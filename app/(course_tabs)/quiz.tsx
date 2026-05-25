@@ -1,4 +1,5 @@
 import createListQuizzesOptions from "@/api/QueryOptions/listQuizzesOptions";
+import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
 import Skeleton from "@/components/skeletons/Skeleton";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useQuizStore } from "@/store/useQuizStore";
@@ -14,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -92,8 +94,8 @@ const QuizPeriodSkeleton = () => (
 
 export default function Quiz() {
   const router = useRouter();
-  const { setQuizId, setInstanceId } = useQuizStore();
-  const { course_id } = useCourseStore();
+  const { setQuizId, setInstanceId, setSessionToken } = useQuizStore();
+  const { instance_id } = useCourseStore();
   const [refreshing, setRefreshing] = useState(false);
 
   const {
@@ -103,7 +105,7 @@ export default function Quiz() {
     error,
     refetch,
   } = useQuery({
-    ...createListQuizzesOptions(course_id!),
+    ...createListQuizzesOptions(instance_id!),
     refetchOnWindowFocus: false,
   });
 
@@ -183,12 +185,22 @@ export default function Quiz() {
     }
   };
 
-  const handlePress = (quiz: QuizDetails) => {
+  const handlePress = async (quiz: QuizDetails) => {
     setQuizId(quiz.quiz_id);
     if (instanceId !== null) {
       setInstanceId(instanceId);
     }
-    router.replace("/quiz_taking");
+    try {
+      const session = await startAssessmentSession({
+        assessment_id: quiz.quiz_id,
+        instance_id: instanceId!,
+        category: "quiz",
+      });
+      setSessionToken(session.session_token);
+      router.replace("/quiz_taking");
+    } catch (error: any) {
+      Alert.alert("Error", error?.response?.data?.detail || "Failed to start quiz session.");
+    }
   };
 
   // Render a single quiz card
