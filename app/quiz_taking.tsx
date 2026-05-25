@@ -37,6 +37,7 @@ export default function QuizTaking() {
   const {
     quiz_id,
     instance_id,
+    session_token,
     selectedAnswers,
     setSelectedAnswers,
     clearAnswers,
@@ -79,9 +80,10 @@ export default function QuizTaking() {
         quiz_id,
         instance_id,
         answers: selectedAnswers,
+        session_token,
       });
     },
-    [quiz_id, instance_id, selectedAnswers, submitMutation],
+    [quiz_id, instance_id, selectedAnswers, submitMutation, session_token],
   );
 
   useEffect(() => {

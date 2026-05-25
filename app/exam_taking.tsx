@@ -34,6 +34,7 @@ export default function ExamTaking() {
   const {
     exam_id,
     instance_id,
+    session_token,
     selectedAnswers,
     setSelectedAnswers,
     clearAnswers,
@@ -76,9 +77,10 @@ export default function ExamTaking() {
         instance_id,
         answers: selectedAnswers,
         submission_reason: reason,
+        session_token,
       });
     },
-    [exam_id, instance_id, selectedAnswers, submitMutation],
+    [exam_id, instance_id, selectedAnswers, submitMutation, session_token],
   );
 
   useEffect(() => {
