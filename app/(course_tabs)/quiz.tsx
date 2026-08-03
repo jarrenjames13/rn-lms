@@ -372,7 +372,7 @@ export default function Quiz() {
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text className="text-xs text-gray-500 mb-1 font-medium">
-                    {maxAttemptsReached ? "Final Score" : "Best Score"}
+                    {maxAttemptsReached ? "Final Score" : "Latest Score"}
                   </Text>
                   <View className="flex-row items-center">
                     <Text

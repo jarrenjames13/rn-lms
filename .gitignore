@@ -48,5 +48,8 @@ app-example
 #env
 .env
 
+#backup files
+backup/
+
 #vscode
 .vscode/

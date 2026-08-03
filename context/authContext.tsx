@@ -371,15 +371,28 @@ export const AuthProvider = ({ children }: any) => {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 5000);
-      const probe = await fetch(`${BASE_URL}/health`, { method: "GET", signal: controller.signal });
+      const probe = await fetch(`${BASE_URL}/health`, {
+        method: "GET",
+        signal: controller.signal,
+      });
       clearTimeout(timer);
       if (!probe.ok) {
-        showToast({ type: "error", title: "Server Unavailable", message: "The server is currently under maintenance. Please try again later." });
+        showToast({
+          type: "error",
+          title: "Server Unavailable",
+          message:
+            "The server is currently under maintenance. Please try again later.",
+        });
         setAuthState((prev) => ({ ...prev, isLoading: false }));
         return;
       }
     } catch {
-      showToast({ type: "error", title: "Cannot Reach Server", message: "Unable to connect to the server. Please check your connection." });
+      showToast({
+        type: "error",
+        title: "Cannot Reach Server",
+        message:
+          "Unable to connect to the server. Please check your connection.",
+      });
       setAuthState((prev) => ({ ...prev, isLoading: false }));
       return;
     }
@@ -387,10 +400,13 @@ export const AuthProvider = ({ children }: any) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
 
-      const res = await axios.post<LoginResponse>(`${BASE_URL}/auth/login`, {
-        external_id,
-        password,
-      });
+      const res = await axios.post<LoginResponse>(
+        `${BASE_URL}/auth/mobile-login`,
+        {
+          external_id,
+          password,
+        },
+      );
       const data = res.data;
 
       // Only successful 200 responses reach here

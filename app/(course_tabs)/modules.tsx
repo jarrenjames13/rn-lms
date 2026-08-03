@@ -180,7 +180,13 @@ export default function Modules() {
         activitiesError: queryResult?.isError || false,
       };
     });
-  }, [moduleData, activitiesQueries, progressQueries, parsedCache, commentCountQueries.data]);
+  }, [
+    moduleData,
+    activitiesQueries,
+    progressQueries,
+    parsedCache,
+    commentCountQueries.data,
+  ]);
 
   const toggleSection = (sectionId: number) => {
     const isOpening = openSectionId !== sectionId;
@@ -550,75 +556,99 @@ export default function Modules() {
         }
       >
         <View className="p-4">
-          {loadingModules || !moduleData
-            ? Array.from({ length: 2 }).map((_, i) => (
-                <ModuleSkeleton key={i} />
-              ))
-            : parsedModules.map((module, index) => (
-                <View
-                  key={module.module_id}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 overflow-hidden"
-                >
-                  {/* Module Header */}
-                  <View className="bg-red-500 px-5 py-4">
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center flex-1">
-                        <View className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center mr-3">
-                          <Text className="text-white font-bold text-lg">
-                            {index + 1}
+          {loadingModules || !moduleData ? (
+            Array.from({ length: 2 }).map((_, i) => <ModuleSkeleton key={i} />)
+          ) : parsedModules.length === 0 ? (
+            <View className="flex-1 items-center justify-center py-20 px-6">
+              <View className="w-24 h-24 bg-red-50 rounded-full items-center justify-center mb-6">
+                <MaterialIcons name="library-books" size={44} color="#EF4444" />
+              </View>
+              <Text className="text-xl font-bold text-gray-900 text-center mb-2">
+                No Modules Yet
+              </Text>
+              <Text className="text-sm text-gray-500 text-center leading-6 mb-8">
+                This course doesn&apos;t have any modules available at the
+                moment. Check back later or contact your instructor.
+              </Text>
+              <Pressable
+                onPress={onRefresh}
+                className="flex-row items-center bg-red-500 active:bg-red-600 rounded-xl px-6 py-3"
+              >
+                <Ionicons name="refresh" size={16} color="white" />
+                <Text className="text-sm font-semibold text-white ml-2">
+                  Refresh
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            parsedModules.map((module, index) => (
+              <View
+                key={module.module_id}
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 overflow-hidden"
+              >
+                {/* Module Header */}
+                <View className="bg-red-500 px-5 py-4">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center flex-1">
+                      <View className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center mr-3">
+                        <Text className="text-white font-bold text-lg">
+                          {index + 1}
+                        </Text>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-xs text-white/80 font-medium mb-1">
+                          MODULE {index + 1}
+                        </Text>
+                        <Text className="text-xl font-bold text-white">
+                          {module.parsedTitle}
+                        </Text>
+                      </View>
+                    </View>
+                    <Pressable
+                      onPress={() => setCommentsModuleId(module.module_id)}
+                      className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center active:bg-white/30"
+                    >
+                      <Ionicons name="chatbubbles" size={20} color="white" />
+                      {module.commentCount > 0 && (
+                        <View className="absolute -top-1 -right-1 bg-white rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
+                          <Text className="text-red-500 text-[10px] font-bold">
+                            {module.commentCount > 99
+                              ? "99+"
+                              : module.commentCount}
                           </Text>
                         </View>
-                        <View className="flex-1">
-                          <Text className="text-xs text-white/80 font-medium mb-1">
-                            MODULE {index + 1}
-                          </Text>
-                          <Text className="text-xl font-bold text-white">
-                            {module.parsedTitle}
-                          </Text>
-                        </View>
-                      </View>
-                      <Pressable
-                        onPress={() => setCommentsModuleId(module.module_id)}
-                        className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center active:bg-white/30"
-                      >
-                        <Ionicons name="chatbubbles" size={20} color="white" />
-                        {module.commentCount > 0 && (
-                          <View className="absolute -top-1 -right-1 bg-white rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
-                            <Text className="text-red-500 text-[10px] font-bold">
-                              {module.commentCount > 99 ? '99+' : module.commentCount}
-                            </Text>
-                          </View>
-                        )}
-                      </Pressable>
-                    </View>
-                  </View>
-
-                  <View className="p-5">
-                    <View className="bg-gray-50 rounded-xl p-4 mb-4">
-                      <Text className="text-sm text-gray-700 leading-6">
-                        {module.parsedDescription}
-                      </Text>
-                    </View>
-
-                    {module.progress && (
-                      <View className="mb-4">
-                        <ModuleProgressBar
-                          progress={module.progress}
-                          showDetails
-                        />
-                      </View>
-                    )}
-
-                    {module.sections
-                      ? renderModuleSections(module)
-                      : Array.from({ length: 2 }).map((_, i) => (
-                          <SectionSkeleton key={i} />
-                        ))}
-
-                    {renderModuleActivities(module)}
+                      )}
+                    </Pressable>
                   </View>
                 </View>
-              ))}
+
+                <View className="p-5">
+                  <View className="bg-gray-50 rounded-xl p-4 mb-4">
+                    <Text className="text-sm text-gray-700 leading-6">
+                      {module.parsedDescription}
+                    </Text>
+                  </View>
+
+                  {module.progress && (
+                    <View className="mb-4">
+                      <ModuleProgressBar
+                        progress={module.progress}
+                        showDetails
+                      />
+                    </View>
+                  )}
+
+                  {module.sections
+                    ? renderModuleSections(module)
+                    : Array.from({ length: 2 }).map((_, i) => (
+                        <SectionSkeleton key={i} />
+                      ))}
+
+                  {renderModuleActivities(module)}
+                </View>
+              </View>
+            ))
+          )}
         </View>
         <View className="h-6" />
       </ScrollView>
