@@ -1,6 +1,6 @@
 import { SingleActivity } from "@/types/api";
 import { postData } from "@/utils/fetcher";
-import { renderHTMLContent } from "@/utils/RenderHTML";
+import { HTMLContent } from "@/utils/RenderHTML";
 import { showToast } from "@/utils/toast/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
@@ -128,9 +128,7 @@ export default function ActivitySubmissionModal({
                 <Text className="text-sm font-semibold text-gray-700 mb-2">
                   Instructions:
                 </Text>
-                <Text className="text-sm text-gray-600">
-                  {renderHTMLContent(activity.instructions)}
-                </Text>
+                <HTMLContent htmlContent={activity.instructions} />
               </View>
 
               {/* Answer Input */}

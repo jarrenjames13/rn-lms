@@ -1,15 +1,48 @@
 import { AuthProvider, useAuth } from "@/context/authContext";
 import { ToastConfig } from "@/utils/toast/toastConfig";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { registerForPushNotifications } from "@/api/services/pushNotifications";
+import { sseService } from "@/api/services/sseService";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import Toast from "react-native-toast-message";
 import "../global.css";
 
 const RootLayoutNav = React.memo(function RootLayoutNav() {
   const { authState } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (authState?.success !== true) return;
+
+    let subscription: { remove: () => void } | undefined;
+    registerForPushNotifications()
+      .then((registered) => {
+        subscription = registered;
+      })
+      .catch((error) => {
+        if (__DEV__) console.warn("Push notification registration failed", error);
+      });
+
+    return () => subscription?.remove();
+  }, [authState?.success]);
+
+  useEffect(() => {
+    if (authState?.success !== true) {
+      sseService.disconnect();
+      return;
+    }
+    void sseService.connect();
+    const unsubscribe = sseService.onNotification(() => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    });
+    return () => {
+      unsubscribe();
+      sseService.disconnect();
+    };
+  }, [authState?.success, queryClient]);
 
   if (authState?.isLoading) {
     return (

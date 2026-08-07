@@ -4,7 +4,7 @@ import { useCourseStore } from "@/store/useCourseStore";
 import { Enrollment } from "@/types/api";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -88,14 +88,6 @@ export default function Index() {
   });
 
   const enrollments: Enrollment[] = data?.enrollments ?? [];
-
-  useFocusEffect(
-    useCallback(() => {
-      if (userId) {
-        refetch();
-      }
-    }, [userId, refetch]),
-  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

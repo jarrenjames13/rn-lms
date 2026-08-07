@@ -42,7 +42,14 @@
       "expo-font",
       "expo-web-browser",
       "expo-image",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#6D4C9B"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

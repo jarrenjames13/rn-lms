@@ -14,7 +14,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Alert,
@@ -132,13 +132,6 @@ export default function Exams() {
       return acc;
     },
     {} as Record<string, ExamDetails[]>,
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      console.log("Exams screen focused - refetching exam list");
-      refetch();
-    }, [refetch]),
   );
 
   // Pull to refresh

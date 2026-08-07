@@ -7,9 +7,10 @@ import { useUpdateComment } from "@/api/QueryOptions/updateCommentMutation";
 import CommentItem from "@/components/commentItem";
 import CommentReactionsModal from "@/components/commentReactionsModal";
 import { useAuth } from "@/context/authContext";
+import { COMMENT_EVENTS, sseService } from "@/api/services/sseService";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -61,6 +62,7 @@ export default function CommentsModal({
   } | null>(null);
 
   const user_id = authState?.user?.user_id;
+  const queryClient = useQueryClient();
   const [selectedImage, setSelectedImage] = useState<{
     uri: string;
     name: string;
@@ -85,7 +87,14 @@ export default function CommentsModal({
     isFetchingNextPage,
     refetch: refetchComments,
   } = useInfiniteQuery(
-    createInfiniteCommentsOptions(instanceId, moduleId, COMMENTS_PER_PAGE),
+    {
+      ...createInfiniteCommentsOptions(
+        instanceId,
+        moduleId,
+        COMMENTS_PER_PAGE,
+      ),
+      enabled: visible && !!instanceId,
+    },
   );
 
   const allComments = data?.pages.flatMap((page) => page.comments) ?? [];
@@ -192,10 +201,18 @@ export default function CommentsModal({
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    if (visible) {
-      refetchComments();
-    }
-  }, [visible, refetchComments]);
+    if (!visible) return;
+    void sseService.reconnectWith(instanceId, moduleId);
+    const unsubscribers = COMMENT_EVENTS.map((type) =>
+      sseService.onCommentEvent(type, () => {
+        void queryClient.invalidateQueries({ queryKey: ["comments", instanceId, moduleId] });
+      }),
+    );
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+      void sseService.reconnectWith(undefined, undefined);
+    };
+  }, [instanceId, moduleId, queryClient, visible]);
 
   return (
     <Modal

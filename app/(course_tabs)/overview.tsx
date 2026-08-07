@@ -12,7 +12,7 @@ import {
 } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useFocusEffect } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Pressable,
@@ -25,6 +25,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
 
 export default function Overview() {
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const { course_id, instance_id } = useCourseStore();
@@ -54,14 +55,6 @@ export default function Overview() {
   //   }, [course_id, refetch, courseDetails?.modules, setModuleData]),
   // );
 
-  useFocusEffect(
-    useCallback(() => {
-      if (course_id) {
-        refetch();
-      }
-    }, [course_id, refetch]),
-  );
-
   const {
     data: courseStats,
     isLoading: loadingStats,
@@ -72,14 +65,6 @@ export default function Overview() {
     enabled: !!course_id,
   });
 
-  useFocusEffect(
-    useCallback(() => {
-      if (course_id) {
-        refetchStats();
-      }
-    }, [course_id, refetchStats]),
-  );
-
   const {
     data: courseProgress,
     isLoading: loadingProgress,
@@ -89,14 +74,6 @@ export default function Overview() {
     ...createCourseProgressOptions(course_id!),
     enabled: !!course_id,
   });
-
-  useFocusEffect(
-    useCallback(() => {
-      if (course_id) {
-        refetchProgress();
-      }
-    }, [course_id, refetchProgress]),
-  );
 
   // Pull to refresh handler
   const onRefresh = useCallback(async () => {
@@ -208,6 +185,17 @@ export default function Overview() {
         style={{ backgroundColor: bgColor }}
         className="w-10 h-10 rounded-lg items-center justify-center mb-2"
       >
+        <View className="px-6 pt-4">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Return to course selection"
+            onPress={() => router.replace("/(tabs)")}
+            className="flex-row items-center self-start bg-white border border-[#E8E2E9] rounded-full px-4 py-2 active:opacity-70"
+          >
+            <Ionicons name="arrow-back" size={16} color="#6D4C9B" />
+            <Text className="text-sm font-semibold text-[#5D5262] ml-2">My courses</Text>
+          </Pressable>
+        </View>
         <MaterialIcons name={icon as any} size={20} color="#EF4444" />
       </View>
       <Text className="text-2xl font-bold text-gray-800">{value}</Text>
@@ -587,7 +575,6 @@ export default function Overview() {
           visible={commentsModalVisible}
           onClose={() => {
             setCommentsModalVisible(false);
-            refetchComments();
           }}
           instanceId={instance_id}
         />

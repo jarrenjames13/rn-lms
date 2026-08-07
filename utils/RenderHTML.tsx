@@ -428,6 +428,16 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
   return React.createElement(View, { className: "p-4" }, renderedNodes);
 }
 
+// Keep parsing out of parent render paths. The component only re-renders when
+// the HTML string changes, while still preserving stateful code blocks.
+export const HTMLContent = React.memo(function HTMLContent({
+  htmlContent,
+}: {
+  htmlContent: string;
+}) {
+  return renderHTMLContent(htmlContent);
+});
+
 // ---------------------- HTML Helpers ----------------------
 export function extractTitleFromParsed(nodes: ParsedNode[]): string {
   for (const node of nodes) {

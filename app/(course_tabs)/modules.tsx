@@ -18,13 +18,12 @@ import {
 import {
   extractDescriptionFromParsed,
   extractTitleFromParsed,
+  HTMLContent,
   parseHTML,
-  renderHTMLContent,
 } from "@/utils/RenderHTML";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useFocusEffect } from "expo-router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -51,30 +50,21 @@ export default function Modules() {
   const [parsedCache, setParsedCache] = useState<
     Map<number, { title: string; description: string }>
   >(new Map());
+  const parsedCacheRef = useRef(parsedCache);
   const scrollViewRef = useRef<ScrollView>(null);
   const sectionRefs = useRef<{ [key: number]: View | null }>({});
 
   const queryClient = useQueryClient();
   const { mutate, isPending } = useTrackSection();
 
-  // Fetch course details (including modules) when the screen is focused
+  // React Query serves cached course details while they are fresh.
   const {
     data: courseDetails,
     isLoading: loadingModules,
-    refetch: refetchModules,
   } = useQuery({
     ...createCourseDetailsOptions(course_id!),
     enabled: !!course_id,
   });
-
-  // Update module store when data changes
-  useFocusEffect(
-    useCallback(() => {
-      if (course_id) {
-        refetchModules();
-      }
-    }, [course_id, refetchModules]),
-  );
 
   // Sync courseDetails to moduleData store
   React.useEffect(() => {
@@ -83,7 +73,7 @@ export default function Modules() {
     }
   }, [courseDetails, setModuleData]);
 
-  // Parse HTML for modules progressively (non-blocking)
+  // Parse module summaries only when module data changes.
   React.useEffect(() => {
     if (!moduleData) return;
 
@@ -93,7 +83,7 @@ export default function Modules() {
         const module = moduleData[i];
 
         // Skip if already parsed
-        if (parsedCache.has(module.module_id)) continue;
+        if (parsedCacheRef.current.has(module.module_id)) continue;
 
         // Parse this module
         await new Promise((resolve) => {
@@ -103,17 +93,20 @@ export default function Modules() {
               const title = extractTitleFromParsed(parsed);
               const description = extractDescriptionFromParsed(parsed);
 
-              setParsedCache((prev) =>
-                new Map(prev).set(module.module_id, { title, description }),
-              );
+              const next = new Map(parsedCacheRef.current).set(module.module_id, {
+                title,
+                description,
+              });
+              parsedCacheRef.current = next;
+              setParsedCache(next);
             } catch (error) {
               console.error("Error parsing module:", error);
-              setParsedCache((prev) =>
-                new Map(prev).set(module.module_id, {
-                  title: "Untitled Module",
-                  description: "No description available",
-                }),
-              );
+              const next = new Map(parsedCacheRef.current).set(module.module_id, {
+                title: "Untitled Module",
+                description: "No description available",
+              });
+              parsedCacheRef.current = next;
+              setParsedCache(next);
             }
             resolve(null);
           }, 0); // Let UI breathe between parses
@@ -122,7 +115,7 @@ export default function Modules() {
     };
 
     parseModules();
-  }, [moduleData, parsedCache]);
+  }, [moduleData]);
 
   // Fetch activities for all modules in parallel
   const activitiesQueries = useQueries({
@@ -220,7 +213,9 @@ export default function Modules() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      setParsedCache(new Map()); // Clear cache on refresh
+      const emptyCache = new Map<number, { title: string; description: string }>();
+      parsedCacheRef.current = emptyCache;
+      setParsedCache(emptyCache);
       await queryClient.invalidateQueries();
     } catch (error) {
       console.log("Refresh error:", error);
@@ -356,9 +351,9 @@ export default function Modules() {
               Instructions
             </Text>
           </View>
-          <Text className="text-sm text-gray-600 leading-5">
-            {renderHTMLContent(activity.instructions)}
-          </Text>
+          <View className="text-sm text-gray-600 leading-5">
+            <HTMLContent htmlContent={activity.instructions} />
+          </View>
         </View>
 
         {/* Feedback */}
@@ -480,7 +475,7 @@ export default function Modules() {
               {isOpen && (
                 <View className="bg-white border-x border-b border-gray-200 rounded-b-xl p-4 mt-[-8px]">
                   <View className="bg-gray-50 rounded-lg p-4">
-                    {renderHTMLContent(section.content)}
+                    <HTMLContent htmlContent={section.content} />
                   </View>
                 </View>
               )}
