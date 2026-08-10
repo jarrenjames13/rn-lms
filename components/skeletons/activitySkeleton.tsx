@@ -1,10 +1,16 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { useAppTheme } from "@/theme";
 import Skeleton from "./Skeleton";
 
 export default function ActivitySkeleton() {
+  const { theme } = useAppTheme();
+
   return (
-    <View className="bg-white rounded-xl p-4 mb-3 border border-gray-100">
+    <View
+      className="rounded-xl p-4 mb-3 border"
+      style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+    >
       {/* Title */}
       <Skeleton height={18} width="70%" style={styles.title} />
 

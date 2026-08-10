@@ -1,6 +1,7 @@
 // components/ModuleProgressBar.tsx
 
 import { ModuleProgress } from "@/types/api";
+import { useAppTheme } from "@/theme";
 import React from "react";
 import { Text, View } from "react-native";
 
@@ -13,6 +14,7 @@ export default function ModuleProgressBar({
   progress,
   showDetails = false,
 }: ModuleProgressBarProps) {
+  const { theme } = useAppTheme();
   const {
     overall_percentage,
     completed_sections,
@@ -24,23 +26,32 @@ export default function ModuleProgressBar({
   } = progress;
 
   return (
-    <View className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+    <View
+      className="rounded-lg p-4 border"
+      style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+    >
       {/* Overall Progress */}
       <View className="mb-3">
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-sm font-semibold text-gray-700">
+          <Text className="text-sm font-semibold" style={{ color: theme.text }}>
             Overall Progress
           </Text>
-          <Text className="text-sm font-bold text-blue-600">
+          <Text className="text-sm font-bold" style={{ color: theme.primary }}>
             {Math.round(overall_percentage)}%
           </Text>
         </View>
 
         {/* Progress Bar */}
-        <View className="h-3 bg-gray-200 rounded-full overflow-hidden">
+        <View
+          className="h-3 rounded-full overflow-hidden"
+          style={{ backgroundColor: theme.border }}
+        >
           <View
-            className="h-full bg-blue-500 rounded-full"
-            style={{ width: `${overall_percentage}%` }}
+            className="h-full rounded-full"
+            style={{
+              width: `${overall_percentage}%`,
+              backgroundColor: theme.primary,
+            }}
           />
         </View>
       </View>
@@ -51,10 +62,15 @@ export default function ModuleProgressBar({
           {/* Sections Progress */}
           <View className="flex-row justify-between items-center">
             <View className="flex-row items-center gap-2">
-              <View className="w-2 h-2 rounded-full bg-green-500" />
-              <Text className="text-xs text-gray-600">Sections</Text>
+              <View
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: theme.success }}
+              />
+              <Text className="text-xs" style={{ color: theme.textMuted }}>
+                Sections
+              </Text>
             </View>
-            <Text className="text-xs font-medium text-gray-700">
+            <Text className="text-xs font-medium" style={{ color: theme.text }}>
               {completed_sections}/{total_sections} (
               {Math.round(sections_percentage)}%)
             </Text>
@@ -63,10 +79,15 @@ export default function ModuleProgressBar({
           {/* Activities Progress */}
           <View className="flex-row justify-between items-center">
             <View className="flex-row items-center gap-2">
-              <View className="w-2 h-2 rounded-full bg-purple-500" />
-              <Text className="text-xs text-gray-600">Activities</Text>
+              <View
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: theme.primary }}
+              />
+              <Text className="text-xs" style={{ color: theme.textMuted }}>
+                Activities
+              </Text>
             </View>
-            <Text className="text-xs font-medium text-gray-700">
+            <Text className="text-xs font-medium" style={{ color: theme.text }}>
               {submitted_activities}/{total_activities} (
               {Math.round(activities_percentage)}%)
             </Text>

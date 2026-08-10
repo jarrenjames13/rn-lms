@@ -2,6 +2,8 @@ import createComprehensiveGradesOptions from "@/api/QueryOptions/comprehensiveGr
 import { AppScreen, StateView } from "@/components/ui";
 import Skeleton from "@/components/skeletons/Skeleton";
 import { useCourseStore } from "@/store/useCourseStore";
+import { useAppTheme } from "@/theme";
+import type { Theme } from "@/theme";
 import { ComprehensiveGradesResponse, SubmissionGrade } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
@@ -26,18 +28,18 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const getLetterGrade = (score: number) => {
-  if (score >= 90) return { letter: "A", color: "#10B981" };
-  if (score >= 80) return { letter: "B", color: "#B8A9D9" };
-  if (score >= 70) return { letter: "C", color: "#F59E0B" };
-  if (score >= 60) return { letter: "D", color: "#F97316" };
-  return { letter: "F", color: "#EF4444" };
+const getLetterGrade = (score: number, theme: Theme) => {
+  if (score >= 90) return { letter: "A", color: theme.success };
+  if (score >= 80) return { letter: "B", color: theme.primary };
+  if (score >= 70) return { letter: "C", color: theme.warning };
+  if (score >= 60) return { letter: "D", color: theme.warning };
+  return { letter: "F", color: theme.danger };
 };
 
 const getScoreTextColor = (score: number) => {
-  if (score >= 85) return "text-emerald-600";
-  if (score >= 70) return "text-purple-600";
-  return "text-red-500";
+  if (score >= 85) return "text-[#167A50] dark:text-[#58C99A]";
+  if (score >= 70) return "text-[#6842A0] dark:text-[#A98ADC]";
+  return "text-[#B42335] dark:text-[#F06A78]";
 };
 
 const formatDate = (dateStr: string | null) => {
@@ -53,12 +55,12 @@ const formatDate = (dateStr: string | null) => {
 
 const ProgressBar = ({
   value,
-  colorClass = "bg-red-500",
+  colorClass = "bg-[#B42335] dark:bg-[#F06A78]",
 }: {
   value: number;
   colorClass?: string;
 }) => (
-  <View className="h-1 bg-gray-200 rounded-full overflow-hidden">
+  <View className="h-1 bg-[#E6E1E8] dark:bg-[#37313C] rounded-full overflow-hidden">
     <View
       className={`h-full rounded-full ${colorClass}`}
       style={{ width: `${Math.min(value, 100)}%` }}
@@ -68,14 +70,14 @@ const ProgressBar = ({
 
 const StatusBadge = ({ status }: { status: string }) => {
   const configs: Record<string, { bg: string; text: string }> = {
-    graded: { bg: "bg-emerald-50", text: "text-emerald-600" },
-    submitted: { bg: "bg-blue-50", text: "text-blue-600" },
-    pending: { bg: "bg-amber-50", text: "text-amber-600" },
-    late: { bg: "bg-red-50", text: "text-red-500" },
+    graded: { bg: "bg-[#F2ECF8] dark:bg-[#2A2038]", text: "text-[#167A50] dark:text-[#58C99A]" },
+    submitted: { bg: "bg-[#F2ECF8] dark:bg-[#2A2038]", text: "text-[#6842A0] dark:text-[#A98ADC]" },
+    pending: { bg: "bg-[#F2ECF8] dark:bg-[#2A2038]", text: "text-[#A75D00] dark:text-[#F2B35C]" },
+    late: { bg: "bg-[#FCECEF] dark:bg-[#3A2025]", text: "text-[#B42335] dark:text-[#F06A78]" },
   };
   const cfg = configs[status?.toLowerCase()] ?? {
-    bg: "bg-gray-100",
-    text: "text-gray-500",
+    bg: "bg-[#F2ECF8] dark:bg-[#2A2038]",
+    text: "text-[#6C6572] dark:text-[#BEB6C5]",
   };
   return (
     <View className={`rounded-full px-2.5 py-0.5 ${cfg.bg}`}>
@@ -88,13 +90,13 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 const ActivityTypePill = ({ type }: { type: string }) => {
   const configs: Record<string, { bg: string; text: string }> = {
-    project: { bg: "bg-red-50", text: "text-red-500" },
-    assignment: { bg: "bg-purple-50", text: "text-purple-600" },
-    lab: { bg: "bg-sky-50", text: "text-sky-600" },
+    project: { bg: "bg-[#FCECEF] dark:bg-[#3A2025]", text: "text-[#B42335] dark:text-[#F06A78]" },
+    assignment: { bg: "bg-[#F2ECF8] dark:bg-[#2A2038]", text: "text-[#6842A0] dark:text-[#A98ADC]" },
+    lab: { bg: "bg-[#F2ECF8] dark:bg-[#2A2038]", text: "text-[#6842A0] dark:text-[#A98ADC]" },
   };
   const cfg = configs[type?.toLowerCase()] ?? {
-    bg: "bg-gray-100",
-    text: "text-gray-500",
+    bg: "bg-[#F2ECF8] dark:bg-[#2A2038]",
+    text: "text-[#6C6572] dark:text-[#BEB6C5]",
   };
   return (
     <View className={`rounded-full px-2.5 py-0.5 self-start ${cfg.bg}`}>
@@ -113,14 +115,14 @@ const SummaryStatRow = ({
 }: {
   stats: { label: string; val: string; cls: string }[];
 }) => (
-  <View className="bg-white rounded-2xl border border-gray-200 flex-row mb-4 overflow-hidden">
+  <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] flex-row mb-4 overflow-hidden">
     {stats.map((item, idx) => (
       <View
         key={item.label}
-        className={`flex-1 items-center py-3 ${idx < stats.length - 1 ? "border-r border-gray-200" : ""}`}
+        className={`flex-1 items-center py-3 ${idx < stats.length - 1 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
       >
         <Text className={`text-base font-bold ${item.cls}`}>{item.val}</Text>
-        <Text className="text-xs text-gray-500 mt-0.5">{item.label}</Text>
+        <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">{item.label}</Text>
       </View>
     ))}
   </View>
@@ -131,8 +133,8 @@ const SummaryStatRow = ({
 const OverviewSkeleton = () => (
   <View>
     {/* Overall Grade Card Skeleton */}
-    <View className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
-      <View className="bg-red-500 px-5 pt-4 pb-6">
+    <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] overflow-hidden mb-4">
+      <View className="bg-[#B42335] dark:bg-[#F06A78] px-5 pt-4 pb-6">
         <Skeleton
           height={12}
           width={120}
@@ -157,11 +159,11 @@ const OverviewSkeleton = () => (
         <Skeleton height={64} width={64} borderRadius={16} />
       </View>
 
-      <View className="flex-row border-t border-gray-200">
+      <View className="flex-row border-t border-[#E6E1E8] dark:border-[#37313C]">
         {[1, 2, 3].map((i) => (
           <View
             key={i}
-            className={`flex-1 items-center py-3 ${i < 3 ? "border-r border-gray-200" : ""}`}
+            className={`flex-1 items-center py-3 ${i < 3 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
           >
             <Skeleton height={16} width={40} style={{ marginBottom: 4 }} />
             <Skeleton height={12} width={60} />
@@ -175,7 +177,7 @@ const OverviewSkeleton = () => (
     {[1, 2, 3].map((i) => (
       <View
         key={i}
-        className="bg-white rounded-2xl border border-gray-200 mb-3 p-4"
+        className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] mb-3 p-4"
       >
         <View className="flex-row items-center mb-3">
           <Skeleton
@@ -195,7 +197,7 @@ const OverviewSkeleton = () => (
           {[1, 2, 3].map((j) => (
             <View
               key={j}
-              className={`flex-1 items-center ${j < 3 ? "border-r border-gray-200" : ""}`}
+              className={`flex-1 items-center ${j < 3 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
             >
               <Skeleton height={16} width={40} style={{ marginBottom: 4 }} />
               <Skeleton height={12} width={50} />
@@ -208,9 +210,9 @@ const OverviewSkeleton = () => (
 );
 
 const ActivityCardSkeleton = () => (
-  <View className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden">
+  <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] mb-3 overflow-hidden">
     <View className="flex-row">
-      <View className="w-1 bg-gray-300" />
+      <View className="w-1 bg-[#E6E1E8] dark:bg-[#37313C]" />
       <View className="flex-1 p-4">
         <View className="flex-row justify-between items-start mb-2">
           <View className="flex-1 pr-3">
@@ -233,9 +235,9 @@ const ActivityCardSkeleton = () => (
 );
 
 const AssessmentCardSkeleton = () => (
-  <View className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden">
+  <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] mb-3 overflow-hidden">
     <View className="flex-row">
-      <View className="w-1 bg-gray-300" />
+      <View className="w-1 bg-[#E6E1E8] dark:bg-[#37313C]" />
       <View className="flex-1 p-4">
         <View className="flex-row justify-between items-start mb-3">
           <View className="flex-1 pr-3">
@@ -245,12 +247,12 @@ const AssessmentCardSkeleton = () => (
           <Skeleton height={56} width={56} borderRadius={16} />
         </View>
         <Skeleton height={4} width="100%" style={{ marginBottom: 12 }} />
-        <View className="bg-gray-100 rounded-xl overflow-hidden mb-3">
+        <View className="bg-[#F2ECF8] dark:bg-[#2A2038] rounded-xl overflow-hidden mb-3">
           <View className="flex-row">
             {[1, 2, 3].map((i) => (
               <View
                 key={i}
-                className={`flex-1 items-center py-2.5 ${i < 3 ? "border-r border-gray-200" : ""}`}
+                className={`flex-1 items-center py-2.5 ${i < 3 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
               >
                 <Skeleton height={16} width={30} style={{ marginBottom: 4 }} />
                 <Skeleton height={12} width={40} />
@@ -272,11 +274,11 @@ const ListSkeleton = ({
   type?: "activity" | "assessment";
 }) => (
   <View>
-    <View className="bg-white rounded-2xl border border-gray-200 flex-row mb-4 overflow-hidden">
+    <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] flex-row mb-4 overflow-hidden">
       {[1, 2, 3].map((i) => (
         <View
           key={i}
-          className={`flex-1 items-center py-3 ${i < 3 ? "border-r border-gray-200" : ""}`}
+          className={`flex-1 items-center py-3 ${i < 3 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
         >
           <Skeleton height={16} width={40} style={{ marginBottom: 4 }} />
           <Skeleton height={12} width={50} />
@@ -295,49 +297,50 @@ const ListSkeleton = ({
 
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
-  const { letter, color } = getLetterGrade(data.overall_grade);
+  const { theme } = useAppTheme();
+  const { letter, color } = getLetterGrade(data.overall_grade, theme);
 
   const categories = [
     {
       label: "Activities",
       summary: data.summary.activities,
       icon: "assignment" as const,
-      headerBg: "bg-purple-600",
-      barClass: "bg-purple-500",
-      scoreClass: "text-purple-600",
+      headerBg: "bg-[#6842A0] dark:bg-[#A98ADC]",
+      barClass: "bg-[#6842A0] dark:bg-[#A98ADC]",
+      scoreClass: "text-[#6842A0] dark:text-[#A98ADC]",
     },
     {
       label: "Quizzes",
       summary: data.summary.quizzes,
       icon: "quiz" as const,
-      headerBg: "bg-red-500",
-      barClass: "bg-red-500",
-      scoreClass: "text-red-500",
+      headerBg: "bg-[#B42335] dark:bg-[#F06A78]",
+      barClass: "bg-[#B42335] dark:bg-[#F06A78]",
+      scoreClass: "text-[#B42335] dark:text-[#F06A78]",
     },
     {
       label: "Exams",
       summary: data.summary.exams,
       icon: "school" as const,
-      headerBg: "bg-indigo-600",
-      barClass: "bg-indigo-500",
-      scoreClass: "text-indigo-600",
+      headerBg: "bg-[#6842A0] dark:bg-[#A98ADC]",
+      barClass: "bg-[#6842A0] dark:bg-[#A98ADC]",
+      scoreClass: "text-[#6842A0] dark:text-[#A98ADC]",
     },
     {
       label: "Submissions",
       summary: data.summary.submissions,
       icon: "file-upload" as const,
-      headerBg: "bg-amber-600",
-      barClass: "bg-amber-500",
-      scoreClass: "text-amber-600",
+      headerBg: "bg-[#A75D00] dark:bg-[#F2B35C]",
+      barClass: "bg-[#A75D00] dark:bg-[#F2B35C]",
+      scoreClass: "text-[#A75D00] dark:text-[#F2B35C]",
     },
   ];
 
   return (
     <View>
       {/* Overall Grade Card */}
-      <View className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
+      <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] overflow-hidden mb-4">
         {/* Crimson header band */}
-        <View className="bg-red-500 px-5 pt-4 pb-6">
+        <View className="bg-[#B42335] dark:bg-[#F06A78] px-5 pt-4 pb-6">
           <Text className="text-xs text-white/80 font-bold tracking-widest mb-1">
             OVERALL GRADE
           </Text>
@@ -350,21 +353,21 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
         <View className="flex-row items-end px-5 pt-4 pb-5 -mt-3">
           <View className="flex-1 mr-4">
             <Text
-              className="text-7xl font-black text-gray-900 leading-none"
+              className="text-7xl font-black text-[#201D25] dark:text-[#F7F4FA] leading-none"
               style={{ letterSpacing: -3 }}
             >
               {data.overall_grade.toFixed(1)}
             </Text>
-            <Text className="text-xs text-gray-400 mt-1">
+            <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-1">
               Based on all graded assessments
             </Text>
             <View className="mt-3">
-              <ProgressBar value={data.overall_grade} colorClass="bg-red-500" />
+              <ProgressBar value={data.overall_grade} colorClass="bg-[#B42335] dark:bg-[#F06A78]" />
             </View>
           </View>
           <View
             className="w-16 h-16 rounded-2xl items-center justify-center border-2"
-            style={{ borderColor: color, backgroundColor: color + "22" }}
+            style={{ borderColor: color, backgroundColor: theme.surfaceMuted }}
           >
             <Text className="text-3xl font-black" style={{ color }}>
               {letter}
@@ -373,7 +376,7 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
         </View>
 
         {/* 3-column category averages strip */}
-        <View className="flex-row border-t border-gray-200">
+        <View className="flex-row border-t border-[#E6E1E8] dark:border-[#37313C]">
           {[
             { label: "Activities", val: data.summary.activities.average },
             { label: "Quizzes", val: data.summary.quizzes.average },
@@ -382,28 +385,28 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
           ].map((item, idx) => (
             <View
               key={item.label}
-              className={`flex-1 items-center py-3 ${idx < 3 ? "border-r border-gray-200" : ""}`}
+              className={`flex-1 items-center py-3 ${idx < 3 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
             >
               <Text
                 className={`text-base font-bold ${getScoreTextColor(item.val)}`}
               >
                 {item.val.toFixed(0)}%
               </Text>
-              <Text className="text-xs text-gray-500 mt-0.5">{item.label}</Text>
+              <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">{item.label}</Text>
             </View>
           ))}
         </View>
       </View>
 
       {/* Category Breakdown heading */}
-      <Text className="text-xs font-bold text-gray-500 tracking-widest ml-1 mb-3">
+      <Text className="text-xs font-bold text-[#6C6572] dark:text-[#BEB6C5] tracking-widest ml-1 mb-3">
         CATEGORY BREAKDOWN
       </Text>
 
       {categories.map((cat) => (
         <View
           key={cat.label}
-          className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden"
+          className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] mb-3 overflow-hidden"
         >
           <View className="p-4">
             {/* Header row */}
@@ -414,10 +417,10 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
                 <MaterialIcons name={cat.icon} size={18} color="white" />
               </View>
               <View className="flex-1">
-                <Text className="text-base font-bold text-gray-900">
+                <Text className="text-base font-bold text-[#201D25] dark:text-[#F7F4FA]">
                   {cat.label}
                 </Text>
-                <Text className="text-xs text-gray-500">
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">
                   {cat.label === "Activities"
                     ? `${cat.summary.graded_count}/${cat.summary.count} graded`
                     : `${cat.summary.count} ${cat.label.toLowerCase()} completed`}
@@ -433,7 +436,7 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
             />
 
             {/* Min / avg / max */}
-            <View className="flex-row mt-3 pt-3 border-t border-gray-200">
+            <View className="flex-row mt-3 pt-3 border-t border-[#E6E1E8] dark:border-[#37313C]">
               {[
                 { label: "Highest", val: cat.summary.highest },
                 { label: "Average", val: cat.summary.average },
@@ -441,12 +444,12 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
               ].map((stat, idx) => (
                 <View
                   key={stat.label}
-                  className={`flex-1 items-center ${idx < 2 ? "border-r border-gray-200" : ""}`}
+                  className={`flex-1 items-center ${idx < 2 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
                 >
-                  <Text className="text-base font-bold text-gray-900">
+                  <Text className="text-base font-bold text-[#201D25] dark:text-[#F7F4FA]">
                     {stat.val.toFixed(0)}%
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">
                     {stat.label}
                   </Text>
                 </View>
@@ -461,6 +464,7 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
 
 // ─── Activities Tab ───────────────────────────────────────────────────────────
 function ActivitiesTab({ data }: { data: ComprehensiveGradesResponse }) {
+  const { theme } = useAppTheme();
   return (
     <View>
       <SummaryStatRow
@@ -468,17 +472,17 @@ function ActivitiesTab({ data }: { data: ComprehensiveGradesResponse }) {
           {
             label: "Graded",
             val: `${data.summary.activities.graded_count}/${data.summary.activities.count}`,
-            cls: "text-gray-900",
+            cls: "text-[#201D25] dark:text-[#F7F4FA]",
           },
           {
             label: "Average",
             val: `${data.summary.activities.average.toFixed(1)}%`,
-            cls: "text-purple-600",
+            cls: "text-[#6842A0] dark:text-[#A98ADC]",
           },
           {
             label: "Best",
             val: `${data.summary.activities.highest}%`,
-            cls: "text-emerald-600",
+            cls: "text-[#167A50] dark:text-[#58C99A]",
           },
         ]}
       />
@@ -487,29 +491,29 @@ function ActivitiesTab({ data }: { data: ComprehensiveGradesResponse }) {
         const hasGrade =
           activity.grade !== undefined && activity.grade !== null;
         const { letter, color } = hasGrade
-          ? getLetterGrade(activity.grade!)
-          : { letter: "—", color: "#52525b" };
+          ? getLetterGrade(activity.grade!, theme)
+          : { letter: "—", color: theme.textMuted };
 
         const accentByType: Record<string, string> = {
-          project: "bg-red-500",
-          assignment: "bg-purple-500",
-          lab: "bg-sky-500",
+          project: "bg-[#B42335] dark:bg-[#F06A78]",
+          assignment: "bg-[#6842A0] dark:bg-[#A98ADC]",
+          lab: "bg-[#6842A0] dark:bg-[#A98ADC]",
         };
         const accentClass =
-          accentByType[activity.activity_type?.toLowerCase()] ?? "bg-gray-400";
+          accentByType[activity.activity_type?.toLowerCase()] ?? "bg-[#817987] dark:bg-[#BEB6C5]";
 
         const barByType: Record<string, string> = {
-          project: "bg-red-500",
-          assignment: "bg-purple-500",
-          lab: "bg-sky-500",
+          project: "bg-[#B42335] dark:bg-[#F06A78]",
+          assignment: "bg-[#6842A0] dark:bg-[#A98ADC]",
+          lab: "bg-[#6842A0] dark:bg-[#A98ADC]",
         };
         const barClass =
-          barByType[activity.activity_type?.toLowerCase()] ?? "bg-gray-300";
+          barByType[activity.activity_type?.toLowerCase()] ?? "bg-[#E6E1E8] dark:bg-[#37313C]";
 
         return (
           <View
             key={`activity-${idx}`}
-            className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden"
+            className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] mb-3 overflow-hidden"
           >
             <View className="flex-row">
               {/* Left accent bar */}
@@ -519,12 +523,12 @@ function ActivitiesTab({ data }: { data: ComprehensiveGradesResponse }) {
                 {/* Title + grade circle */}
                 <View className="flex-row justify-between items-start mb-2">
                   <View className="flex-1 pr-3">
-                    <Text className="text-sm font-bold text-gray-900 leading-5 mb-2">
+                    <Text className="text-sm font-bold text-[#201D25] dark:text-[#F7F4FA] leading-5 mb-2">
                       {activity.activity_title}
                     </Text>
                     <View className="flex-row items-center" style={{ gap: 6 }}>
                       <ActivityTypePill type={activity.activity_type} />
-                      <Text className="text-xs text-gray-500">
+                      <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">
                         M{activity.module_position} · A
                         {activity.activity_position}
                       </Text>
@@ -535,14 +539,14 @@ function ActivitiesTab({ data }: { data: ComprehensiveGradesResponse }) {
                     className="w-14 h-14 rounded-2xl items-center justify-center border-2"
                     style={{
                       borderColor: color,
-                      backgroundColor: color + "22",
+                      backgroundColor: theme.surfaceMuted,
                     }}
                   >
                     <Text className="text-xl font-black" style={{ color }}>
                       {letter}
                     </Text>
                     {hasGrade && (
-                      <Text className="text-xs text-gray-500">
+                      <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">
                         {activity.grade}
                       </Text>
                     )}
@@ -567,9 +571,9 @@ function ActivitiesTab({ data }: { data: ComprehensiveGradesResponse }) {
                       <Ionicons
                         name="calendar-outline"
                         size={12}
-                        color="#9CA3AF"
+                        color={theme.textMuted}
                       />
-                      <Text className="text-xs text-gray-500 ml-1">
+                      <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] ml-1">
                         {formatDate(activity.submitted_at)}
                       </Text>
                     </View>
@@ -578,18 +582,18 @@ function ActivitiesTab({ data }: { data: ComprehensiveGradesResponse }) {
 
                 {/* Instructor feedback */}
                 {activity.feedback && (
-                  <View className="mt-3 bg-purple-50 border-l-2 border-purple-500 rounded-r-xl p-3">
+                  <View className="mt-3 bg-[#F2ECF8] dark:bg-[#2A2038] border-l-2 border-[#6842A0] dark:border-[#A98ADC] rounded-r-xl p-3">
                     <View className="flex-row items-center mb-1">
                       <MaterialIcons
                         name="feedback"
                         size={12}
-                        color="#7C3AED"
+                        color={theme.primary}
                       />
-                      <Text className="text-xs font-bold text-purple-600 ml-1">
+                      <Text className="text-xs font-bold text-[#6842A0] dark:text-[#A98ADC] ml-1">
                         Instructor Feedback
                       </Text>
                     </View>
-                    <Text className="text-xs text-gray-600 leading-4">
+                    <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] leading-4">
                       {activity.feedback}
                     </Text>
                   </View>
@@ -623,43 +627,44 @@ function AssessmentCard({
   accentClass: string;
   barClass: string;
 }) {
+  const { theme } = useAppTheme();
   const isComplete = completedAt !== null;
-  const { letter, color } = getLetterGrade(score);
+  const { letter, color } = getLetterGrade(score, theme);
   const incorrectAnswers = totalQuestions - correctAnswers;
   const pctCorrect =
     totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
   return (
-    <View className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden">
+    <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] mb-3 overflow-hidden">
       <View className="flex-row">
         <View className={`w-1 ${accentClass}`} />
         <View className="flex-1 p-4">
           {/* Name + grade circle */}
           <View className="flex-row justify-between items-start mb-3">
             <View className="flex-1 pr-3">
-              <Text className="text-sm font-bold text-gray-900 leading-5 mb-1">
+              <Text className="text-sm font-bold text-[#201D25] dark:text-[#F7F4FA] leading-5 mb-1">
                 {name}
               </Text>
               <View className="flex-row items-center">
-                <Ionicons name="time-outline" size={12} color="#9CA3AF" />
-                <Text className="text-xs text-gray-500 ml-1">{period}</Text>
+                <Ionicons name="time-outline" size={12} color={theme.textMuted} />
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] ml-1">{period}</Text>
               </View>
             </View>
 
             {isComplete ? (
               <View
                 className="w-14 h-14 rounded-2xl items-center justify-center border-2"
-                style={{ borderColor: color, backgroundColor: color + "22" }}
+                style={{ borderColor: color, backgroundColor: theme.surfaceMuted }}
               >
                 <Text className="text-xl font-black" style={{ color }}>
                   {letter}
                 </Text>
-                <Text className="text-xs text-gray-500">{score}</Text>
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">{score}</Text>
               </View>
             ) : (
-              <View className="bg-amber-50 rounded-xl px-3 py-2 items-center">
-                <Ionicons name="hourglass-outline" size={16} color="#D97706" />
-                <Text className="text-xs text-amber-600 font-bold mt-0.5">
+              <View className="bg-[#F2ECF8] dark:bg-[#2A2038] rounded-xl px-3 py-2 items-center">
+                <Ionicons name="hourglass-outline" size={16} color={theme.warning} />
+                <Text className="text-xs text-[#A75D00] dark:text-[#F2B35C] font-bold mt-0.5">
                   Soon
                 </Text>
               </View>
@@ -673,34 +678,34 @@ function AssessmentCard({
                 <ProgressBar value={pctCorrect} colorClass={barClass} />
               </View>
 
-              <View className="flex-row bg-gray-100 rounded-xl overflow-hidden mb-3">
+              <View className="flex-row bg-[#F2ECF8] dark:bg-[#2A2038] rounded-xl overflow-hidden mb-3">
                 {[
                   {
                     label: "Correct",
                     val: correctAnswers,
-                    cls: "text-emerald-600",
+                    cls: "text-[#167A50] dark:text-[#58C99A]",
                   },
                   {
                     label: "Wrong",
                     val: incorrectAnswers,
-                    cls: "text-red-500",
+                    cls: "text-[#B42335] dark:text-[#F06A78]",
                   },
                   {
                     label: "Total",
                     val: totalQuestions,
-                    cls: "text-gray-900",
+                    cls: "text-[#201D25] dark:text-[#F7F4FA]",
                   },
                 ].map((s, i) => (
                   <View
                     key={s.label}
                     className={`flex-1 items-center py-2.5 ${
-                      i < 2 ? "border-r border-gray-200" : ""
+                      i < 2 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""
                     }`}
                   >
                     <Text className={`text-base font-black ${s.cls}`}>
                       {s.val}
                     </Text>
-                    <Text className="text-xs text-gray-500 mt-0.5">
+                    <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">
                       {s.label}
                     </Text>
                   </View>
@@ -708,8 +713,8 @@ function AssessmentCard({
               </View>
 
               <View className="flex-row items-center">
-                <Ionicons name="checkmark-circle" size={13} color="#059669" />
-                <Text className="text-xs text-gray-500 ml-1">
+                <Ionicons name="checkmark-circle" size={13} color={theme.success} />
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] ml-1">
                   Completed {formatDate(completedAt)}
                 </Text>
               </View>
@@ -717,13 +722,13 @@ function AssessmentCard({
           )}
 
           {!isComplete && (
-            <View className="bg-amber-50 rounded-lg px-3 py-2 flex-row items-center">
+            <View className="bg-[#F2ECF8] dark:bg-[#2A2038] rounded-lg px-3 py-2 flex-row items-center">
               <Ionicons
                 name="information-circle-outline"
                 size={13}
-                color="#D97706"
+                color={theme.warning}
               />
-              <Text className="text-xs text-amber-600 ml-1.5">
+              <Text className="text-xs text-[#A75D00] dark:text-[#F2B35C] ml-1.5">
                 Not yet taken
               </Text>
             </View>
@@ -742,17 +747,17 @@ function QuizzesTab({ data }: { data: ComprehensiveGradesResponse }) {
           {
             label: "Total",
             val: `${data.summary.quizzes.count}`,
-            cls: "text-gray-900",
+            cls: "text-[#201D25] dark:text-[#F7F4FA]",
           },
           {
             label: "Average",
             val: `${data.summary.quizzes.average.toFixed(1)}%`,
-            cls: "text-purple-600",
+            cls: "text-[#6842A0] dark:text-[#A98ADC]",
           },
           {
             label: "Highest",
             val: `${data.summary.quizzes.highest}%`,
-            cls: "text-emerald-600",
+            cls: "text-[#167A50] dark:text-[#58C99A]",
           },
         ]}
       />
@@ -765,8 +770,8 @@ function QuizzesTab({ data }: { data: ComprehensiveGradesResponse }) {
           totalQuestions={quiz.total_questions}
           correctAnswers={quiz.correct_answers}
           completedAt={quiz.completed_at}
-          accentClass="bg-purple-500"
-          barClass="bg-purple-500"
+          accentClass="bg-[#6842A0] dark:bg-[#A98ADC]"
+          barClass="bg-[#6842A0] dark:bg-[#A98ADC]"
         />
       ))}
     </View>
@@ -781,17 +786,17 @@ function ExamsTab({ data }: { data: ComprehensiveGradesResponse }) {
           {
             label: "Total",
             val: `${data.summary.exams.count}`,
-            cls: "text-gray-900",
+            cls: "text-[#201D25] dark:text-[#F7F4FA]",
           },
           {
             label: "Average",
             val: `${data.summary.exams.average.toFixed(1)}%`,
-            cls: "text-red-500",
+            cls: "text-[#B42335] dark:text-[#F06A78]",
           },
           {
             label: "Highest",
             val: `${data.summary.exams.highest}%`,
-            cls: "text-emerald-600",
+            cls: "text-[#167A50] dark:text-[#58C99A]",
           },
         ]}
       />
@@ -804,8 +809,8 @@ function ExamsTab({ data }: { data: ComprehensiveGradesResponse }) {
           totalQuestions={exam.total_questions}
           correctAnswers={exam.correct_answers}
           completedAt={exam.completed_at}
-          accentClass="bg-red-500"
-          barClass="bg-red-500"
+          accentClass="bg-[#B42335] dark:bg-[#F06A78]"
+          barClass="bg-[#B42335] dark:bg-[#F06A78]"
         />
       ))}
     </View>
@@ -813,60 +818,61 @@ function ExamsTab({ data }: { data: ComprehensiveGradesResponse }) {
 }
 
 function SubmissionCard({ submission }: { submission: SubmissionGrade }) {
+  const { theme } = useAppTheme();
   const hasGrade = submission.score !== null && submission.score !== undefined;
   const { letter, color } = hasGrade
-    ? getLetterGrade(submission.score!)
-    : { letter: "—", color: "#A1A1AA" };
+    ? getLetterGrade(submission.score!, theme)
+    : { letter: "—", color: theme.textMuted };
 
   return (
-    <View className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden">
+    <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] mb-3 overflow-hidden">
       <View className="flex-row">
-        <View className="w-1 bg-amber-500" />
+        <View className="w-1 bg-[#A75D00] dark:bg-[#F2B35C]" />
         <View className="flex-1 p-4">
           <View className="flex-row justify-between items-start">
             <View className="flex-1 pr-3">
-              <Text className="text-sm font-bold text-gray-900 leading-5">
+              <Text className="text-sm font-bold text-[#201D25] dark:text-[#F7F4FA] leading-5">
                 {submission.exam_name}
               </Text>
               <View className="flex-row items-center mt-1">
-                <Ionicons name="time-outline" size={12} color="#9CA3AF" />
-                <Text className="text-xs text-gray-500 ml-1">
+                <Ionicons name="time-outline" size={12} color={theme.textMuted} />
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] ml-1">
                   {submission.exam_period}
                 </Text>
               </View>
             </View>
             <View
               className="w-14 h-14 rounded-2xl items-center justify-center border-2"
-              style={{ borderColor: color, backgroundColor: color + "22" }}
+              style={{ borderColor: color, backgroundColor: theme.surfaceMuted }}
             >
               <Text className="text-xl font-black" style={{ color }}>
                 {letter}
               </Text>
-              {hasGrade && <Text className="text-xs text-gray-500">{submission.score}</Text>}
+              {hasGrade && <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">{submission.score}</Text>}
             </View>
           </View>
 
-          {hasGrade && <View className="mt-3"><ProgressBar value={submission.score!} colorClass="bg-amber-500" /></View>}
+          {hasGrade && <View className="mt-3"><ProgressBar value={submission.score!} colorClass="bg-[#A75D00] dark:bg-[#F2B35C]" /></View>}
 
           <View className="flex-row items-center justify-between mt-3">
             <StatusBadge status={submission.status || "Submitted"} />
             <View className="items-end">
-              <Text className="text-[11px] text-gray-500">
+              <Text className="text-[11px] text-[#6C6572] dark:text-[#BEB6C5]">
                 Submitted {formatDate(submission.submitted_at) ?? "—"}
               </Text>
-              <Text className="text-[11px] text-gray-500 mt-0.5">
+              <Text className="text-[11px] text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">
                 {submission.graded_at ? `Graded ${formatDate(submission.graded_at)}` : "Awaiting grading"}
               </Text>
             </View>
           </View>
 
           {submission.feedback && (
-            <View className="mt-3 bg-amber-50 border-l-2 border-amber-500 rounded-r-xl p-3">
+            <View className="mt-3 bg-[#F2ECF8] dark:bg-[#2A2038] border-l-2 border-[#A75D00] dark:border-[#F2B35C] rounded-r-xl p-3">
               <View className="flex-row items-center mb-1">
-                <MaterialIcons name="feedback" size={12} color="#B45309" />
-                <Text className="text-xs font-bold text-amber-700 ml-1">Instructor Feedback</Text>
+                <MaterialIcons name="feedback" size={12} color={theme.warning} />
+                <Text className="text-xs font-bold text-[#A75D00] dark:text-[#F2B35C] ml-1">Instructor Feedback</Text>
               </View>
-              <Text className="text-xs text-gray-600 leading-4">{submission.feedback}</Text>
+              <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] leading-4">{submission.feedback}</Text>
             </View>
           )}
         </View>
@@ -876,6 +882,7 @@ function SubmissionCard({ submission }: { submission: SubmissionGrade }) {
 }
 
 function SubmissionsTab({ data }: { data: ComprehensiveGradesResponse }) {
+  const { theme } = useAppTheme();
   return (
     <View>
       <SummaryStatRow
@@ -883,17 +890,17 @@ function SubmissionsTab({ data }: { data: ComprehensiveGradesResponse }) {
           {
             label: "Graded",
             val: `${data.summary.submissions.graded_count ?? 0}/${data.summary.submissions.count}`,
-            cls: "text-gray-900",
+            cls: "text-[#201D25] dark:text-[#F7F4FA]",
           },
           {
             label: "Average",
             val: `${data.summary.submissions.average.toFixed(1)}%`,
-            cls: "text-amber-600",
+            cls: "text-[#A75D00] dark:text-[#F2B35C]",
           },
           {
             label: "Highest",
             val: `${data.summary.submissions.highest}%`,
-            cls: "text-emerald-600",
+            cls: "text-[#167A50] dark:text-[#58C99A]",
           },
         ]}
       />
@@ -901,10 +908,10 @@ function SubmissionsTab({ data }: { data: ComprehensiveGradesResponse }) {
         <SubmissionCard key={`submission-${idx}`} submission={submission} />
       ))}
       {data.submission_grades.length === 0 && (
-        <View className="bg-white rounded-2xl border border-gray-200 p-8 items-center">
-          <MaterialIcons name="file-upload" size={44} color="#D4D4D8" />
-          <Text className="text-base font-bold text-gray-800 mt-3">No submissions yet</Text>
-          <Text className="text-sm text-gray-500 text-center mt-1">Submission grades will appear here after you submit work.</Text>
+        <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] p-8 items-center">
+          <MaterialIcons name="file-upload" size={44} color={theme.tabInactive} />
+          <Text className="text-base font-bold text-[#201D25] dark:text-[#F7F4FA] mt-3">No submissions yet</Text>
+          <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] text-center mt-1">Submission grades will appear here after you submit work.</Text>
         </View>
       )}
     </View>
@@ -913,6 +920,7 @@ function SubmissionsTab({ data }: { data: ComprehensiveGradesResponse }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ComprehensiveGradesScreen() {
+  const { theme } = useAppTheme();
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const { course_id } = useCourseStore();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
@@ -927,9 +935,9 @@ export default function ComprehensiveGradesScreen() {
   return (
     <AppScreen>
       {/* ── Header ──────────────────────────────────────────────── */}
-      <View className="bg-white border-b border-gray-200">
+      <View className="bg-[#FFFFFF] dark:bg-[#1A181E] border-b border-[#E6E1E8] dark:border-[#37313C]">
         {/* Crimson accent line */}
-        <View className="h-0.5 bg-red-500" />
+        <View className="h-0.5 bg-[#B42335] dark:bg-[#F06A78]" />
 
         {isLoading ? (
           <View className="px-5 pt-4 pb-0">
@@ -939,16 +947,16 @@ export default function ComprehensiveGradesScreen() {
           </View>
         ) : data ? (
           <View className="px-5 pt-4 pb-0">
-            <Text className="text-xs text-red-500 font-bold tracking-widest mb-0.5">
+            <Text className="text-xs text-[#B42335] dark:text-[#F06A78] font-bold tracking-widest mb-0.5">
               {data.course_info.course_code}
             </Text>
             <Text
-              className="text-xl font-black text-gray-900 leading-tight"
+              className="text-xl font-black text-[#201D25] dark:text-[#F7F4FA] leading-tight"
               numberOfLines={1}
             >
               {data.course_info.course_title}
             </Text>
-            <Text className="text-xs text-gray-500 mt-0.5 mb-4">
+            <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-0.5 mb-4">
               Academic Performance Report
             </Text>
           </View>
@@ -966,13 +974,13 @@ export default function ComprehensiveGradesScreen() {
               >
                 <Text
                   className={`text-xs font-bold ${
-                    isActive ? "text-gray-900" : "text-gray-500"
+                    isActive ? "text-[#201D25] dark:text-[#F7F4FA]" : "text-[#817987] dark:text-[#BEB6C5]"
                   }`}
                 >
                   {tab.label}
                 </Text>
                 {isActive && (
-                  <View className="absolute bottom-0 left-3 right-3 h-0.5 bg-red-500 rounded-full" />
+                  <View className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#B42335] dark:bg-[#F06A78] rounded-full" />
                 )}
               </Pressable>
             );
@@ -989,10 +997,10 @@ export default function ComprehensiveGradesScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            colors={["#EF4444"]}
-            tintColor="#EF4444"
+            colors={[theme.school]}
+            tintColor={theme.school}
             title="Pull to refresh"
-            titleColor="#9CA3AF"
+            titleColor={theme.textMuted}
           />
         }
       >

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useAppTheme } from "@/theme";
 import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
 
 interface ConfirmDeleteModalProps {
@@ -18,6 +19,7 @@ export default function ConfirmDeleteModal({
   title = "Delete?",
   description = "This action cannot be undone.",
 }: ConfirmDeleteModalProps) {
+  const { theme } = useAppTheme();
   return (
     <Modal
       visible={visible}
@@ -30,43 +32,46 @@ export default function ConfirmDeleteModal({
         onPress={onCancel}
       >
         <Pressable
-          className="bg-white rounded-2xl w-full max-w-sm overflow-hidden"
+          className="rounded-2xl w-full max-w-sm overflow-hidden"
+          style={{ backgroundColor: theme.surface }}
           onPress={(e) => e.stopPropagation()}
         >
           <View className="items-center pt-6 pb-4 px-6">
-            <View className="w-14 h-14 bg-red-100 rounded-full items-center justify-center mb-3">
-              <Ionicons name="trash-outline" size={28} color="#EF4444" />
+            <View className="w-14 h-14 rounded-full items-center justify-center mb-3" style={{ backgroundColor: theme.surfaceAccent }}>
+              <Ionicons name="trash-outline" size={28} color={theme.danger} />
             </View>
-            <Text className="text-lg font-bold text-gray-900 text-center">
+            <Text className="text-lg font-bold text-center" style={{ color: theme.text }}>
               {title}
             </Text>
-            <Text className="text-sm text-gray-500 text-center mt-1">
+            <Text className="text-sm text-center mt-1" style={{ color: theme.textMuted }}>
               {description}
             </Text>
           </View>
 
-          <View className="h-px bg-gray-100" />
+          <View className="h-px" style={{ backgroundColor: theme.border }} />
 
           <View className="flex-row">
             <Pressable
               onPress={onCancel}
-              className="flex-1 py-4 items-center active:bg-gray-50"
+              className="flex-1 py-4 items-center"
+              style={({ pressed }) => ({ backgroundColor: pressed ? theme.canvas : theme.surface })}
               disabled={isLoading}
             >
-              <Text className="text-gray-700 font-semibold">Cancel</Text>
+              <Text className="font-semibold" style={{ color: theme.text }}>Cancel</Text>
             </Pressable>
 
-            <View className="w-px bg-gray-100" />
+            <View className="w-px" style={{ backgroundColor: theme.border }} />
 
             <Pressable
               onPress={onConfirm}
-              className="flex-1 py-4 items-center active:bg-red-50"
+              className="flex-1 py-4 items-center"
+              style={({ pressed }) => ({ backgroundColor: pressed ? theme.surfaceAccent : theme.surface })}
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color="#EF4444" />
+                <ActivityIndicator size="small" color={theme.danger} />
               ) : (
-                <Text className="text-red-500 font-bold">Delete</Text>
+                <Text className="font-bold" style={{ color: theme.danger }}>Delete</Text>
               )}
             </Pressable>
           </View>

@@ -2,14 +2,12 @@ import { AppButton, AppScreen, Card } from "@/components/ui";
 import { useAuth } from "@/context/authContext";
 import { useAppTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Settings() {
   const { onLogout, authState } = useAuth();
-  const { theme, isDark, setColorScheme } = useAppTheme();
+  const { theme, isDark, appearanceMode, setAppearanceMode } = useAppTheme();
   const user = authState?.user;
-  const [appearanceMode, setAppearanceMode] = useState<"light" | "dark" | "system">("system");
 
   if (authState?.isLoading) {
     return <AppScreen style={styles.center}><ActivityIndicator size="large" color={theme.primary} /></AppScreen>;
@@ -38,7 +36,7 @@ export default function Settings() {
         <Card style={styles.appearanceCard}>
           <View style={styles.row}><View style={[styles.rowIcon, { backgroundColor: theme.surfaceMuted }]}><Ionicons name={isDark ? "moon-outline" : "sunny-outline"} size={20} color={theme.primary} /></View><View style={styles.rowText}><Text style={[styles.rowTitle, { color: theme.text }]}>Display</Text><Text style={[styles.rowDescription, { color: theme.textMuted }]}>Choose how Aurora LMS looks.</Text></View></View>
           <View style={[styles.segmented, { backgroundColor: theme.canvas, borderColor: theme.border }]}>
-            {(["light", "dark", "system"] as const).map((mode) => <Pressable key={mode} accessibilityRole="button" accessibilityLabel={`${mode} appearance`} accessibilityState={{ selected: mode === appearanceMode }} onPress={() => { setAppearanceMode(mode); setColorScheme(mode); }} style={[styles.segment, mode === appearanceMode && { backgroundColor: theme.primary }]}><Text style={[styles.segmentText, { color: mode === appearanceMode ? "#FFFFFF" : theme.textMuted }]}>{mode[0].toUpperCase() + mode.slice(1)}</Text></Pressable>)}
+            {(["light", "dark", "system"] as const).map((mode) => <Pressable key={mode} accessibilityRole="button" accessibilityLabel={`${mode} appearance`} accessibilityState={{ selected: mode === appearanceMode }} onPress={() => setAppearanceMode(mode)} style={[styles.segment, mode === appearanceMode && { backgroundColor: theme.primary }]}><Text style={[styles.segmentText, { color: mode === appearanceMode ? "#FFFFFF" : theme.textMuted }]}>{mode[0].toUpperCase() + mode.slice(1)}</Text></Pressable>)}
           </View>
         </Card>
 

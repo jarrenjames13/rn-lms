@@ -7,6 +7,7 @@ import { useUpdateComment } from "@/api/QueryOptions/updateCommentMutation";
 import CommentItem from "@/components/commentItem";
 import CommentReactionsModal from "@/components/commentReactionsModal";
 import { useAuth } from "@/context/authContext";
+import { useAppTheme } from "@/theme";
 import { COMMENT_EVENTS, sseService } from "@/api/services/sseService";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
@@ -75,6 +76,7 @@ export default function CommentsModal({
     fullname: string;
   } | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const { theme } = useAppTheme();
 
   const COMMENTS_PER_PAGE = 10;
 
@@ -221,29 +223,30 @@ export default function CommentsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView className="flex-1 bg-white">
+      <SafeAreaView className="flex-1" style={{ backgroundColor: theme.surface }}>
         {/* Header */}
-        <View className="border-b border-gray-200 px-4 py-3">
+        <View className="border-b px-4 py-3" style={{ borderColor: theme.border }}>
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
-              <Ionicons name="chatbubbles" size={24} color="#EF4444" />
-              <Text className="font-bold text-lg text-gray-800">
+              <Ionicons name="chatbubbles" size={24} color={theme.school} />
+              <Text className="font-bold text-lg" style={{ color: theme.text }}>
                 Discussion
               </Text>
             </View>
             <View className="flex-row items-center gap-4">
               {totalComments > 0 && (
-                <View className="bg-red-50 rounded-full px-3 py-1">
-                  <Text className="text-xs text-red-500 font-semibold">
+                <View className="rounded-full px-3 py-1" style={{ backgroundColor: theme.surfaceAccent }}>
+                  <Text className="text-xs font-semibold" style={{ color: theme.school }}>
                     {totalComments}
                   </Text>
                 </View>
               )}
               <Pressable
                 onPress={onClose}
-                className="w-8 h-8 items-center justify-center bg-gray-100 rounded-full active:bg-gray-200"
+                className="w-8 h-8 items-center justify-center rounded-full"
+                style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
               >
-                <Ionicons name="close" size={20} color="#374151" />
+                <Ionicons name="close" size={20} color={theme.text} />
               </Pressable>
             </View>
           </View>
@@ -258,8 +261,8 @@ export default function CommentsModal({
           <View className="flex-1">
             {loadingComments ? (
               <View className="flex-1 items-center justify-center">
-                <ActivityIndicator size="large" color="#EF4444" />
-                <Text className="text-sm text-gray-500 mt-3">
+                <ActivityIndicator size="large" color={theme.school} />
+                <Text className="text-sm mt-3" style={{ color: theme.textMuted }}>
                   Loading comments...
                 </Text>
               </View>
@@ -268,14 +271,15 @@ export default function CommentsModal({
                 <Ionicons
                   name="alert-circle-outline"
                   size={48}
-                  color="#EF4444"
+                  color={theme.danger}
                 />
-                <Text className="text-red-500 text-center mt-3">
+                <Text className="text-center mt-3" style={{ color: theme.danger }}>
                   Failed to load comments
                 </Text>
                 <Pressable
                   onPress={() => refetchComments()}
-                  className="mt-4 bg-red-500 active:bg-red-600 px-6 py-2 rounded-lg"
+                  className="mt-4 px-6 py-2 rounded-lg"
+                  style={({ pressed }) => ({ backgroundColor: pressed ? theme.primaryPressed : theme.school })}
                 >
                   <Text className="text-white font-semibold">Retry</Text>
                 </Pressable>
@@ -285,9 +289,9 @@ export default function CommentsModal({
                 <Ionicons
                   name="chatbubble-ellipses-outline"
                   size={64}
-                  color="#D1D5DB"
+                  color={theme.tabInactive}
                 />
-                <Text className="text-base text-gray-400 mt-4 text-center">
+                <Text className="text-base mt-4 text-center" style={{ color: theme.textMuted }}>
                   No comments yet.{"\n"}Be the first to share your thoughts!
                 </Text>
               </View>
@@ -349,23 +353,24 @@ export default function CommentsModal({
                 ListFooterComponent={
                   isFetchingNextPage ? (
                     <View className="py-6 items-center">
-                      <ActivityIndicator size="small" color="#EF4444" />
-                      <Text className="text-xs text-gray-400 mt-2">
+                      <ActivityIndicator size="small" color={theme.school} />
+                      <Text className="text-xs mt-2" style={{ color: theme.textMuted }}>
                         Loading more comments...
                       </Text>
                     </View>
                   ) : hasNextPage ? (
                     <Pressable
                       onPress={() => fetchNextPage()}
-                      className="mx-4 my-4 bg-gray-100 active:bg-gray-200 py-3 rounded-lg items-center"
+                      className="mx-4 my-4 py-3 rounded-lg items-center"
+                      style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
                     >
-                      <Text className="text-gray-700 font-medium">
+                      <Text className="font-medium" style={{ color: theme.text }}>
                         Load More Comments
                       </Text>
                     </Pressable>
                   ) : allComments.length > 0 ? (
                     <View className="py-4 items-center">
-                      <Text className="text-xs text-gray-400">
+                      <Text className="text-xs" style={{ color: theme.textMuted }}>
                         No more comments
                       </Text>
                     </View>
@@ -376,28 +381,28 @@ export default function CommentsModal({
           </View>
 
           {/* Comment Input */}
-          <View className="border-t border-gray-200 bg-white px-4 py-3">
+          <View className="border-t px-4 py-3" style={{ borderColor: theme.border, backgroundColor: theme.surface }}>
             {replyingTo && (
-              <View className="flex-row items-center justify-between bg-gray-100 px-3 py-1 rounded-xl mb-2">
-                <Text className="text-gray-700 text-sm">
+              <View className="flex-row items-center justify-between px-3 py-1 rounded-xl mb-2" style={{ backgroundColor: theme.surfaceMuted }}>
+                <Text className="text-sm" style={{ color: theme.text }}>
                   Replying to {replyingTo.fullname}
                 </Text>
                 <Pressable onPress={() => setReplyingTo(null)}>
-                  <Ionicons name="close" size={16} color="#374151" />
+                  <Ionicons name="close" size={16} color={theme.text} />
                 </Pressable>
               </View>
             )}
-            <View className="bg-gray-50 rounded-2xl p-3 border border-gray-200">
+            <View className="rounded-2xl p-3 border" style={{ backgroundColor: theme.canvas, borderColor: theme.border }}>
               <TextInput
                 ref={inputRef}
                 placeholder="Write a comment..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={theme.textMuted}
                 value={comment}
                 onChangeText={setComment}
                 multiline
                 numberOfLines={3}
-                className="text-gray-800 text-base max-h-24"
-                style={{ textAlignVertical: "top" }}
+                className="text-base max-h-24"
+                style={{ textAlignVertical: "top", color: theme.text }}
               />
 
               {selectedImage && (
@@ -417,29 +422,28 @@ export default function CommentsModal({
                 </View>
               )}
 
-              <View className="flex-row justify-between items-center mt-3 pt-3 border-t border-gray-200">
+              <View className="flex-row justify-between items-center mt-3 pt-3 border-t" style={{ borderColor: theme.border }}>
                 <Pressable
                   onPress={handlePickImage}
-                  className="flex-row items-center bg-white active:bg-gray-100 rounded-full py-2 px-4 border border-gray-200"
+                  className="flex-row items-center rounded-full py-2 px-4 border"
+                  style={({ pressed }) => ({ backgroundColor: pressed ? theme.surfaceMuted : theme.surface, borderColor: theme.border })}
                 >
-                  <AntDesign name="picture" size={18} color="#374151" />
-                  <Text className="text-gray-700 ml-2 text-sm font-medium">
+                  <AntDesign name="picture" size={18} color={theme.text} />
+                  <Text className="ml-2 text-sm font-medium" style={{ color: theme.text }}>
                     Photo
                   </Text>
                 </Pressable>
 
                 <Pressable
                   onPress={handlePostComment}
-                  className="flex-row items-center bg-red-500 active:bg-red-600 rounded-full py-2 px-6"
+                  className="flex-row items-center rounded-full py-2 px-6"
                   disabled={
                     (!comment.trim() && !selectedImage) || postingComment
                   }
-                  style={{
-                    opacity:
-                      (comment.trim() || selectedImage) && !postingComment
-                        ? 1
-                        : 0.5,
-                  }}
+                  style={({ pressed }) => ({
+                    opacity: (comment.trim() || selectedImage) && !postingComment ? 1 : 0.5,
+                    backgroundColor: pressed ? theme.primaryPressed : theme.school,
+                  })}
                 >
                   {postingComment ? (
                     <ActivityIndicator size="small" color="white" />

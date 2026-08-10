@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useAppTheme } from "@/theme";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -27,6 +28,7 @@ export default function EditCommentModal({
   isLoading = false,
 }: EditCommentModalProps) {
   const [text, setText] = useState(initialText);
+  const { theme } = useAppTheme();
 
   // Sync text when modal opens with a different comment
   useEffect(() => {
@@ -52,30 +54,32 @@ export default function EditCommentModal({
           onPress={onCancel}
         >
           <Pressable
-            className="bg-white rounded-2xl w-full max-w-sm overflow-hidden"
+            className="rounded-2xl w-full max-w-sm overflow-hidden"
+            style={{ backgroundColor: theme.surface }}
             onPress={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
+            <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b" style={{ borderColor: theme.border }}>
               <View className="flex-row items-center gap-2">
-                <View className="w-8 h-8 bg-blue-50 rounded-full items-center justify-center">
-                  <Ionicons name="create-outline" size={18} color="#3B82F6" />
+                <View className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: theme.surfaceMuted }}>
+                  <Ionicons name="create-outline" size={18} color={theme.primary} />
                 </View>
-                <Text className="text-base font-bold text-gray-900">
+                <Text className="text-base font-bold" style={{ color: theme.text }}>
                   Edit Comment
                 </Text>
               </View>
               <Pressable
                 onPress={onCancel}
-                className="w-7 h-7 items-center justify-center bg-gray-100 rounded-full active:bg-gray-200"
+                className="w-7 h-7 items-center justify-center rounded-full"
+                style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
               >
-                <Ionicons name="close" size={16} color="#374151" />
+                <Ionicons name="close" size={16} color={theme.text} />
               </Pressable>
             </View>
 
             {/* Input */}
             <View className="px-4 pt-3 pb-4">
-              <View className="bg-gray-50 rounded-xl border border-gray-200 p-3">
+              <View className="rounded-xl border p-3" style={{ backgroundColor: theme.canvas, borderColor: theme.border }}>
                 <TextInput
                   value={text}
                   onChangeText={setText}
@@ -84,39 +88,40 @@ export default function EditCommentModal({
                   numberOfLines={4}
                   maxLength={500}
                   placeholder="Write your comment..."
-                  placeholderTextColor="#9CA3AF"
-                  className="text-gray-800 text-sm leading-5 max-h-32"
-                  style={{ textAlignVertical: "top" }}
+                  placeholderTextColor={theme.textMuted}
+                  className="text-sm leading-5 max-h-32"
+                  style={{ textAlignVertical: "top", color: theme.text }}
                 />
               </View>
-              <Text className="text-xs text-gray-400 text-right mt-1">
+              <Text className="text-xs text-right mt-1" style={{ color: theme.textMuted }}>
                 {text.length}/500
               </Text>
             </View>
 
             {/* Actions */}
-            <View className="h-px bg-gray-100" />
+            <View className="h-px" style={{ backgroundColor: theme.border }} />
             <View className="flex-row">
               <Pressable
                 onPress={onCancel}
                 disabled={isLoading}
-                className="flex-1 py-4 items-center active:bg-gray-50"
+                className="flex-1 py-4 items-center"
+                style={({ pressed }) => ({ backgroundColor: pressed ? theme.canvas : theme.surface })}
               >
-                <Text className="text-gray-700 font-semibold">Cancel</Text>
+                <Text className="font-semibold" style={{ color: theme.text }}>Cancel</Text>
               </Pressable>
 
-              <View className="w-px bg-gray-100" />
+              <View className="w-px" style={{ backgroundColor: theme.border }} />
 
               <Pressable
                 onPress={() => onConfirm(text.trim())}
                 disabled={!canSubmit}
-                className="flex-1 py-4 items-center active:bg-blue-50"
-                style={{ opacity: canSubmit ? 1 : 0.4 }}
+                className="flex-1 py-4 items-center"
+                style={({ pressed }) => ({ opacity: canSubmit ? 1 : 0.4, backgroundColor: pressed ? theme.surfaceMuted : theme.surface })}
               >
                 {isLoading ? (
-                  <ActivityIndicator size="small" color="#3B82F6" />
+                  <ActivityIndicator size="small" color={theme.primary} />
                 ) : (
-                  <Text className="text-blue-500 font-bold">Save</Text>
+                  <Text className="font-bold" style={{ color: theme.primary }}>Save</Text>
                 )}
               </Pressable>
             </View>

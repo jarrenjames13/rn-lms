@@ -1,6 +1,7 @@
 import { useAuth } from "@/context/authContext";
 import { BASE_URL } from "@/utils/constants";
 import { showToast } from "@/utils/toast/toast";
+import { useAppTheme } from "@/theme";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -24,6 +25,7 @@ type AppStatus = "checking" | "maintenance" | "no_network" | "ready";
 
 // ─── Aurora ring component ────────────────────────────────────────────────
 function AuroraRings() {
+  const { theme } = useAppTheme();
   // Three rings rotating at different speeds and directions
   const ring1 = useRef(new Animated.Value(0)).current;
   const ring2 = useRef(new Animated.Value(0)).current;
@@ -107,8 +109,8 @@ function AuroraRings() {
           borderRadius: 88,
           borderWidth: 3,
           borderColor: "transparent",
-          borderTopColor: "#7C3AED",
-          borderRightColor: "#7C3AED44",
+          borderTopColor: theme.primary,
+          borderRightColor: `${theme.primary}44`,
           transform: [{ rotate: spin1 }],
         }}
       />
@@ -122,8 +124,8 @@ function AuroraRings() {
           borderRadius: 74,
           borderWidth: 2.5,
           borderColor: "transparent",
-          borderTopColor: "#6366F1",
-          borderLeftColor: "#6366F144",
+          borderTopColor: theme.primaryPressed,
+          borderLeftColor: `${theme.primaryPressed}44`,
           transform: [{ rotate: spin2 }],
         }}
       />
@@ -137,8 +139,8 @@ function AuroraRings() {
           borderRadius: 60,
           borderWidth: 2,
           borderColor: "transparent",
-          borderTopColor: "#EC4899",
-          borderBottomColor: "#EC489944",
+          borderTopColor: theme.school,
+          borderBottomColor: `${theme.school}44`,
           transform: [{ rotate: spin3 }],
         }}
       />
@@ -150,7 +152,7 @@ function AuroraRings() {
           width: 96,
           height: 96,
           borderRadius: 48,
-          backgroundColor: "#7C3AED18",
+          backgroundColor: `${theme.primary}18`,
         }}
       />
 
@@ -180,24 +182,25 @@ function CheckingScreen() {
 
   return (
     <Animated.View
-      className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-950"
+      className="flex-1 items-center justify-center bg-[#F7F7FA] dark:bg-[#111014]"
       style={{ opacity: fadeIn }}
     >
       <AuroraRings />
 
       <Text
-        className="mt-8 text-xl font-extrabold text-violet-600"
+        className="mt-8 text-xl font-extrabold text-[#6842A0] dark:text-[#A98ADC]"
         style={{ letterSpacing: 1 }}
       >
         AURORA LMS
       </Text>
-      <Text className="mt-2 text-sm text-gray-400">Checking connection…</Text>
+      <Text className="mt-2 text-sm text-[#6C6572] dark:text-[#BEB6C5]">Checking connection…</Text>
     </Animated.View>
   );
 }
 
 // ─── Maintenance screen ───────────────────────────────────────────────────
 function MaintenanceScreen({ onRetry, isNetworkError }: { onRetry: () => void; isNetworkError: boolean }) {
+  const { theme } = useAppTheme();
   const fadeIn = useRef(new Animated.Value(0)).current;
   const slideUp = useRef(new Animated.Value(20)).current;
   const [retrying, setRetrying] = useState(false);
@@ -226,7 +229,7 @@ function MaintenanceScreen({ onRetry, isNetworkError }: { onRetry: () => void; i
 
   return (
     <Animated.View
-      className="flex-1 items-center justify-center bg-gray-50 dark:bg-gray-950 px-8"
+      className="flex-1 items-center justify-center bg-[#F7F7FA] dark:bg-[#111014] px-8"
       style={{ opacity: fadeIn, transform: [{ translateY: slideUp }] }}
     >
       {/* Icon with static rings (muted) */}
@@ -237,7 +240,7 @@ function MaintenanceScreen({ onRetry, isNetworkError }: { onRetry: () => void; i
             height: 120,
             borderRadius: 60,
             borderWidth: 2,
-            borderColor: "#E5E7EB",
+            borderColor: theme.border,
             borderStyle: "dashed",
             alignItems: "center",
             justifyContent: "center",
@@ -249,7 +252,7 @@ function MaintenanceScreen({ onRetry, isNetworkError }: { onRetry: () => void; i
               height: 92,
               borderRadius: 46,
               borderWidth: 1.5,
-              borderColor: "#E5E7EB",
+              borderColor: theme.border,
               borderStyle: "dashed",
               alignItems: "center",
               justifyContent: "center",
@@ -265,27 +268,27 @@ function MaintenanceScreen({ onRetry, isNetworkError }: { onRetry: () => void; i
       </View>
 
       {/* Message */}
-      <Text className="text-2xl font-extrabold text-gray-800 dark:text-gray-100 text-center mb-2">
+      <Text className="text-2xl font-extrabold text-[#201D25] dark:text-[#F7F4FA] text-center mb-2">
         {isNetworkError ? "No Connection" : "Under Maintenance"}
       </Text>
-      <Text className="text-sm text-gray-500 dark:text-gray-400 text-center leading-6 mb-8">
+      <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] text-center leading-6 mb-8">
         {isNetworkError
           ? "Unable to reach the server. Please check your internet connection and try again."
           : "Aurora LMS is currently undergoing scheduled maintenance. We`&apos;`ll be back shortly. Thank you for your patience."}
       </Text>
 
       {/* Status badge */}
-      <View className="flex-row items-center bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-full px-4 py-2 mb-8">
+      <View className="flex-row items-center bg-[#FCECEF] dark:bg-[#3A2025] border border-[#E6E1E8] dark:border-[#37313C] rounded-full px-4 py-2 mb-8">
         <View
           style={{
             width: 8,
             height: 8,
             borderRadius: 4,
-            backgroundColor: "#F59E0B",
+            backgroundColor: theme.warning,
             marginRight: 8,
           }}
         />
-        <Text className="text-amber-700 dark:text-amber-300 text-xs font-semibold">
+        <Text className="text-[#A75D00] dark:text-[#F2B35C] text-xs font-semibold">
           {isNetworkError ? "Network unreachable" : "Service unavailable"}
         </Text>
       </View>
@@ -295,7 +298,9 @@ function MaintenanceScreen({ onRetry, isNetworkError }: { onRetry: () => void; i
         onPress={handleRetry}
         disabled={retrying}
         className={`rounded-xl py-4 px-10 items-center ${
-          retrying ? "bg-violet-300" : "bg-violet-600 active:bg-violet-700"
+          retrying
+            ? "bg-[#F2ECF8] dark:bg-[#2A2038]"
+            : "bg-[#6842A0] active:bg-[#52347E] dark:bg-[#A98ADC] dark:active:bg-[#C4A9E9]"
         }`}
       >
         {retrying ? (
@@ -310,6 +315,7 @@ function MaintenanceScreen({ onRetry, isNetworkError }: { onRetry: () => void; i
 
 // ─── Login form ───────────────────────────────────────────────────────────
 function LoginForm() {
+  const { theme } = useAppTheme();
   const [showPassword, setShowPassword] = useState(false);
   const [externalId, setExternalId] = useState("");
   const [password, setPassword] = useState("");
@@ -356,7 +362,7 @@ function LoginForm() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100 dark:bg-gray-950">
+    <SafeAreaView className="flex-1 bg-[#F7F7FA] dark:bg-[#111014]">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 justify-center px-6"
@@ -367,57 +373,57 @@ function LoginForm() {
           {/* App Title */}
           <View className="mb-10 items-center">
             <Text
-              className="text-3xl font-extrabold text-violet-600"
+              className="text-3xl font-extrabold text-[#6842A0] dark:text-[#A98ADC]"
               style={{ letterSpacing: 1 }}
             >
               AURORA LMS
             </Text>
-            <Text className="text-gray-500 mt-2 text-center">
+            <Text className="text-[#6C6572] dark:text-[#BEB6C5] mt-2 text-center">
               Sign in to continue learning
             </Text>
           </View>
 
           {/* Login Card */}
-          <View className="bg-white dark:bg-gray-900 rounded-2xl shadow-md px-6 py-8">
+          <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl shadow-md px-6 py-8">
             {/* External ID */}
             <View className="mb-4">
-              <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              <Text className="text-sm font-semibold text-[#201D25] dark:text-[#F7F4FA] mb-2">
                 External ID
               </Text>
-              <View className="flex-row items-center border border-gray-300 dark:border-gray-700 rounded-xl px-3 bg-gray-50 dark:bg-gray-800">
-                <Ionicons name="person-outline" size={20} color="#9CA3AF" />
+              <View className="flex-row items-center border border-[#E6E1E8] dark:border-[#37313C] rounded-xl px-3 bg-[#F2ECF8] dark:bg-[#2A2038]">
+                <Ionicons name="person-outline" size={20} color={theme.textMuted} />
                 <TextInput
                   placeholder="Enter your External ID"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={theme.textMuted}
                   value={externalId}
                   onChangeText={setExternalId}
                   keyboardType="numeric"
                   editable={!authState?.isLoading}
-                  className="flex-1 px-3 py-3 text-base text-gray-800 dark:text-gray-100"
+                  className="flex-1 px-3 py-3 text-base text-[#201D25] dark:text-[#F7F4FA]"
                 />
               </View>
             </View>
 
             {/* Password */}
             <View className="mb-6">
-              <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              <Text className="text-sm font-semibold text-[#201D25] dark:text-[#F7F4FA] mb-2">
                 Password
               </Text>
-              <View className="flex-row items-center border border-gray-300 dark:border-gray-700 rounded-xl px-3 bg-gray-50 dark:bg-gray-800">
+              <View className="flex-row items-center border border-[#E6E1E8] dark:border-[#37313C] rounded-xl px-3 bg-[#F2ECF8] dark:bg-[#2A2038]">
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#9CA3AF"
+                  color={theme.textMuted}
                 />
                 <TextInput
                   placeholder="Enter your password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={theme.textMuted}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   editable={!authState?.isLoading}
-                  className="flex-1 px-3 py-3 text-base text-gray-800 dark:text-gray-100"
+                  className="flex-1 px-3 py-3 text-base text-[#201D25] dark:text-[#F7F4FA]"
                 />
                 <Pressable
                   onPress={() => setShowPassword(!showPassword)}
@@ -427,7 +433,7 @@ function LoginForm() {
                   <AntDesign
                     name={showPassword ? "eye" : "eye-invisible"}
                     size={20}
-                    color="#6B7280"
+                    color={theme.textMuted}
                   />
                 </Pressable>
               </View>
@@ -439,8 +445,8 @@ function LoginForm() {
               disabled={authState?.isLoading}
               className={`rounded-xl py-4 items-center ${
                 authState?.isLoading
-                  ? "bg-red-300"
-                  : "bg-red-500 active:bg-red-600"
+                  ? "bg-[#F2ECF8] dark:bg-[#2A2038]"
+                  : "bg-[#B42335] active:bg-[#B42335] dark:bg-[#F06A78] dark:active:bg-[#F06A78]"
               }`}
             >
               {authState?.isLoading ? (
@@ -452,7 +458,7 @@ function LoginForm() {
           </View>
 
           {/* Footer */}
-          <Text className="text-center text-gray-400 text-xs mt-6">
+          <Text className="text-center text-[#6C6572] dark:text-[#BEB6C5] text-xs mt-6">
             © {new Date().getFullYear()} AURORA LMS
           </Text>
         </Animated.View>

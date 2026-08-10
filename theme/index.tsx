@@ -1,5 +1,6 @@
 import { useColorScheme } from "nativewind";
-import React, { createContext, useContext, useMemo } from "react";
+import * as SecureStore from "expo-secure-store";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 export const lightTheme = {
   canvas: "#F7F7FA", surface: "#FFFFFF", surfaceMuted: "#F2ECF8", surfaceAccent: "#FCECEF",
@@ -8,6 +9,7 @@ export const lightTheme = {
   danger: "#B42335", tabInactive: "#817987",
 };
 export type Theme = typeof lightTheme;
+export type AppearanceMode = "light" | "dark" | "system";
 export const darkTheme: Theme = {
   canvas: "#111014", surface: "#1A181E", surfaceMuted: "#2A2038", surfaceAccent: "#3A2025",
   text: "#F7F4FA", textMuted: "#BEB6C5", border: "#37313C", primary: "#A98ADC",
@@ -15,13 +17,61 @@ export const darkTheme: Theme = {
   danger: "#F06A78", tabInactive: "#BEB6C5",
 };
 
-type ThemeContextValue = { theme: Theme; isDark: boolean; setColorScheme: (scheme: "light" | "dark" | "system") => void };
+type ThemeContextValue = {
+  theme: Theme;
+  isDark: boolean;
+  appearanceMode: AppearanceMode;
+  setAppearanceMode: (mode: AppearanceMode) => void;
+};
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+const APPEARANCE_MODE_KEY = "appearance_mode";
+
+const isAppearanceMode = (value: string | null): value is AppearanceMode =>
+  value === "light" || value === "dark" || value === "system";
 
 export function AppThemeProvider({ children }: React.PropsWithChildren) {
   const { colorScheme, setColorScheme } = useColorScheme();
-  const value = useMemo(() => ({ theme: colorScheme === "dark" ? darkTheme : lightTheme, isDark: colorScheme === "dark", setColorScheme }), [colorScheme, setColorScheme]);
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  const [appearanceMode, setAppearanceModeState] = useState<AppearanceMode>("system");
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    void SecureStore.getItemAsync(APPEARANCE_MODE_KEY)
+      .then((savedMode) => {
+        if (!mounted || !isAppearanceMode(savedMode)) return;
+        setAppearanceModeState(savedMode);
+        setColorScheme(savedMode);
+      })
+      .catch((error) => {
+        if (__DEV__) console.warn("Unable to restore appearance mode", error);
+      })
+      .finally(() => {
+        if (mounted) setIsReady(true);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const setAppearanceMode = (mode: AppearanceMode) => {
+    setAppearanceModeState(mode);
+    setColorScheme(mode);
+    void SecureStore.setItemAsync(APPEARANCE_MODE_KEY, mode);
+  };
+
+  const value = useMemo(
+    () => ({
+      theme: colorScheme === "dark" ? darkTheme : lightTheme,
+      isDark: colorScheme === "dark",
+      appearanceMode,
+      setAppearanceMode,
+    }),
+    [appearanceMode, colorScheme],
+  );
+
+  return <ThemeContext.Provider value={value}>{isReady ? children : null}</ThemeContext.Provider>;
 }
 
 export function useAppTheme() {

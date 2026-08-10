@@ -11,13 +11,14 @@ export function AppScreen({ children, style }: React.PropsWithChildren<{ style?:
 
 export function Card({ children, style }: React.PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
   const { theme } = useAppTheme();
-  return <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }, style]}>{children}</View>;
+  return <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border, shadowColor: theme.text }, style]}>{children}</View>;
 }
 
 export function AppButton({ label, onPress, loading, disabled, variant = "primary", accessibilityLabel }: { label: string; onPress: () => void; loading?: boolean; disabled?: boolean; variant?: "primary" | "secondary" | "danger"; accessibilityLabel?: string }) {
   const { theme } = useAppTheme();
-  const colors = variant === "danger" ? { backgroundColor: theme.danger, color: "#FFFFFF" } : variant === "secondary" ? { backgroundColor: theme.surfaceMuted, color: theme.primary } : { backgroundColor: theme.primary, color: "#FFFFFF" };
-  return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: Boolean(disabled || loading), busy: Boolean(loading) }} disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.button, colors, (disabled || loading) && styles.disabled, pressed && !disabled && styles.pressed]}>{loading ? <ActivityIndicator color={colors.color} /> : <Text style={[styles.buttonLabel, { color: colors.color }]}>{label}</Text>}</Pressable>;
+  const backgroundColor = variant === "danger" ? theme.danger : variant === "secondary" ? theme.surfaceMuted : theme.primary;
+  const labelColor = variant === "secondary" ? theme.primary : "#FFFFFF";
+  return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: Boolean(disabled || loading), busy: Boolean(loading) }} disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.button, { backgroundColor }, (disabled || loading) && styles.disabled, pressed && !disabled && styles.pressed]}>{loading ? <ActivityIndicator color={labelColor} /> : <Text style={[styles.buttonLabel, { color: labelColor }]}>{label}</Text>}</Pressable>;
 }
 
 export function IconButton({ icon, label, onPress }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; onPress: () => void }) {
@@ -36,7 +37,7 @@ export function StateView({ icon, title, message, actionLabel, onAction }: { ico
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, card: { borderWidth: 1, borderRadius: 20, padding: 16, shadowColor: "#201D25", shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  screen: { flex: 1 }, card: { borderWidth: 1, borderRadius: 20, padding: 16, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   button: { minHeight: 48, borderRadius: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 18 }, buttonLabel: { fontSize: 15, fontWeight: "700" }, disabled: { opacity: 0.55 }, pressed: { opacity: 0.82 }, iconButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   header: { flexDirection: "row", gap: 16, alignItems: "center", paddingBottom: 20 }, headerCopy: { flex: 1 }, eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 1.1, marginBottom: 3 }, headerTitle: { fontSize: 30, lineHeight: 36, fontWeight: "800", letterSpacing: -0.6 }, headerSubtitle: { fontSize: 14, lineHeight: 20, marginTop: 4 }, state: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 32 }, stateIcon: { width: 64, height: 64, borderRadius: 22, alignItems: "center", justifyContent: "center" }, stateTitle: { fontSize: 20, fontWeight: "800", marginTop: 18 }, stateMessage: { fontSize: 14, lineHeight: 20, textAlign: "center", marginTop: 6 }, stateAction: { marginTop: 20, minWidth: 150 },
 });

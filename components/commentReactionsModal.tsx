@@ -1,4 +1,5 @@
 import { createCommentReactionsOptions } from "@/api/QueryOptions/commentReactionsOptions";
+import { useAppTheme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
@@ -33,6 +34,7 @@ export default function CommentReactionsModal({
   commentId,
 }: CommentReactionsModalProps) {
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const { theme } = useAppTheme();
 
   const { data, isLoading, error } = useQuery({
     ...createCommentReactionsOptions(commentId, selectedFilter, 1, 50),
@@ -49,16 +51,17 @@ export default function CommentReactionsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-white">
+      <View className="flex-1" style={{ backgroundColor: theme.surface }}>
         {/* Header */}
-        <View className="border-b border-gray-200 px-4 py-4">
+        <View className="border-b px-4 py-4" style={{ borderColor: theme.border }}>
           <View className="flex-row items-center justify-between">
-            <Text className="font-bold text-lg text-gray-800">Reactions</Text>
+            <Text className="font-bold text-lg" style={{ color: theme.text }}>Reactions</Text>
             <Pressable
               onPress={onClose}
-              className="w-8 h-8 items-center justify-center bg-gray-100 rounded-full active:bg-gray-200"
+              className="w-8 h-8 items-center justify-center rounded-full"
+              style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
             >
-              <Ionicons name="close" size={20} color="#374151" />
+              <Ionicons name="close" size={20} color={theme.text} />
             </Pressable>
           </View>
 
@@ -81,17 +84,16 @@ export default function CommentReactionsModal({
                   <Pressable
                     key={reaction.key}
                     onPress={() => setSelectedFilter(reaction.key)}
-                    className={`flex-row items-center gap-1 px-4 py-2 rounded-full border ${
-                      isSelected
-                        ? "bg-red-50 border-red-500"
-                        : "bg-gray-50 border-gray-200"
-                    }`}
+                    className="flex-row items-center gap-1 px-4 py-2 rounded-full border"
+                    style={{
+                      backgroundColor: isSelected ? theme.surfaceAccent : theme.canvas,
+                      borderColor: isSelected ? theme.school : theme.border,
+                    }}
                   >
                     <Text className="text-lg">{reaction.emoji}</Text>
                     <Text
-                      className={`text-sm font-medium ${
-                        isSelected ? "text-red-600" : "text-gray-600"
-                      }`}
+                      className="text-sm font-medium"
+                      style={{ color: isSelected ? theme.school : theme.textMuted }}
                     >
                       {count}
                     </Text>
@@ -106,21 +108,21 @@ export default function CommentReactionsModal({
         <ScrollView className="flex-1">
           {isLoading ? (
             <View className="flex-1 items-center justify-center py-12">
-              <ActivityIndicator size="large" color="#EF4444" />
-              <Text className="text-sm text-gray-500 mt-3">
+              <ActivityIndicator size="large" color={theme.school} />
+              <Text className="text-sm mt-3" style={{ color: theme.textMuted }}>
                 Loading reactions...
               </Text>
             </View>
           ) : error ? (
             <View className="flex-1 items-center justify-center py-12 px-6">
-              <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
-              <Text className="text-red-500 text-center mt-3">
+              <Ionicons name="alert-circle-outline" size={48} color={theme.danger} />
+              <Text className="text-center mt-3" style={{ color: theme.danger }}>
                 Failed to load reactions
               </Text>
             </View>
           ) : reactions.length === 0 ? (
             <View className="flex-1 items-center justify-center py-12 px-6">
-              <Text className="text-base text-gray-400 text-center">
+              <Text className="text-base text-center" style={{ color: theme.textMuted }}>
                 No reactions yet
               </Text>
             </View>
@@ -133,19 +135,20 @@ export default function CommentReactionsModal({
                 return (
                   <View
                     key={`${reaction.user_id}-${index}`}
-                    className="flex-row items-center justify-between py-3 border-b border-gray-100"
+                    className="flex-row items-center justify-between py-3 border-b"
+                    style={{ borderColor: theme.border }}
                   >
                     <View className="flex-row items-center gap-3 flex-1">
-                      <View className="w-10 h-10 rounded-full bg-red-100 items-center justify-center">
-                        <Text className="text-sm font-bold text-red-500">
+                      <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: theme.surfaceAccent }}>
+                        <Text className="text-sm font-bold" style={{ color: theme.school }}>
                           {reaction.full_name.charAt(0).toUpperCase()}
                         </Text>
                       </View>
-                      <Text className="text-sm font-medium text-gray-800 flex-1">
+                      <Text className="text-sm font-medium flex-1" style={{ color: theme.text }}>
                         {reaction.full_name}
                       </Text>
                     </View>
-                    <View className="w-8 h-8 bg-gray-50 rounded-full items-center justify-center">
+                    <View className="w-8 h-8 rounded-full items-center justify-center" style={{ backgroundColor: theme.canvas }}>
                       <Text className="text-xl">{reactionData?.emoji}</Text>
                     </View>
                   </View>

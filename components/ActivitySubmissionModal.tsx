@@ -2,6 +2,7 @@ import { SingleActivity } from "@/types/api";
 import { getData, postData } from "@/utils/fetcher";
 import { HTMLContent } from "@/utils/RenderHTML";
 import { showToast } from "@/utils/toast/toast";
+import { useAppTheme } from "@/theme";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -42,6 +43,7 @@ export default function ActivitySubmissionModal({
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
+  const { theme } = useAppTheme();
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener(
@@ -155,8 +157,9 @@ export default function ActivitySubmissionModal({
           className="flex-1 w-full justify-end"
         >
           <View
-            className="bg-white rounded-t-3xl flex-1"
+            className="rounded-t-3xl flex-1"
             style={{
+              backgroundColor: theme.surface,
               maxHeight: keyboardVisible
                 ? Math.max(280, windowHeight - insets.top - 8)
                 : windowHeight * 0.9,
@@ -164,8 +167,8 @@ export default function ActivitySubmissionModal({
             }}
           >
             {/* Header */}
-            <View className="flex-row justify-between items-center p-5 border-b border-gray-200">
-              <Text className="text-lg font-bold text-gray-900 flex-1 pr-4">
+            <View className="flex-row justify-between items-center p-5 border-b" style={{ borderColor: theme.border }}>
+              <Text className="text-lg font-bold flex-1 pr-4" style={{ color: theme.text }}>
                 {activity.has_submission && !activity.is_graded
                   ? "Resubmit Activity"
                   : "Submit Activity"}
@@ -175,7 +178,7 @@ export default function ActivitySubmissionModal({
                 disabled={submitMutation.isPending}
                 className="w-8 h-8 items-center justify-center"
               >
-                <Text className="text-2xl text-gray-400">×</Text>
+                <Text className="text-2xl" style={{ color: theme.textMuted }}>×</Text>
               </Pressable>
             </View>
 
@@ -198,22 +201,22 @@ export default function ActivitySubmissionModal({
             >
               <View className="p-5">
                 {/* Activity Title */}
-                <Text className="text-base font-semibold text-gray-800 mb-3">
+                <Text className="text-base font-semibold mb-3" style={{ color: theme.text }}>
                   {activity.title}
                 </Text>
 
                 {/* Activity Type Badge */}
                 <View className="flex-row mb-4">
-                  <View className="bg-purple-100 rounded-full px-3 py-1">
-                    <Text className="text-xs font-medium text-purple-800 capitalize">
+                  <View className="rounded-full px-3 py-1" style={{ backgroundColor: theme.surfaceMuted }}>
+                    <Text className="text-xs font-medium capitalize" style={{ color: theme.primary }}>
                       {activity.activity_type}
                     </Text>
                   </View>
                 </View>
 
                 {/* Instructions */}
-                <View className="bg-blue-50 rounded-lg p-4 mb-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-2">
+                <View className="rounded-lg p-4 mb-4" style={{ backgroundColor: theme.surfaceAccent }}>
+                  <Text className="text-sm font-semibold mb-2" style={{ color: theme.text }}>
                     Instructions:
                   </Text>
                   <HTMLContent htmlContent={activity.instructions} />
@@ -221,14 +224,15 @@ export default function ActivitySubmissionModal({
 
                 {/* Answer Input */}
                 <View className="mb-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-2">
-                    Your Answer: <Text className="text-red-500">*</Text>
+                  <Text className="text-sm font-semibold mb-2" style={{ color: theme.text }}>
+                    Your Answer: <Text style={{ color: theme.danger }}>*</Text>
                   </Text>
-                  <View className="bg-gray-50 border border-gray-300 rounded-lg">
+                  <View className="border rounded-lg" style={{ backgroundColor: theme.canvas, borderColor: theme.border }}>
                     <TextInput
-                      className="p-4 text-base text-gray-900 h-40"
+                      className="p-4 text-base h-40"
                       placeholder="Type your answer here..."
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={theme.textMuted}
+                      style={{ color: theme.text }}
                       multiline
                       textAlignVertical="top"
                       value={answer}
@@ -245,15 +249,15 @@ export default function ActivitySubmissionModal({
                       }
                     />
                   </View>
-                  <Text className="text-xs text-gray-500 mt-1">
+                  <Text className="text-xs mt-1" style={{ color: theme.textMuted }}>
                     {answer.length} characters
                   </Text>
                 </View>
 
                 {/* Error Message */}
                 {submitMutation.isError && (
-                  <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                    <Text className="text-sm text-red-600">
+                  <View className="border rounded-lg p-3 mb-4" style={{ backgroundColor: theme.surfaceAccent, borderColor: theme.danger }}>
+                    <Text className="text-sm" style={{ color: theme.danger }}>
                       {submitMutation.error instanceof Error
                         ? submitMutation.error.message
                         : "Failed to submit. Please try again."}
@@ -263,8 +267,8 @@ export default function ActivitySubmissionModal({
 
                 {/* Success Message */}
                 {submitMutation.isSuccess && (
-                  <View className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                    <Text className="text-sm text-green-600">
+                  <View className="border rounded-lg p-3 mb-4" style={{ backgroundColor: theme.surfaceMuted, borderColor: theme.success }}>
+                    <Text className="text-sm" style={{ color: theme.success }}>
                       Activity submitted successfully!
                     </Text>
                   </View>
@@ -274,15 +278,16 @@ export default function ActivitySubmissionModal({
 
             {/* Footer Actions */}
             <View
-              className="p-5 border-t border-gray-200 flex-row gap-3"
-              style={{ paddingBottom: Math.max(insets.bottom, 20) }}
+              className="p-5 border-t flex-row gap-3"
+              style={{ paddingBottom: Math.max(insets.bottom, 20), borderColor: theme.border }}
             >
               <Pressable
                 onPress={onClose}
                 disabled={submitMutation.isPending}
-                className="flex-1 bg-gray-200 active:bg-gray-300 rounded-lg py-3 items-center"
+                className="flex-1 rounded-lg py-3 items-center"
+                style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
               >
-                <Text className="text-base font-semibold text-gray-700">
+                <Text className="text-base font-semibold" style={{ color: theme.text }}>
                   Cancel
                 </Text>
               </Pressable>
@@ -294,17 +299,19 @@ export default function ActivitySubmissionModal({
                   submitMutation.isPending ||
                   loadingExistingAnswer
                 }
-                className={`flex-1 rounded-lg py-3 items-center flex-row justify-center ${
-                  !answer.trim() ||
-                  submitMutation.isPending ||
-                  loadingExistingAnswer
-                    ? "bg-blue-300"
-                    : "bg-blue-600 active:bg-blue-700"
-                }`}
+                className="flex-1 rounded-lg py-3 items-center flex-row justify-center"
+                style={({ pressed }) => ({
+                  backgroundColor:
+                    !answer.trim() || submitMutation.isPending || loadingExistingAnswer
+                      ? theme.tabInactive
+                      : pressed
+                        ? theme.primaryPressed
+                        : theme.primary,
+                })}
               >
                 {submitMutation.isPending ? (
                   <>
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                     <Text className="text-base font-semibold text-white ml-2">
                       Submitting...
                     </Text>

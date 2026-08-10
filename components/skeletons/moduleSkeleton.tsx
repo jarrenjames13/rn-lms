@@ -1,5 +1,6 @@
 import React from "react";
 import { View } from "react-native";
+import { useAppTheme } from "@/theme";
 import Skeleton from "./Skeleton";
 
 interface ModuleSkeletonProps {
@@ -11,10 +12,18 @@ export default function ModuleSkeleton({
   showSections = true,
   showActivities = true,
 }: ModuleSkeletonProps) {
+  const { theme } = useAppTheme();
+
   return (
-    <View className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
+    <View
+      className="rounded-2xl shadow-sm border mb-4 overflow-hidden"
+      style={{ backgroundColor: theme.surface, borderColor: theme.border }}
+    >
       {/* Module Header */}
-      <View className="bg-red-500 px-5 py-4 flex-row items-center">
+      <View
+        className="px-5 py-4 flex-row items-center"
+        style={{ backgroundColor: theme.school }}
+      >
         <Skeleton
           width={40}
           height={40}

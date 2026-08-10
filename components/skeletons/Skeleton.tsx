@@ -1,4 +1,5 @@
 import React from "react";
+import { useAppTheme } from "@/theme";
 import { DimensionValue, StyleProp, ViewProps, ViewStyle } from "react-native";
 import Animated, {
   Easing,
@@ -25,11 +26,12 @@ export default function Skeleton({
   height = 16,
   style,
   borderRadius = 8,
-  baseColor = "#E5E7EB",
-  highlightColor = "#F3F4F6",
+  baseColor,
+  highlightColor,
   variant = "shimmer",
   duration = 1500,
 }: SkeletonProps) {
+  const { theme } = useAppTheme();
   const opacity = useSharedValue(0.3);
   const translateX = useSharedValue(-300);
 
@@ -61,7 +63,7 @@ export default function Skeleton({
     width,
     height,
     borderRadius,
-    backgroundColor: baseColor,
+    backgroundColor: baseColor ?? theme.border,
   };
 
   if (variant === "pulse") {
@@ -84,7 +86,7 @@ export default function Skeleton({
   const shimmerOverlayStyle: ViewStyle = {
     width: "100%",
     height: "100%",
-    backgroundColor: highlightColor,
+    backgroundColor: highlightColor ?? theme.surfaceMuted,
     opacity: 0.5,
   };
 

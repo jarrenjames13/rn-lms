@@ -1,4 +1,5 @@
 import Clipboard from "@react-native-clipboard/clipboard";
+import { type Theme, useAppTheme } from "@/theme";
 import React, { useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
@@ -41,11 +42,11 @@ const TAG_CLASSES: Record<string, string> = {
   ol: "pl-5 my-2",
   li: "my-1 text-base leading-relaxed",
   pre: "my-2", // layout/padding handled directly in renderNode
-  code: "font-mono text-sm text-red-700",
+  code: "font-mono text-sm",
   strong: "font-bold mx-0.5",
   em: "italic mx-0.5",
-  blockquote: "border-l-4 border-gray-300 pl-4 my-2 italic",
-  a: "text-blue-600 underline mx-0.5",
+  blockquote: "border-l-4 pl-4 my-2 italic",
+  a: "underline mx-0.5",
 };
 
 interface ParsedNode {
@@ -254,11 +255,13 @@ function stripTags(text: string): string {
 interface CodeBlockProps {
   rawText: string;
   blockIndex: number;
+  theme: Theme;
 }
 
 function CodeBlock({
   rawText,
   blockIndex,
+  theme,
 }: CodeBlockProps): React.ReactElement {
   const [copied, setCopied] = useState(false);
 
@@ -278,12 +281,13 @@ function CodeBlock({
       {
         horizontal: true,
         showsHorizontalScrollIndicator: true,
-        className: "bg-gray-100 rounded",
+        className: "rounded",
+        style: { backgroundColor: theme.surfaceMuted },
         contentContainerStyle: { padding: 12, paddingRight: 60 },
       },
       React.createElement(
         Text,
-        { className: "font-mono text-sm text-red-700" },
+        { className: "font-mono text-sm", style: { color: theme.danger } },
         decoded,
       ),
     ),
@@ -296,7 +300,7 @@ function CodeBlock({
           position: "absolute" as const,
           top: 8,
           right: 8,
-          backgroundColor: copied ? "#16a34a" : "#374151",
+          backgroundColor: copied ? theme.success : theme.text,
           borderRadius: 6,
           paddingHorizontal: 10,
           paddingVertical: 4,
@@ -305,7 +309,13 @@ function CodeBlock({
       },
       React.createElement(
         Text,
-        { style: { color: "#fff", fontSize: 11, fontWeight: "600" as const } },
+        {
+          style: {
+            color: "#FFFFFF",
+            fontSize: 11,
+            fontWeight: "600" as const,
+          },
+        },
         copied ? "Copied!" : "Copy",
       ),
     ),
@@ -313,7 +323,10 @@ function CodeBlock({
 }
 
 // ---------------------- HTML Rendering ----------------------
-export function renderHTMLContent(htmlContent: string): React.ReactNode {
+export function renderHTMLContent(
+  htmlContent: string,
+  theme: Theme,
+): React.ReactNode {
   const nodes = parseHTML(htmlContent);
 
   const renderNode = (
@@ -329,7 +342,11 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
       const decoded = decodeEntities(content);
       return React.createElement(
         Text,
-        { key: index, className: "text-base mx-1" },
+        {
+          key: index,
+          className: "text-base mx-1",
+          style: { color: theme.text },
+        },
         decoded,
       );
     }
@@ -345,7 +362,11 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
             .join("") || "";
         return React.createElement(
           Text,
-          { key: index, className: "font-mono text-sm text-red-700" },
+          {
+            key: index,
+            className: "font-mono text-sm",
+            style: { color: theme.danger },
+          },
           `<${node.name}>${raw}</${node.name}>`,
         );
       }
@@ -361,6 +382,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
           key: index,
           rawText: raw,
           blockIndex: index,
+          theme,
         });
       }
 
@@ -371,6 +393,17 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
       else if (TAG_CLASSES[node.name]) className += TAG_CLASSES[node.name];
 
       if (node.attribs?.class) className += " " + node.attribs.class;
+
+      const nodeStyle =
+        node.name === "code"
+          ? { color: theme.danger }
+          : node.name === "a"
+            ? { color: theme.primary }
+            : node.name === "blockquote"
+              ? { borderLeftColor: theme.border }
+              : Tag === Text
+                ? { color: theme.text }
+                : undefined;
 
       if (node.name === "br")
         return React.createElement(Text, { key: index }, "\n");
@@ -393,7 +426,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
         const bullet = parentTag === "ul" ? "• " : `${index + 1}. `;
         return React.createElement(
           Text,
-          { key: index, className },
+          { key: index, className, style: nodeStyle },
           bullet,
           children,
         );
@@ -404,7 +437,7 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
           Text,
           { key: index },
           " ",
-          React.createElement(Text, { className }, children),
+          React.createElement(Text, { className, style: nodeStyle }, children),
           " ",
         );
       }
@@ -413,10 +446,18 @@ export function renderHTMLContent(htmlContent: string): React.ReactNode {
         isTextComponent &&
         ["strong", "em", "a", "span"].includes(node.name)
       ) {
-        return React.createElement(Text, { key: index, className }, children);
+        return React.createElement(
+          Text,
+          { key: index, className, style: nodeStyle },
+          children,
+        );
       }
 
-      return React.createElement(Tag, { key: index, className }, children);
+      return React.createElement(
+        Tag,
+        { key: index, className, style: nodeStyle },
+        children,
+      );
     }
 
     return null;
@@ -435,7 +476,8 @@ export const HTMLContent = React.memo(function HTMLContent({
 }: {
   htmlContent: string;
 }) {
-  return renderHTMLContent(htmlContent);
+  const { theme } = useAppTheme();
+  return renderHTMLContent(htmlContent, theme);
 });
 
 // ---------------------- HTML Helpers ----------------------

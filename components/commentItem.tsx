@@ -1,5 +1,6 @@
 import { createInfiniteRepliesOptions } from "@/api/QueryOptions/repliesOptions";
 import { Comment, Replies } from "@/types/api";
+import { useAppTheme, type Theme } from "@/theme";
 import { getAccessToken } from "@/utils/accessToken";
 import { getData } from "@/utils/fetcher";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -94,6 +95,8 @@ function ReactionPicker({
   onSelect: (key: string) => void;
   onDismiss: () => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   // All animated values in a single stable ref — fixes exhaustive-deps warnings
   const animValues = useRef({
     pickerOpacity: new Animated.Value(0),
@@ -403,6 +406,8 @@ function ActionRow({
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const [pickerVisible, setPickerVisible] = useState(false);
   const likeBtnRef = useRef<View>(null);
   const [triggerPos, setTriggerPos] = useState({ x: 0, y: 0 });
@@ -454,7 +459,7 @@ function ActionRow({
         {/* Reply */}
         {onReply && (
           <Pressable onPress={onReply} style={styles.actionBtn}>
-            <Ionicons name="chatbubble-outline" size={13} color="#6B7280" />
+            <Ionicons name="chatbubble-outline" size={13} color={theme.textMuted} />
             <Text style={styles.actionLabel}>Reply</Text>
           </Pressable>
         )}
@@ -463,14 +468,12 @@ function ActionRow({
         {isOwner && (
           <>
             <Pressable onPress={onEdit} style={styles.actionBtn}>
-              <MaterialIcons name="edit" size={13} color="#6B7280" />
+              <MaterialIcons name="edit" size={13} color={theme.textMuted} />
               <Text style={styles.actionLabel}>Edit</Text>
             </Pressable>
             <Pressable onPress={onDelete} style={styles.actionBtn}>
-              <MaterialIcons name="delete-outline" size={13} color="#EF4444" />
-              <Text style={[styles.actionLabel, { color: "#EF4444" }]}>
-                Delete
-              </Text>
+              <MaterialIcons name="delete-outline" size={13} color={theme.danger} />
+              <Text style={[styles.actionLabel, { color: theme.danger }]}>Delete</Text>
             </Pressable>
           </>
         )}
@@ -495,6 +498,8 @@ function ReactionCount({
   item: CommentData | ReplyData;
   onPress?: () => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const topReactions = getTopReactions(item);
   const totalReactions = getTotalReactions(item);
 
@@ -532,6 +537,8 @@ function ReplyItem({
   onReply?: (target: { id: number; full_name: string }) => void;
   onShowAllReactions?: (replyId: number) => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const imageUrl = useCommentImage(reply.id, !!(reply.file_path?.trim()));
   const isOwner = currentUserId === reply.user_id;
   const [showImageModal, setShowImageModal] = useState(false);
@@ -633,6 +640,8 @@ function RepliesSection({
   onReact?: (replyId: number, reaction: string) => void;
   onShowAllReactions?: (replyId: number) => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const perPage = 5;
   const {
     data,
@@ -648,7 +657,7 @@ function RepliesSection({
   if (isLoading) {
     return (
       <View style={styles.repliesLoader}>
-        <ActivityIndicator size="small" color="#EF4444" />
+        <ActivityIndicator size="small" color={theme.school} />
       </View>
     );
   }
@@ -674,7 +683,7 @@ function RepliesSection({
 
       {isFetchingNextPage ? (
         <View style={styles.repliesLoader}>
-          <ActivityIndicator size="small" color="#EF4444" />
+          <ActivityIndicator size="small" color={theme.school} />
           <Text style={styles.loadMoreText}>Loading more...</Text>
         </View>
       ) : hasNextPage ? (
@@ -706,6 +715,8 @@ export default function CommentItem({
   onReply?: (target: { id: number; full_name: string }) => void;
   onShowAllReactions?: (commentId: number) => void;
 }) {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const [showReplies, setShowReplies] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const imageUrl = useCommentImage(item.id, !!(item.file_path?.trim()));
@@ -797,7 +808,7 @@ export default function CommentItem({
           <Ionicons
             name={showReplies ? "chevron-up" : "chevron-down"}
             size={13}
-            color="#EF4444"
+            color={theme.school}
           />
           <Text style={styles.repliesToggleText}>
             {showReplies
@@ -824,19 +835,19 @@ export default function CommentItem({
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   // Picker
   picker: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: theme.surface,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 2,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.text,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.18,
         shadowRadius: 12,
@@ -856,8 +867,8 @@ const styles = StyleSheet.create({
     bottom: -18,
     fontSize: 9,
     fontWeight: "700",
-    color: "#fff",
-    backgroundColor: "rgba(0,0,0,0.7)",
+    color: theme.surface,
+    backgroundColor: theme.text,
     paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 4,
@@ -875,7 +886,7 @@ const styles = StyleSheet.create({
   reactionPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: theme.surfaceMuted,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -884,7 +895,7 @@ const styles = StyleSheet.create({
   reactionPillAbove: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: theme.surfaceMuted,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -895,7 +906,7 @@ const styles = StyleSheet.create({
   pillEmoji: { fontSize: 13 },
   pillCount: {
     fontSize: 11,
-    color: "#6B7280",
+    color: theme.textMuted,
     fontWeight: "600",
     marginLeft: 2,
   },
@@ -906,24 +917,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: theme.surfaceMuted,
   },
-  actionBtnActive: { backgroundColor: "#FEE2E2" },
+  actionBtnActive: { backgroundColor: theme.surfaceAccent },
   actionIcon: { fontSize: 13 },
-  actionLabel: { fontSize: 11, color: "#6B7280", fontWeight: "600" },
-  actionLabelActive: { color: "#EF4444" },
+  actionLabel: { fontSize: 11, color: theme.textMuted, fontWeight: "600" },
+  actionLabelActive: { color: theme.school },
 
   // Comment card
   commentCard: {
-    backgroundColor: "#fff",
+    backgroundColor: theme.surface,
     borderRadius: 16,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: theme.border,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: theme.text,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 4,
@@ -942,21 +953,21 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#EF4444",
+    backgroundColor: theme.school,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { fontSize: 13, fontWeight: "700", color: "#fff" },
-  authorName: { fontSize: 13, fontWeight: "600", color: "#1F2937" },
-  timestamp: { fontSize: 11, color: "#9CA3AF" },
+  avatarText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+  authorName: { fontSize: 13, fontWeight: "600", color: theme.text },
+  timestamp: { fontSize: 11, color: theme.textMuted },
   editedBadge: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: theme.surfaceMuted,
     borderRadius: 999,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
-  editedText: { fontSize: 10, color: "#9CA3AF" },
-  commentBody: { fontSize: 13, color: "#374151", lineHeight: 20 },
+  editedText: { fontSize: 10, color: theme.textMuted },
+  commentBody: { fontSize: 13, color: theme.text, lineHeight: 20 },
   attachedImage: { width: 140, height: 140, borderRadius: 10, marginTop: 8 },
   attachedImageLarge: {
     width: 140,
@@ -964,7 +975,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 10,
   },
-  divider: { height: 1, backgroundColor: "#F3F4F6", marginVertical: 10 },
+  divider: { height: 1, backgroundColor: theme.border, marginVertical: 10 },
   repliesToggle: {
     flexDirection: "row",
     alignItems: "center",
@@ -972,17 +983,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     alignSelf: "flex-end",
   },
-  repliesToggleText: { fontSize: 11, color: "#EF4444", fontWeight: "600" },
+  repliesToggleText: { fontSize: 11, color: theme.school, fontWeight: "600" },
 
   // Reply
   replyContainer: {
     marginLeft: 28,
     marginTop: 10,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: theme.canvas,
     borderRadius: 12,
     padding: 10,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: theme.border,
   },
   replyHeader: {
     flexDirection: "row",
@@ -992,7 +1003,7 @@ const styles = StyleSheet.create({
   },
   replyingTo: {
     fontSize: 10,
-    color: "#F87171",
+    color: theme.school,
     fontWeight: "500",
     marginBottom: 4,
   },
@@ -1000,11 +1011,11 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: theme.surfaceAccent,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarSmallText: { fontSize: 9, fontWeight: "700", color: "#EF4444" },
+  avatarSmallText: { fontSize: 9, fontWeight: "700", color: theme.school },
 
   // Replies section
   repliesLoader: { marginLeft: 28, marginTop: 10, alignItems: "center" },
@@ -1012,20 +1023,20 @@ const styles = StyleSheet.create({
     marginLeft: 28,
     marginTop: 8,
     fontSize: 11,
-    color: "#F87171",
+    color: theme.danger,
   },
   loadMoreBtn: {
     marginLeft: 28,
     marginTop: 10,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: theme.surfaceMuted,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
     alignItems: "center",
   },
-  loadMoreBtnText: { fontSize: 11, color: "#6B7280", fontWeight: "500" },
-  loadMoreText: { fontSize: 11, color: "#9CA3AF", marginTop: 4 },
-  noMoreText: { marginLeft: 28, marginTop: 6, fontSize: 11, color: "#9CA3AF" },
+  loadMoreBtnText: { fontSize: 11, color: theme.textMuted, fontWeight: "500" },
+  loadMoreText: { fontSize: 11, color: theme.textMuted, marginTop: 4 },
+  noMoreText: { marginLeft: 28, marginTop: 6, fontSize: 11, color: theme.textMuted },
   
   // Image modal
   imageModalOverlay: {

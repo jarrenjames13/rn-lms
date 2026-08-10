@@ -8,6 +8,7 @@ import { AppScreen } from "@/components/ui";
 import CommentsModal from "@/components/commentsModal";
 import ModuleProgressBar from "@/components/ModuleProgressBar";
 import { useCourseStore } from "@/store/useCourseStore";
+import { useAppTheme } from "@/theme";
 import {
   ActivityWithGrade,
   Module,
@@ -76,6 +77,7 @@ function scheduleIdle(callback: () => void): () => void {
 }
 
 export default function Modules() {
+  const { theme } = useAppTheme();
   const { course_id, instance_id } = useCourseStore();
   const [loadModuleDetails, setLoadModuleDetails] = useState(false);
   const [openSectionId, setOpenSectionId] = useState<number | null>(null);
@@ -238,13 +240,13 @@ export default function Modules() {
   const getStatusColor = (status: string | null) => {
     switch (status?.toLowerCase()) {
       case "submitted":
-        return { bg: "#D1FAE5", text: "#065F46" };
+        return { bg: theme.surfaceMuted, text: theme.success };
       case "graded":
-        return { bg: "#DBEAFE", text: "#1E40AF" };
+        return { bg: theme.surfaceMuted, text: theme.primary };
       case "pending":
-        return { bg: "#FEF3C7", text: "#92400E" };
+        return { bg: theme.surfaceMuted, text: theme.warning };
       default:
-        return { bg: "#F3F4F6", text: "#374151" };
+        return { bg: theme.surfaceMuted, text: theme.textMuted };
     }
   };
 
@@ -264,21 +266,21 @@ export default function Modules() {
     return (
       <View
         key={activity.activity_id}
-        className="bg-white rounded-xl p-4 mb-3 border border-gray-100 shadow-sm"
+        className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-xl p-4 mb-3 border border-[#E6E1E8] dark:border-[#37313C] shadow-sm"
       >
         {/* Activity Header */}
         <View className="flex-row justify-between items-start mb-3">
           <View className="flex-1 pr-2">
-            <Text className="text-base font-bold text-gray-900 mb-1">
+            <Text className="text-base font-bold text-[#201D25] dark:text-[#F7F4FA] mb-1">
               {activity.title}
             </Text>
             <View className="flex-row items-center mt-1">
               <View
-                style={{ backgroundColor: "#FAF5FF" }}
+                style={{ backgroundColor: theme.surfaceMuted }}
                 className="rounded-full px-3 py-1"
               >
                 <Text
-                  style={{ color: "#7C3AED" }}
+                  style={{ color: theme.primary }}
                   className="text-xs font-semibold capitalize"
                 >
                   {activity.activity_type}
@@ -288,7 +290,7 @@ export default function Modules() {
           </View>
 
           {activity.is_graded && activity.grade !== null && (
-            <View className="bg-red-500 rounded-xl px-4 py-2 shadow-sm">
+            <View className="bg-[#B42335] dark:bg-[#F06A78] rounded-xl px-4 py-2 shadow-sm">
               <Text className="text-xs text-white font-medium">GRADE</Text>
               <Text className="text-xl font-bold text-white text-center">
                 {activity.grade}%
@@ -325,12 +327,12 @@ export default function Modules() {
           )}
           {activity.has_submission && !activity.is_graded && (
             <View
-              style={{ backgroundColor: "#FEF3C7" }}
+              style={{ backgroundColor: theme.surfaceMuted }}
               className="rounded-full px-3 py-1.5 flex-row items-center"
             >
-              <Ionicons name="time-outline" size={12} color="#92400E" />
+              <Ionicons name="time-outline" size={12} color={theme.warning} />
               <Text
-                style={{ color: "#92400E" }}
+                style={{ color: theme.warning }}
                 className="text-xs font-semibold ml-1"
               >
                 Pending Review
@@ -342,8 +344,8 @@ export default function Modules() {
         {/* Submission Date */}
         {activity.submitted_at && (
           <View className="flex-row items-center mb-3">
-            <Ionicons name="calendar-outline" size={14} color="#9CA3AF" />
-            <Text className="text-xs text-gray-500 ml-1">
+            <Ionicons name="calendar-outline" size={14} color={theme.textMuted} />
+            <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] ml-1">
               Submitted:{" "}
               {new Date(activity.submitted_at).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -355,14 +357,14 @@ export default function Modules() {
         )}
 
         {/* Instructions */}
-        <View className="bg-gray-50 rounded-lg p-3 mb-3">
+        <View className="bg-[#F7F7FA] dark:bg-[#111014] rounded-lg p-3 mb-3">
           <View className="flex-row items-center mb-2">
-            <MaterialIcons name="description" size={16} color="#6B7280" />
-            <Text className="text-xs font-semibold text-gray-700 ml-1">
+            <MaterialIcons name="description" size={16} color={theme.textMuted} />
+            <Text className="text-xs font-semibold text-[#201D25] dark:text-[#F7F4FA] ml-1">
               Instructions
             </Text>
           </View>
-          <View className="text-sm text-gray-600 leading-5">
+          <View className="text-sm text-[#6C6572] dark:text-[#BEB6C5] leading-5">
             <HTMLContent htmlContent={activity.instructions} />
           </View>
         </View>
@@ -370,16 +372,16 @@ export default function Modules() {
         {/* Feedback */}
         {activity.feedback && (
           <View
-            style={{ backgroundColor: "#EFF6FF" }}
-            className="border-l-4 border-red-500 rounded-lg p-3 mb-3"
+            style={{ backgroundColor: theme.surfaceMuted }}
+            className="border-l-4 border-[#B42335] dark:border-[#F06A78] rounded-lg p-3 mb-3"
           >
             <View className="flex-row items-center mb-2">
-              <MaterialIcons name="feedback" size={16} color="#EF4444" />
-              <Text className="text-xs font-bold text-gray-800 ml-1">
+              <MaterialIcons name="feedback" size={16} color={theme.school} />
+              <Text className="text-xs font-bold text-[#201D25] dark:text-[#F7F4FA] ml-1">
                 Instructor Feedback
               </Text>
             </View>
-            <Text className="text-sm text-gray-700 leading-5">
+            <Text className="text-sm text-[#201D25] dark:text-[#F7F4FA] leading-5">
               {activity.feedback}
             </Text>
           </View>
@@ -390,7 +392,7 @@ export default function Modules() {
           onPress={() => handleOpenSubmission(activity)}
           disabled={!canSubmit}
           className={`rounded-xl py-3 px-4 flex-row items-center justify-center ${
-            canSubmit ? "bg-red-500 active:bg-red-600" : "bg-gray-300"
+            canSubmit ? "bg-[#B42335] dark:bg-[#F06A78] active:bg-[#B42335] dark:active:bg-[#F06A78]" : "bg-[#E6E1E8] dark:bg-[#37313C]"
           }`}
         >
           <MaterialIcons
@@ -402,7 +404,7 @@ export default function Modules() {
                   : "upload-file"
             }
             size={18}
-            color="white"
+            color="#FFFFFF"
           />
           <Text className="text-sm font-semibold text-white ml-2">
             {getButtonText()}
@@ -415,15 +417,15 @@ export default function Modules() {
   const renderModuleSections = (module: ParsedModule) => {
     if (!module.sections || module.sections.length === 0) {
       return (
-        <View className="mt-6 pt-4 border-t border-gray-200">
+        <View className="mt-6 pt-4 border-t border-[#E6E1E8] dark:border-[#37313C]">
           <View className="flex-row items-center mb-3">
-            <MaterialIcons name="folder-open" size={20} color="#EF4444" />
-            <Text className="text-lg font-bold text-gray-900 ml-2">
+            <MaterialIcons name="folder-open" size={20} color={theme.school} />
+            <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA] ml-2">
               Module Sections
             </Text>
           </View>
-          <View className="bg-gray-50 rounded-lg p-4">
-            <Text className="text-sm text-gray-500 text-center">
+          <View className="bg-[#F7F7FA] dark:bg-[#111014] rounded-lg p-4">
+            <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] text-center">
               No sections available for this module.
             </Text>
           </View>
@@ -432,10 +434,10 @@ export default function Modules() {
     }
 
     return (
-      <View className="mt-6 pt-4 border-t border-gray-200">
+      <View className="mt-6 pt-4 border-t border-[#E6E1E8] dark:border-[#37313C]">
         <View className="flex-row items-center mb-4">
-          <MaterialIcons name="folder-open" size={20} color="#EF4444" />
-          <Text className="text-lg font-bold text-gray-900 ml-2">
+          <MaterialIcons name="folder-open" size={20} color={theme.school} />
+          <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA] ml-2">
             Module Sections
           </Text>
         </View>
@@ -451,41 +453,41 @@ export default function Modules() {
             >
               <Pressable
                 onPress={() => toggleSection(section.section_id)}
-                className={`rounded-xl p-4 border ${isOpen ? "bg-red-50 border-red-200" : "bg-white border-gray-200"}`}
+                className={`rounded-xl p-4 border ${isOpen ? "bg-[#FCECEF] dark:bg-[#3A2025] border-[#E6E1E8] dark:border-[#37313C]" : "bg-[#FFFFFF] dark:bg-[#1A181E] border-[#E6E1E8] dark:border-[#37313C]"}`}
               >
                 <View className="flex-row justify-between items-center">
                   <View className="flex-row items-center flex-1">
                     <View
-                      className={`w-8 h-8 rounded-lg items-center justify-center mr-3 ${isOpen ? "bg-red-500" : "bg-gray-100"}`}
+                      className={`w-8 h-8 rounded-lg items-center justify-center mr-3 ${isOpen ? "bg-[#B42335] dark:bg-[#F06A78]" : "bg-[#F2ECF8] dark:bg-[#2A2038]"}`}
                     >
                       <MaterialIcons
                         name="article"
                         size={16}
-                        color={isOpen ? "white" : "#6B7280"}
+                        color={isOpen ? "#FFFFFF" : theme.textMuted}
                       />
                     </View>
                     <Text
-                      className={`text-sm font-semibold flex-1 ${isOpen ? "text-red-900" : "text-gray-800"}`}
+                      className={`text-sm font-semibold flex-1 ${isOpen ? "text-[#B42335] dark:text-[#F06A78]" : "text-[#201D25] dark:text-[#F7F4FA]"}`}
                     >
                       {section.title}
                     </Text>
                   </View>
                   <View
-                    className={`w-6 h-6 rounded-full items-center justify-center ${isOpen ? "bg-red-500" : "bg-gray-200"}`}
+                    className={`w-6 h-6 rounded-full items-center justify-center ${isOpen ? "bg-[#B42335] dark:bg-[#F06A78]" : "bg-[#F2ECF8] dark:bg-[#2A2038]"}`}
                   >
                     <MaterialIcons
                       name={
                         isOpen ? "keyboard-arrow-up" : "keyboard-arrow-down"
                       }
                       size={20}
-                      color={isOpen ? "white" : "#6B7280"}
+                      color={isOpen ? "#FFFFFF" : theme.textMuted}
                     />
                   </View>
                 </View>
               </Pressable>
               {isOpen && (
-                <View className="bg-white border-x border-b border-gray-200 rounded-b-xl p-4 mt-[-8px]">
-                  <View className="bg-gray-50 rounded-lg p-4">
+                <View className="bg-[#FFFFFF] dark:bg-[#1A181E] border-x border-b border-[#E6E1E8] dark:border-[#37313C] rounded-b-xl p-4 mt-[-8px]">
+                  <View className="bg-[#F7F7FA] dark:bg-[#111014] rounded-lg p-4">
                     <HTMLContent htmlContent={section.content} />
                   </View>
                 </View>
@@ -497,9 +499,9 @@ export default function Modules() {
           <Ionicons
             name="information-circle-outline"
             size={14}
-            color="#9CA3AF"
+            color={theme.textMuted}
           />
-          <Text className="text-xs text-gray-400 italic ml-1">
+          <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] italic ml-1">
             Tap section titles to expand or collapse
           </Text>
         </View>
@@ -508,32 +510,32 @@ export default function Modules() {
   };
 
   const renderModuleActivities = (module: ParsedModule) => (
-    <View className="mt-6 pt-4 border-t border-gray-200">
+    <View className="mt-6 pt-4 border-t border-[#E6E1E8] dark:border-[#37313C]">
       <View className="flex-row items-center mb-4">
-        <MaterialIcons name="assignment" size={20} color="#EF4444" />
-        <Text className="text-lg font-bold text-gray-900 ml-2">
+        <MaterialIcons name="assignment" size={20} color={theme.school} />
+        <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA] ml-2">
           Module Activities
         </Text>
       </View>
       {module.isLoadingActivities ? (
         Array.from({ length: 2 }).map((_, i) => <ActivitySkeleton key={i} />)
       ) : module.activitiesError ? (
-        <View className="bg-red-50 border border-red-200 rounded-xl p-4">
+        <View className="bg-[#FCECEF] dark:bg-[#3A2025] border border-[#E6E1E8] dark:border-[#37313C] rounded-xl p-4">
           <View className="flex-row items-center justify-center">
-            <Ionicons name="alert-circle" size={20} color="#EF4444" />
-            <Text className="text-sm text-red-600 ml-2 font-medium">
+            <Ionicons name="alert-circle" size={20} color={theme.danger} />
+            <Text className="text-sm text-[#B42335] dark:text-[#F06A78] ml-2 font-medium">
               Failed to load activities
             </Text>
           </View>
-          <Text className="text-xs text-red-500 text-center mt-1">
+          <Text className="text-xs text-[#B42335] dark:text-[#F06A78] text-center mt-1">
             Please try again later
           </Text>
         </View>
       ) : module.activities.length === 0 ? (
-        <View className="bg-gray-50 rounded-xl p-6">
+        <View className="bg-[#F7F7FA] dark:bg-[#111014] rounded-xl p-6">
           <View className="items-center">
-            <MaterialIcons name="assignment-late" size={48} color="#D1D5DB" />
-            <Text className="text-sm text-gray-500 text-center mt-3">
+            <MaterialIcons name="assignment-late" size={48} color={theme.tabInactive} />
+            <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] text-center mt-3">
               No activities available for this module yet
             </Text>
           </View>
@@ -548,9 +550,9 @@ export default function Modules() {
     item: module,
     index,
   }: LegendListRenderItemProps<ModuleListItem>) => (
-    <View className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
+    <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl shadow-sm border border-[#E6E1E8] dark:border-[#37313C] mb-4 overflow-hidden">
       {/* Module Header */}
-      <View className="bg-red-500 px-5 py-4">
+      <View className="bg-[#B42335] dark:bg-[#F06A78] px-5 py-4">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
             <View className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center mr-3">
@@ -569,10 +571,10 @@ export default function Modules() {
             onPress={() => setCommentsModuleId(module.module_id)}
             className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center active:bg-white/30"
           >
-            <Ionicons name="chatbubbles" size={20} color="white" />
+            <Ionicons name="chatbubbles" size={20} color="#FFFFFF" />
             {module.commentCount > 0 && (
-              <View className="absolute -top-1 -right-1 bg-white rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
-                <Text className="text-red-500 text-[10px] font-bold">
+              <View className="absolute -top-1 -right-1 bg-[#FFFFFF] dark:bg-[#1A181E] rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
+                <Text className="text-[#B42335] dark:text-[#F06A78] text-[10px] font-bold">
                   {module.commentCount > 99 ? "99+" : module.commentCount}
                 </Text>
               </View>
@@ -582,8 +584,8 @@ export default function Modules() {
       </View>
 
       <View className="p-5">
-        <View className="bg-gray-50 rounded-xl p-4 mb-4">
-          <Text className="text-sm text-gray-700 leading-6">
+        <View className="bg-[#F7F7FA] dark:bg-[#111014] rounded-xl p-4 mb-4">
+          <Text className="text-sm text-[#201D25] dark:text-[#F7F4FA] leading-6">
             {module.parsedDescription}
           </Text>
         </View>
@@ -614,21 +616,21 @@ export default function Modules() {
       </View>
     ) : (
       <View className="flex-1 items-center justify-center py-20 px-6">
-        <View className="w-24 h-24 bg-red-50 rounded-full items-center justify-center mb-6">
-          <MaterialIcons name="library-books" size={44} color="#EF4444" />
+        <View className="w-24 h-24 bg-[#FCECEF] dark:bg-[#3A2025] rounded-full items-center justify-center mb-6">
+          <MaterialIcons name="library-books" size={44} color={theme.school} />
         </View>
-        <Text className="text-xl font-bold text-gray-900 text-center mb-2">
+        <Text className="text-xl font-bold text-[#201D25] dark:text-[#F7F4FA] text-center mb-2">
           No Modules Yet
         </Text>
-        <Text className="text-sm text-gray-500 text-center leading-6 mb-8">
+        <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] text-center leading-6 mb-8">
           This course doesn&apos;t have any modules available at the moment. Check
           back later or contact your instructor.
         </Text>
         <Pressable
           onPress={onRefresh}
-          className="flex-row items-center bg-red-500 active:bg-red-600 rounded-xl px-6 py-3"
+          className="flex-row items-center bg-[#B42335] dark:bg-[#F06A78] active:bg-[#B42335] dark:active:bg-[#F06A78] rounded-xl px-6 py-3"
         >
-          <Ionicons name="refresh" size={16} color="white" />
+          <Ionicons name="refresh" size={16} color="#FFFFFF" />
           <Text className="text-sm font-semibold text-white ml-2">Refresh</Text>
         </Pressable>
       </View>
@@ -647,13 +649,13 @@ export default function Modules() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           loadingModules ? (
-            <View className="mb-4 flex-row items-center rounded-2xl border border-[#E5DDF0] bg-[#F3EEFA] px-4 py-3">
-              <ActivityIndicator size="small" color="#6D4C9B" />
+            <View className="mb-4 flex-row items-center rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] bg-[#F2ECF8] dark:bg-[#2A2038] px-4 py-3">
+              <ActivityIndicator size="small" color={theme.primary} />
               <View className="ml-3 flex-1">
-                <Text className="text-sm font-bold text-[#4B3A61]">
+                <Text className="text-sm font-bold text-[#201D25] dark:text-[#F7F4FA]">
                   Loading modules
                 </Text>
-                <Text className="text-xs text-[#756C7D] mt-0.5">
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">
                   Preparing your course content...
                 </Text>
               </View>
@@ -666,10 +668,10 @@ export default function Modules() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#EF4444"]}
-            tintColor="#EF4444"
+            colors={[theme.school]}
+            tintColor={theme.school}
             title="Pull to refresh"
-            titleColor="#6B7280"
+            titleColor={theme.textMuted}
           />
         }
       />

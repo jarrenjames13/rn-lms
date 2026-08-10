@@ -5,6 +5,7 @@ import CommentsModal from "@/components/commentsModal";
 import Skeleton from "@/components/skeletons/Skeleton";
 import { AppScreen, StateView } from "@/components/ui";
 import { useCourseStore } from "@/store/useCourseStore";
+import { useAppTheme } from "@/theme";
 import {
   CourseAllDetails,
   CourseDetails,
@@ -24,6 +25,7 @@ import {
 import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
 
 export default function Overview() {
+  const { theme } = useAppTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const { course_id, instance_id } = useCourseStore();
@@ -126,21 +128,21 @@ export default function Overview() {
   // Progress Ring Component
   const ProgressRing = ({ percentage }: { percentage: number }) => (
     <View className="relative items-center justify-center">
-      <View className="w-32 h-32 rounded-full bg-gray-200 items-center justify-center">
-        <View className="w-28 h-28 rounded-full bg-white items-center justify-center">
-          <Text className="text-3xl font-bold text-gray-800">
+      <View className="w-32 h-32 rounded-full bg-[#F2ECF8] dark:bg-[#2A2038] items-center justify-center">
+        <View className="w-28 h-28 rounded-full bg-[#FFFFFF] dark:bg-[#1A181E] items-center justify-center">
+          <Text className="text-3xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
             {percentage}%
           </Text>
-          <Text className="text-xs text-gray-500">Complete</Text>
+          <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">Complete</Text>
         </View>
       </View>
       <View
         className="absolute w-32 h-32 rounded-full border-8"
         style={{
-          borderTopColor: percentage > 0 ? "#EF4444" : "#E5E7EB",
-          borderRightColor: percentage > 25 ? "#EF4444" : "#E5E7EB",
-          borderBottomColor: percentage > 50 ? "#EF4444" : "#E5E7EB",
-          borderLeftColor: percentage > 75 ? "#EF4444" : "#E5E7EB",
+          borderTopColor: percentage > 0 ? theme.school : theme.border,
+          borderRightColor: percentage > 25 ? theme.school : theme.border,
+          borderBottomColor: percentage > 50 ? theme.school : theme.border,
+          borderLeftColor: percentage > 75 ? theme.school : theme.border,
         }}
       />
     </View>
@@ -151,22 +153,22 @@ export default function Overview() {
     icon,
     label,
     value,
-    bgColor = "#FEF2F2",
+    bgColor = theme.surfaceAccent,
   }: {
     icon: string;
     label: string;
     value: string | number;
     bgColor?: string;
   }) => (
-    <View className="flex-1 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+    <View className="flex-1 bg-[#FFFFFF] dark:bg-[#1A181E] rounded-xl p-4 shadow-sm border border-[#E6E1E8] dark:border-[#37313C]">
       <View
         style={{ backgroundColor: bgColor }}
         className="w-10 h-10 rounded-lg items-center justify-center mb-2"
       >
-        <MaterialIcons name={icon as any} size={20} color="#EF4444" />
+        <MaterialIcons name={icon as any} size={20} color={theme.school} />
       </View>
-      <Text className="text-2xl font-bold text-gray-800">{value}</Text>
-      <Text className="text-xs text-gray-500 mt-1">{label}</Text>
+      <Text className="text-2xl font-bold text-[#201D25] dark:text-[#F7F4FA]">{value}</Text>
+      <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-1">{label}</Text>
     </View>
   );
 
@@ -187,23 +189,23 @@ export default function Overview() {
     <View className="mb-4">
       <View className="flex-row items-center justify-between mb-2">
         <View className="flex-row items-center">
-          <View className="w-8 h-8 bg-red-50 rounded-lg items-center justify-center mr-3">
-            <MaterialIcons name={icon as any} size={16} color="#EF4444" />
+          <View className="w-8 h-8 bg-[#FCECEF] dark:bg-[#3A2025] rounded-lg items-center justify-center mr-3">
+            <MaterialIcons name={icon as any} size={16} color={theme.school} />
           </View>
-          <Text className="text-sm font-medium text-gray-700">{label}</Text>
+          <Text className="text-sm font-medium text-[#201D25] dark:text-[#F7F4FA]">{label}</Text>
         </View>
-        <Text className="text-sm font-semibold text-gray-800">
+        <Text className="text-sm font-semibold text-[#201D25] dark:text-[#F7F4FA]">
           {completed}/{total}
         </Text>
       </View>
       <View className="flex-row items-center">
-        <View className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden mr-3">
+        <View className="flex-1 h-2 bg-[#F2ECF8] dark:bg-[#2A2038] rounded-full overflow-hidden mr-3">
           <View
-            className="h-full bg-red-500 rounded-full"
-            style={{ width: `${percentage}%` }}
+            className="h-full rounded-full"
+            style={{ width: `${percentage}%`, backgroundColor: theme.school }}
           />
         </View>
-        <Text className="text-xs text-gray-500 w-12 text-right">
+        <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] w-12 text-right">
           {percentage}%
         </Text>
       </View>
@@ -219,16 +221,16 @@ export default function Overview() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#EF4444"]}
-            tintColor="#EF4444"
+            colors={[theme.school]}
+            tintColor={theme.school}
             title="Pull to refresh"
-            titleColor="#6B7280"
+            titleColor={theme.textMuted}
           />
         }
       >
         {/* Header Section */}
         {loadingDetails ? (
-          <View className="bg-red-500 px-6 pt-6 pb-8">
+          <View className="bg-[#B42335] dark:bg-[#F06A78] px-6 pt-6 pb-8">
             <View
               style={{ backgroundColor: "rgba(255, 255, 255, 0.15)" }}
               className="rounded-2xl p-5"
@@ -263,7 +265,7 @@ export default function Overview() {
             </View>
           </View>
         ) : (
-          <View className="bg-red-500 px-6 pt-6 pb-8">
+          <View className="bg-[#B42335] dark:bg-[#F06A78] px-6 pt-6 pb-8">
             <View
               style={{ backgroundColor: "rgba(255, 255, 255, 0.15)" }}
               className="rounded-2xl p-5"
@@ -294,7 +296,7 @@ export default function Overview() {
         <View className="px-6 mt-6">
           {/* Overall Progress Card */}
           {loadingProgress ? (
-            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-6 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] mb-6">
               <Skeleton height={24} width={150} style={{ marginBottom: 16 }} />
               <View className="items-center mb-6">
                 <Skeleton height={128} width={128} borderRadius={64} />
@@ -311,8 +313,8 @@ export default function Overview() {
               ))}
             </View>
           ) : (
-            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-              <Text className="text-lg font-bold text-gray-800 mb-4">
+            <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-6 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] mb-6">
+              <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA] mb-4">
                 Overall Progress
               </Text>
 
@@ -363,7 +365,7 @@ export default function Overview() {
 
           {/* Course Statistics */}
           {loadingStats ? (
-            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-6 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] mb-6">
               <Skeleton height={24} width={150} style={{ marginBottom: 16 }} />
               <View className="flex-row gap-3 mb-3">
                 <Skeleton height={100} width="48%" />
@@ -376,8 +378,8 @@ export default function Overview() {
               <Skeleton height={100} width="100%" />
             </View>
           ) : (
-            <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-              <Text className="text-lg font-bold text-gray-800 mb-4">
+            <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-6 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] mb-6">
+              <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA] mb-4">
                 Course Statistics
               </Text>
 
@@ -386,13 +388,13 @@ export default function Overview() {
                   icon="library-books"
                   label="Modules"
                   value={stats.modules}
-                  bgColor="#FEF2F2"
+                  bgColor={theme.surfaceAccent}
                 />
                 <StatCard
                   icon="quiz"
                   label="Quizzes"
                   value={stats.quizzes}
-                  bgColor="#FAF5FF"
+                  bgColor={theme.surfaceMuted}
                 />
               </View>
 
@@ -401,31 +403,31 @@ export default function Overview() {
                   icon="school"
                   label="Exams"
                   value={stats.exams}
-                  bgColor="#EFF6FF"
+                  bgColor={theme.surfaceMuted}
                 />
                 <StatCard
                   icon="assignment-turned-in"
                   label="Submissions"
                   value={stats.submissions}
-                  bgColor="#F0FDF4"
+                  bgColor={theme.surfaceMuted}
                 />
               </View>
 
               {/* Overall Grade Highlight */}
               <View
-                style={{ backgroundColor: "#FEF2F2" }}
-                className="rounded-xl p-4 mt-3 border border-red-100"
+                style={{ backgroundColor: theme.surfaceAccent }}
+                className="rounded-xl p-4 mt-3 border border-[#E6E1E8] dark:border-[#37313C]"
               >
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
-                    <View className="w-12 h-12 bg-red-500 rounded-full items-center justify-center mr-4">
-                      <MaterialIcons name="star" size={24} color="white" />
+                    <View className="w-12 h-12 bg-[#B42335] dark:bg-[#F06A78] rounded-full items-center justify-center mr-4">
+                      <MaterialIcons name="star" size={24} color="#FFFFFF" />
                     </View>
                     <View>
-                      <Text className="text-sm text-gray-600">
+                      <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5]">
                         Overall Grade
                       </Text>
-                      <Text className="text-3xl font-bold text-gray-800">
+                      <Text className="text-3xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
                         {stats.overall_grade}%
                       </Text>
                     </View>
@@ -434,25 +436,24 @@ export default function Overview() {
                     style={{
                       backgroundColor:
                         stats.overall_grade >= 90
-                          ? "#D1FAE5"
+                          ? theme.surfaceMuted
                           : stats.overall_grade >= 75
-                            ? "#DBEAFE"
+                            ? theme.surfaceMuted
                             : stats.overall_grade >= 60
-                              ? "#FEF3C7"
-                              : "#FEE2E2",
+                              ? theme.surfaceMuted
+                              : theme.surfaceAccent,
                     }}
                     className="px-4 py-2 rounded-full"
                   >
                     <Text
                       style={{
-                        color:
-                          stats.overall_grade >= 90
-                            ? "#065F46"
-                            : stats.overall_grade >= 75
-                              ? "#1E40AF"
-                              : stats.overall_grade >= 60
-                                ? "#92400E"
-                                : "#991B1B",
+                        color: stats.overall_grade >= 90
+                          ? theme.success
+                          : stats.overall_grade >= 75
+                            ? theme.primary
+                            : stats.overall_grade >= 60
+                              ? theme.warning
+                              : theme.danger,
                       }}
                       className="text-xs font-semibold"
                     >
@@ -473,36 +474,36 @@ export default function Overview() {
           {/* Discussion Preview Card */}
           <Pressable
             onPress={() => setCommentsModalVisible(true)}
-            className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6 active:bg-gray-50"
+            className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-6 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] mb-6 active:bg-[#F2ECF8] dark:active:bg-[#2A2038]"
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-3">
-                <View className="w-12 h-12 bg-red-50 rounded-full items-center justify-center">
-                  <Ionicons name="chatbubbles" size={24} color="#EF4444" />
+                <View className="w-12 h-12 bg-[#FCECEF] dark:bg-[#3A2025] rounded-full items-center justify-center">
+                  <Ionicons name="chatbubbles" size={24} color={theme.school} />
                 </View>
                 <View>
-                  <Text className="font-bold text-lg text-gray-800">
+                  <Text className="font-bold text-lg text-[#201D25] dark:text-[#F7F4FA]">
                     Discussion
                   </Text>
-                  <Text className="text-sm text-gray-500 mt-0.5">
+                  <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">
                     {commentsData?.total || 0} comment
                     {commentsData?.total !== 1 ? "s" : ""}
                   </Text>
                 </View>
               </View>
               <View className="flex-row items-center gap-2">
-                <Text className="text-sm font-medium text-red-500">
+                <Text className="text-sm font-medium text-[#B42335] dark:text-[#F06A78]">
                   View Discussion
                 </Text>
-                <Ionicons name="chevron-forward" size={20} color="#EF4444" />
+                <Ionicons name="chevron-forward" size={20} color={theme.school} />
               </View>
             </View>
 
             {/* Preview of latest comments */}
             {commentsData && commentsData.comments.length > 0 && (
-              <View className="mt-4 pt-4 border-t border-gray-100">
+              <View className="mt-4 pt-4 border-t border-[#E6E1E8] dark:border-[#37313C]">
                 <View className="flex-row items-start gap-3">
-                  <View className="w-8 h-8 rounded-full bg-red-500 items-center justify-center">
+                  <View className="w-8 h-8 rounded-full bg-[#B42335] dark:bg-[#F06A78] items-center justify-center">
                     <Text className="text-xs font-bold text-white">
                       {commentsData.comments[0].full_name
                         .charAt(0)
@@ -510,11 +511,11 @@ export default function Overview() {
                     </Text>
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-medium text-gray-800">
+                    <Text className="text-sm font-medium text-[#201D25] dark:text-[#F7F4FA]">
                       {commentsData.comments[0].full_name}
                     </Text>
                     <Text
-                      className="text-sm text-gray-600 mt-1"
+                      className="text-sm text-[#6C6572] dark:text-[#BEB6C5] mt-1"
                       numberOfLines={2}
                     >
                       {commentsData.comments[0].comment}
@@ -522,7 +523,7 @@ export default function Overview() {
                   </View>
                 </View>
                 {commentsData.total > 1 && (
-                  <Text className="text-xs text-gray-400 mt-2">
+                  <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-2">
                     + {commentsData.total - 1} more comment
                     {commentsData.total - 1 !== 1 ? "s" : ""}
                   </Text>
