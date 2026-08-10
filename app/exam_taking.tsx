@@ -1,6 +1,8 @@
 import { useExamAnswers } from "@/api/QueryOptions/examAnswersMutation";
+import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
 import createExamQuestionsOptions from "@/api/QueryOptions/examQuestionsOptions";
 import ExamSubmissionModal from "@/components/ExamSubmissionModal";
+import ScreenLoading from "@/components/ScreenLoading";
 import { useExamStore } from "@/store/useExamStore";
 import type { ExamQuestion, OptionKey } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -9,7 +11,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   AppState,
   AppStateStatus,
@@ -26,6 +27,9 @@ export default function ExamTaking() {
   const [secondsLeft, setSecondsLeft] = useState(EXAM_DURATION_SECONDS);
   const [showResultModal, setShowResultModal] = useState(false);
   const [submissionReason, setSubmissionReason] = useState("");
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionRetry, setSessionRetry] = useState(0);
 
   const appState = useRef(AppState.currentState);
   const hasSubmittedRef = useRef(false);
@@ -38,6 +42,7 @@ export default function ExamTaking() {
     selectedAnswers,
     setSelectedAnswers,
     clearAnswers,
+    setSessionToken,
   } = useExamStore();
 
   const listRef = useRef<any>(null);
@@ -49,12 +54,42 @@ export default function ExamTaking() {
     }, [clearAnswers]),
   );
 
+  useEffect(() => {
+    if (exam_id <= 0 || instance_id <= 0 || session_token) return;
+    let cancelled = false;
+    setIsStartingSession(true);
+    setSessionError(null);
+    startAssessmentSession({
+      assessment_id: exam_id,
+      instance_id,
+      category: "exam",
+    })
+      .then(({ session_token: nextToken }) => {
+        if (!cancelled) setSessionToken(nextToken);
+      })
+      .catch((error: any) => {
+        if (!cancelled) {
+          setSessionError(error?.response?.data?.detail ?? error?.message ?? "Unable to start exam session.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsStartingSession(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [exam_id, instance_id, sessionRetry, session_token, setSessionToken]);
+
   const {
     data: questionsData,
     isLoading,
     isError,
     error,
-  } = useQuery(createExamQuestionsOptions(exam_id, instance_id));
+  } = useQuery({
+    ...createExamQuestionsOptions(exam_id, instance_id),
+    enabled: exam_id > 0 && instance_id > 0 && !!session_token,
+  });
 
   const submitMutation = useExamAnswers({
     onSuccess: () => {
@@ -68,7 +103,7 @@ export default function ExamTaking() {
 
   const performSubmission = useCallback(
     (reason: string) => {
-      if (hasSubmittedRef.current) return;
+      if (hasSubmittedRef.current || !session_token) return;
       hasSubmittedRef.current = true;
       setSubmissionReason(reason);
 
@@ -113,11 +148,19 @@ export default function ExamTaking() {
     return () => sub.remove();
   }, [performSubmission]);
 
-  if (isLoading) {
+  if (!sessionError && (isStartingSession || !session_token || isLoading)) {
+    return <ScreenLoading message={isStartingSession || !session_token ? "Preparing your secure exam session..." : "Loading exam questions..."} />;
+  }
+
+  if (sessionError) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#EF4444" />
-        <Text className="mt-4 text-gray-600">Loading exam questions…</Text>
+      <SafeAreaView className="flex-1 justify-center items-center bg-gray-50 px-6">
+        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <Text className="text-lg font-semibold text-gray-800 mt-4">Unable to start exam</Text>
+        <Text className="text-base text-gray-500 text-center mt-2">{sessionError}</Text>
+        <Pressable onPress={() => setSessionRetry((value) => value + 1)} className="mt-6 bg-red-500 px-6 py-3 rounded-xl">
+          <Text className="text-white font-semibold">Try again</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }

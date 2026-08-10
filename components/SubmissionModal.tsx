@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface SubmissionModalProps {
   visible: boolean;
@@ -35,6 +36,7 @@ export default function SubmissionModal({
   instanceId,
 }: SubmissionModalProps) {
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const insets = useSafeAreaInsets();
 
   // Use the existing mutation options
   const { mutate, isPending } = useSubmissionFile();
@@ -339,7 +341,10 @@ export default function SubmissionModal({
           </ScrollView>
 
           {/* Footer Actions */}
-          <View className="p-6 bg-gray-50 border-t border-gray-200">
+          <View
+            className="p-6 bg-gray-50 border-t border-gray-200"
+            style={{ paddingBottom: Math.max(insets.bottom, 24) }}
+          >
             <Pressable
               onPress={handleSubmit}
               disabled={selectedFiles.length === 0 || isPending}

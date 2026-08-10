@@ -13,7 +13,11 @@ export default function CourseTabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          href: null,
+          headerShown: false,
+          tabBarLabel: "Home",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" color={color} size={size} />
+          ),
         }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {

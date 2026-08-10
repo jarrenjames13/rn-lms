@@ -303,7 +303,10 @@ export default function Index() {
                 <Skeleton height={14} width={100} style={{ marginBottom: 8 }} />
                 <Skeleton height={28} width="60%" />
               </View>
-              <Skeleton height={48} width={48} borderRadius={24} />
+              <View className="flex-row items-center gap-3">
+                <Skeleton height={42} width={42} borderRadius={21} />
+                <Skeleton height={48} width={48} borderRadius={24} />
+              </View>
             </View>
 
             {/* Stats Cards Skeleton */}
@@ -327,10 +330,20 @@ export default function Index() {
                   {authState?.user?.full_name || "Student"}!
                 </Text>
               </View>
-              <View className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-purple-600 items-center justify-center">
-                <Text className="text-white text-lg font-bold">
-                  {authState?.user?.full_name?.charAt(0) || "S"}
-                </Text>
+              <View className="flex-row items-center gap-3">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open notifications"
+                  onPress={() => router.push("/(tabs)/notifications")}
+                  className="w-11 h-11 rounded-full bg-[#F3EEFA] items-center justify-center border border-[#E5DDF0]"
+                >
+                  <Feather name="bell" size={20} color="#6D4C9B" />
+                </Pressable>
+                <View className="w-12 h-12 rounded-full bg-[#6D4C9B] items-center justify-center">
+                  <Text className="text-white text-lg font-bold">
+                    {authState?.user?.full_name?.charAt(0) || "S"}
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -431,6 +444,15 @@ export default function Index() {
           )}
         </View>
       </ScrollView>
+      {isNavigating && (
+        <View className="absolute inset-0 bg-[#2D2633]/45 items-center justify-center px-8">
+          <View className="bg-white rounded-3xl px-8 py-7 items-center shadow-lg">
+            <ActivityIndicator size="large" color="#6D4C9B" />
+            <Text className="text-base font-bold text-[#2D2633] mt-4">Opening course</Text>
+            <Text className="text-sm text-[#756C7D] text-center mt-1">Preparing your learning space...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

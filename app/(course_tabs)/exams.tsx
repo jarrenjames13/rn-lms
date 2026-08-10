@@ -1,5 +1,4 @@
 import createListExamsOptions from "@/api/QueryOptions/listExamsOption";
-import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useExamStore } from "@/store/useExamStore";
 
@@ -116,7 +115,10 @@ export default function Exams() {
     isError,
     error,
     refetch,
-  } = useQuery(createListExamsOptions(instance_id!));
+  } = useQuery({
+    ...createListExamsOptions(instance_id!),
+    enabled: !!instance_id,
+  });
 
   const exams = examsData?.exams || [];
   const instanceId = examsData?.instance_id || null;
@@ -206,20 +208,11 @@ export default function Exams() {
 
     // Otherwise, proceed with normal exam taking flow
     setExamId(exam.exam_id);
+    setSessionToken("");
     if (instanceId !== null) {
       setInstanceId(instanceId);
     }
-    try {
-      const session = await startAssessmentSession({
-        assessment_id: exam.exam_id,
-        instance_id: instanceId!,
-        category: "exam",
-      });
-      setSessionToken(session.session_token);
-      router.replace("/exam_taking");
-    } catch (error: any) {
-      Alert.alert("Error", error?.response?.data?.detail || "Failed to start exam session.");
-    }
+    router.replace("/exam_taking");
   };
 
   // Render a single exam card

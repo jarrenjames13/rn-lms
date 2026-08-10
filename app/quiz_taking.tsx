@@ -2,8 +2,10 @@ import {
   QuizSubmitResponse,
   useQuizAnswers,
 } from "@/api/QueryOptions/quizAnswersMutation";
+import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
 import createQuizQuestionsOptions from "@/api/QueryOptions/quizQuestionsOptions";
 import QuizSubmissionModal from "@/components/QuizSubmissionModal";
+import ScreenLoading from "@/components/ScreenLoading";
 import { useQuizStore } from "@/store/useQuizStore";
 import type { OptionKey, Question } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -29,6 +31,9 @@ export default function QuizTaking() {
   const [secondsLeft, setSecondsLeft] = useState(QUIZ_DURATION_SECONDS);
   const [showResultModal, setShowResultModal] = useState(false);
   const [submissionReason, setSubmissionReason] = useState("");
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionRetry, setSessionRetry] = useState(0);
 
   const appState = useRef(AppState.currentState);
   const hasSubmittedRef = useRef(false);
@@ -41,6 +46,7 @@ export default function QuizTaking() {
     selectedAnswers,
     setSelectedAnswers,
     clearAnswers,
+    setSessionToken,
   } = useQuizStore();
 
   const listRef = useRef<any>(null);
@@ -53,12 +59,42 @@ export default function QuizTaking() {
     }, [clearAnswers]),
   );
 
+  useEffect(() => {
+    if (quiz_id <= 0 || instance_id <= 0 || session_token) return;
+    let cancelled = false;
+    setIsStartingSession(true);
+    setSessionError(null);
+    startAssessmentSession({
+      assessment_id: quiz_id,
+      instance_id,
+      category: "quiz",
+    })
+      .then(({ session_token: nextToken }) => {
+        if (!cancelled) setSessionToken(nextToken);
+      })
+      .catch((error: any) => {
+        if (!cancelled) {
+          setSessionError(error?.response?.data?.detail ?? error?.message ?? "Unable to start quiz session.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsStartingSession(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [instance_id, quiz_id, sessionRetry, session_token, setSessionToken]);
+
   const {
     data: questionsData,
     isLoading,
     isError,
     error,
-  } = useQuery(createQuizQuestionsOptions(quiz_id, instance_id));
+  } = useQuery({
+    ...createQuizQuestionsOptions(quiz_id, instance_id),
+    enabled: quiz_id > 0 && instance_id > 0 && !!session_token,
+  });
 
   // Submission mutation
 
@@ -71,7 +107,7 @@ export default function QuizTaking() {
 
   const performSubmission = useCallback(
     (reason: string) => {
-      if (hasSubmittedRef.current) return;
+      if (hasSubmittedRef.current || !session_token) return;
 
       hasSubmittedRef.current = true;
       setSubmissionReason(reason);
@@ -123,13 +159,19 @@ export default function QuizTaking() {
     return () => subscription.remove();
   }, [performSubmission]);
 
-  if (isLoading) {
+  if (!sessionError && (isStartingSession || !session_token || isLoading)) {
+    return <ScreenLoading message={isStartingSession || !session_token ? "Preparing your secure quiz session..." : "Loading quiz questions..."} />;
+  }
+
+  if (sessionError) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#EF4444" />
-        <Text className="mt-4 text-gray-600 text-base">
-          Loading quiz questions...
-        </Text>
+      <SafeAreaView className="flex-1 justify-center items-center bg-gray-50 px-6">
+        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <Text className="text-lg font-semibold text-gray-800 mt-4">Unable to start quiz</Text>
+        <Text className="text-base text-gray-500 text-center mt-2">{sessionError}</Text>
+        <Pressable onPress={() => setSessionRetry((value) => value + 1)} className="mt-6 bg-red-500 px-6 py-3 rounded-xl">
+          <Text className="text-white font-semibold">Try again</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }

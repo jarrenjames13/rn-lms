@@ -1,7 +1,7 @@
 import createComprehensiveGradesOptions from "@/api/QueryOptions/comprehensiveGradesOptions";
 import Skeleton from "@/components/skeletons/Skeleton";
 import { useCourseStore } from "@/store/useCourseStore";
-import { ComprehensiveGradesResponse } from "@/types/api";
+import { ComprehensiveGradesResponse, SubmissionGrade } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
@@ -15,13 +15,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type TabKey = "overview" | "activities" | "quizzes" | "exams";
+type TabKey = "overview" | "activities" | "quizzes" | "exams" | "submissions";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "activities", label: "Activities" },
   { key: "quizzes", label: "Quizzes" },
   { key: "exams", label: "Exams" },
+  { key: "submissions", label: "Submissions" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -321,6 +322,14 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
       barClass: "bg-indigo-500",
       scoreClass: "text-indigo-600",
     },
+    {
+      label: "Submissions",
+      summary: data.summary.submissions,
+      icon: "file-upload" as const,
+      headerBg: "bg-amber-600",
+      barClass: "bg-amber-500",
+      scoreClass: "text-amber-600",
+    },
   ];
 
   return (
@@ -369,10 +378,11 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
             { label: "Activities", val: data.summary.activities.average },
             { label: "Quizzes", val: data.summary.quizzes.average },
             { label: "Exams", val: data.summary.exams.average },
+            { label: "Submissions", val: data.summary.submissions.average },
           ].map((item, idx) => (
             <View
               key={item.label}
-              className={`flex-1 items-center py-3 ${idx < 2 ? "border-r border-gray-200" : ""}`}
+              className={`flex-1 items-center py-3 ${idx < 3 ? "border-r border-gray-200" : ""}`}
             >
               <Text
                 className={`text-base font-bold ${getScoreTextColor(item.val)}`}
@@ -802,13 +812,113 @@ function ExamsTab({ data }: { data: ComprehensiveGradesResponse }) {
   );
 }
 
+function SubmissionCard({ submission }: { submission: SubmissionGrade }) {
+  const hasGrade = submission.score !== null && submission.score !== undefined;
+  const { letter, color } = hasGrade
+    ? getLetterGrade(submission.score!)
+    : { letter: "—", color: "#A1A1AA" };
+
+  return (
+    <View className="bg-white rounded-2xl border border-gray-200 mb-3 overflow-hidden">
+      <View className="flex-row">
+        <View className="w-1 bg-amber-500" />
+        <View className="flex-1 p-4">
+          <View className="flex-row justify-between items-start">
+            <View className="flex-1 pr-3">
+              <Text className="text-sm font-bold text-gray-900 leading-5">
+                {submission.exam_name}
+              </Text>
+              <View className="flex-row items-center mt-1">
+                <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+                <Text className="text-xs text-gray-500 ml-1">
+                  {submission.exam_period}
+                </Text>
+              </View>
+            </View>
+            <View
+              className="w-14 h-14 rounded-2xl items-center justify-center border-2"
+              style={{ borderColor: color, backgroundColor: color + "22" }}
+            >
+              <Text className="text-xl font-black" style={{ color }}>
+                {letter}
+              </Text>
+              {hasGrade && <Text className="text-xs text-gray-500">{submission.score}</Text>}
+            </View>
+          </View>
+
+          {hasGrade && <View className="mt-3"><ProgressBar value={submission.score!} colorClass="bg-amber-500" /></View>}
+
+          <View className="flex-row items-center justify-between mt-3">
+            <StatusBadge status={submission.status || "Submitted"} />
+            <View className="items-end">
+              <Text className="text-[11px] text-gray-500">
+                Submitted {formatDate(submission.submitted_at) ?? "—"}
+              </Text>
+              <Text className="text-[11px] text-gray-500 mt-0.5">
+                {submission.graded_at ? `Graded ${formatDate(submission.graded_at)}` : "Awaiting grading"}
+              </Text>
+            </View>
+          </View>
+
+          {submission.feedback && (
+            <View className="mt-3 bg-amber-50 border-l-2 border-amber-500 rounded-r-xl p-3">
+              <View className="flex-row items-center mb-1">
+                <MaterialIcons name="feedback" size={12} color="#B45309" />
+                <Text className="text-xs font-bold text-amber-700 ml-1">Instructor Feedback</Text>
+              </View>
+              <Text className="text-xs text-gray-600 leading-4">{submission.feedback}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function SubmissionsTab({ data }: { data: ComprehensiveGradesResponse }) {
+  return (
+    <View>
+      <SummaryStatRow
+        stats={[
+          {
+            label: "Graded",
+            val: `${data.summary.submissions.graded_count ?? 0}/${data.summary.submissions.count}`,
+            cls: "text-gray-900",
+          },
+          {
+            label: "Average",
+            val: `${data.summary.submissions.average.toFixed(1)}%`,
+            cls: "text-amber-600",
+          },
+          {
+            label: "Highest",
+            val: `${data.summary.submissions.highest}%`,
+            cls: "text-emerald-600",
+          },
+        ]}
+      />
+      {data.submission_grades.map((submission, idx) => (
+        <SubmissionCard key={`submission-${idx}`} submission={submission} />
+      ))}
+      {data.submission_grades.length === 0 && (
+        <View className="bg-white rounded-2xl border border-gray-200 p-8 items-center">
+          <MaterialIcons name="file-upload" size={44} color="#D4D4D8" />
+          <Text className="text-base font-bold text-gray-800 mt-3">No submissions yet</Text>
+          <Text className="text-sm text-gray-500 text-center mt-1">Submission grades will appear here after you submit work.</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ComprehensiveGradesScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const { course_id } = useCourseStore();
-  const { data, isLoading, isError, refetch, isRefetching } = useQuery(
-    createComprehensiveGradesOptions(course_id!),
-  );
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
+    ...createComprehensiveGradesOptions(course_id!),
+    enabled: !!course_id,
+  });
 
   if (isError) {
     return (
@@ -918,6 +1028,9 @@ export default function ComprehensiveGradesScreen() {
             {activeTab === "exams" && (
               <ListSkeleton count={2} type="assessment" />
             )}
+            {activeTab === "submissions" && (
+              <ListSkeleton count={2} type="assessment" />
+            )}
           </>
         ) : data ? (
           <>
@@ -925,6 +1038,7 @@ export default function ComprehensiveGradesScreen() {
             {activeTab === "activities" && <ActivitiesTab data={data} />}
             {activeTab === "quizzes" && <QuizzesTab data={data} />}
             {activeTab === "exams" && <ExamsTab data={data} />}
+            {activeTab === "submissions" && <SubmissionsTab data={data} />}
           </>
         ) : null}
 

@@ -370,6 +370,17 @@ export interface GradesSummary {
   activities: GradeSummary;
   quizzes: GradeSummary;
   exams: GradeSummary;
+  submissions: GradeSummary;
+}
+
+export interface SubmissionGrade {
+  exam_name: string;
+  exam_period: string;
+  score: number | null;
+  status: string;
+  submitted_at: string | null;
+  graded_at: string | null;
+  feedback: string | null;
 }
 export interface CourseInfo {
   course_code: string;
@@ -380,6 +391,7 @@ export interface ComprehensiveGradesResponse {
   activity_grades: ActivityGrade[];
   quiz_grades: QuizGrade[];
   exam_grades: ExamGrade[];
+  submission_grades: SubmissionGrade[];
   summary: GradesSummary;
   overall_grade: number;
 }

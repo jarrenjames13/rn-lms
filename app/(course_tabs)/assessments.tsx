@@ -2,8 +2,8 @@ import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
 import createCourseDetailsOptions from "@/api/QueryOptions/courseDetailsOptions";
 import createListExamsOptions from "@/api/QueryOptions/listExamsOption";
 import createListQuizzesOptions from "@/api/QueryOptions/listQuizzesOptions";
-import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
+import ScreenLoading from "@/components/ScreenLoading";
 import SubmissionModal from "@/components/SubmissionModal";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useExamStore } from "@/store/useExamStore";
@@ -13,7 +13,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Assessment = {
@@ -30,6 +30,8 @@ type Assessment = {
   activity?: SingleActivity;
 };
 
+type AssessmentType = Assessment["type"];
+
 const typeStyles = {
   Quiz: { icon: "help-circle-outline" as const, color: "#6D4C9B", bg: "#F3EEFA" },
   Exam: { icon: "clipboard-text-outline" as const, color: "#B42318", bg: "#FDECEC" },
@@ -43,6 +45,11 @@ export default function Assessments() {
   const { setExamId, setInstanceId: setExamInstance, setSessionToken: setExamSession } = useExamStore();
   const [selectedExam, setSelectedExam] = useState<ExamDetails | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<SingleActivity | null>(null);
+  const [expandedTypes, setExpandedTypes] = useState<Record<AssessmentType, boolean>>({
+    Quiz: true,
+    Exam: true,
+    Submission: true,
+  });
 
   const { data: quizzes, isLoading: loadingQuizzes } = useQuery({
     ...createListQuizzesOptions(instance_id!),
@@ -102,31 +109,67 @@ export default function Assessments() {
     return [...quizItems, ...examItems, ...activityItems];
   }, [activityQueries, courseDetails?.modules, exams?.exams, quizzes?.quizzes]);
 
-  const startQuiz = async (quiz: QuizDetails) => {
-    try {
-      const session = await startAssessmentSession({ assessment_id: quiz.quiz_id, instance_id: instance_id!, category: "quiz" });
-      setQuizId(quiz.quiz_id);
-      setQuizInstance(instance_id!);
-      setQuizSession(session.session_token);
-      router.replace("/quiz_taking");
-    } catch (error: any) {
-      Alert.alert("Unable to start", error?.response?.data?.detail ?? "Please try again.");
-    }
+  const startQuiz = (quiz: QuizDetails) => {
+    setQuizId(quiz.quiz_id);
+    setQuizInstance(instance_id!);
+    setQuizSession("");
+    router.replace("/quiz_taking");
   };
 
-  const startExam = async (exam: ExamDetails) => {
-    try {
-      const session = await startAssessmentSession({ assessment_id: exam.exam_id, instance_id: instance_id!, category: "exam" });
-      setExamId(exam.exam_id);
-      setExamInstance(instance_id!);
-      setExamSession(session.session_token);
-      router.replace("/exam_taking");
-    } catch (error: any) {
-      Alert.alert("Unable to start", error?.response?.data?.detail ?? "Please try again.");
-    }
+  const startExam = (exam: ExamDetails) => {
+    setExamId(exam.exam_id);
+    setExamInstance(instance_id!);
+    setExamSession("");
+    router.replace("/exam_taking");
   };
 
   const loading = loadingQuizzes || loadingExams || loadingCourse;
+  const assessmentGroups = useMemo(
+    () =>
+      (["Quiz", "Exam", "Submission"] as AssessmentType[]).map((type) => ({
+        type,
+        items: assessments.filter((assessment) => assessment.type === type),
+      })),
+    [assessments],
+  );
+
+  const toggleType = (type: AssessmentType) => {
+    setExpandedTypes((current) => ({ ...current, [type]: !current[type] }));
+  };
+
+  const renderAssessmentCard = (assessment: Assessment) => {
+    const style = typeStyles[assessment.type];
+    const actionable = assessment.status === "Available";
+
+    return (
+      <View key={`${assessment.type}-${assessment.id}`} className="bg-white rounded-3xl border border-[#E8E2E9] p-5 mt-3">
+        <View className="flex-row items-start">
+          <View style={{ backgroundColor: style.bg }} className="w-11 h-11 rounded-2xl items-center justify-center mr-3">
+            <MaterialCommunityIcons name={style.icon} size={22} color={style.color} />
+          </View>
+          <View className="flex-1">
+            <View className="flex-row items-center flex-wrap gap-2">
+              <Text className="text-xs font-bold uppercase tracking-wide" style={{ color: style.color }}>{assessment.type}</Text>
+              {assessment.period ? <Text className="text-xs text-[#756C7D]">{assessment.period}</Text> : null}
+            </View>
+            <Text className="text-lg font-bold text-[#2D2633] mt-1">{assessment.title}</Text>
+            <Text className="text-sm text-[#756C7D] mt-1" numberOfLines={2}>{assessment.meta}</Text>
+          </View>
+          <View className="rounded-full px-3 py-1 bg-[#F4F1F5]"><Text className="text-xs font-semibold text-[#5D5262]">{assessment.status}</Text></View>
+        </View>
+        {assessment.score !== null && assessment.score !== undefined ? <Text className="text-sm font-semibold text-[#6D4C9B] mt-4">Score: {assessment.score}%</Text> : null}
+        {actionable ? (
+          <Pressable
+            accessibilityRole="button"
+            className="bg-[#6D4C9B] rounded-2xl py-3.5 items-center mt-4 active:opacity-80"
+            onPress={() => assessment.quiz ? startQuiz(assessment.quiz) : assessment.exam && assessment.type === "Exam" ? startExam(assessment.exam) : assessment.exam ? setSelectedExam(assessment.exam) : assessment.activity && setSelectedActivity(assessment.activity)}
+          >
+            <Text className="text-white font-bold">{assessment.type === "Quiz" ? "Start quiz" : assessment.type === "Exam" ? "Start exam" : "Submit work"}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8F7F5]">
@@ -142,7 +185,7 @@ export default function Assessments() {
         </View>
 
         {loading ? (
-          <View className="py-20 items-center"><ActivityIndicator size="large" color="#6D4C9B" /><Text className="text-[#756C7D] mt-3">Loading your assessments...</Text></View>
+          <ScreenLoading message="Loading your assessments..." />
         ) : assessments.length === 0 ? (
           <View className="bg-white rounded-3xl border border-[#E8E2E9] p-8 items-center mt-6">
             <Ionicons name="checkmark-circle-outline" size={56} color="#B8AFC0" />
@@ -150,35 +193,28 @@ export default function Assessments() {
             <Text className="text-sm text-[#756C7D] text-center mt-2">New assessments will appear here when they are published.</Text>
           </View>
         ) : (
-          assessments.map((assessment) => {
-            const style = typeStyles[assessment.type];
-            const actionable = assessment.status === "Available";
+          assessmentGroups.map(({ type, items }) => {
+            const style = typeStyles[type];
+            const expanded = expandedTypes[type];
             return (
-              <View key={`${assessment.type}-${assessment.id}`} className="bg-white rounded-3xl border border-[#E8E2E9] p-5 mt-4">
-                <View className="flex-row items-start">
-                  <View style={{ backgroundColor: style.bg }} className="w-11 h-11 rounded-2xl items-center justify-center mr-3">
-                    <MaterialCommunityIcons name={style.icon} size={22} color={style.color} />
+              <View key={type} className="mt-4">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={`${expanded ? "Hide" : "Show"} ${type.toLowerCase()} assessments`}
+                  onPress={() => toggleType(type)}
+                  className="flex-row items-center bg-white border border-[#E8E2E9] rounded-2xl px-4 py-3.5 active:opacity-80"
+                >
+                  <View style={{ backgroundColor: style.bg }} className="w-9 h-9 rounded-xl items-center justify-center mr-3">
+                    <MaterialCommunityIcons name={style.icon} size={19} color={style.color} />
                   </View>
                   <View className="flex-1">
-                    <View className="flex-row items-center flex-wrap gap-2">
-                      <Text className="text-xs font-bold uppercase tracking-wide" style={{ color: style.color }}>{assessment.type}</Text>
-                      {assessment.period ? <Text className="text-xs text-[#756C7D]">{assessment.period}</Text> : null}
-                    </View>
-                    <Text className="text-lg font-bold text-[#2D2633] mt-1">{assessment.title}</Text>
-                    <Text className="text-sm text-[#756C7D] mt-1" numberOfLines={2}>{assessment.meta}</Text>
+                    <Text className="text-base font-bold text-[#2D2633]">{type}s</Text>
+                    <Text className="text-xs text-[#756C7D]">{items.length} assessment{items.length === 1 ? "" : "s"}</Text>
                   </View>
-                  <View className="rounded-full px-3 py-1 bg-[#F4F1F5]"><Text className="text-xs font-semibold text-[#5D5262]">{assessment.status}</Text></View>
-                </View>
-                {assessment.score !== null && assessment.score !== undefined ? <Text className="text-sm font-semibold text-[#6D4C9B] mt-4">Score: {assessment.score}%</Text> : null}
-                {actionable ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    className="bg-[#6D4C9B] rounded-2xl py-3.5 items-center mt-4 active:opacity-80"
-                    onPress={() => assessment.quiz ? startQuiz(assessment.quiz) : assessment.exam && assessment.type === "Exam" ? startExam(assessment.exam) : assessment.exam ? setSelectedExam(assessment.exam) : assessment.activity && setSelectedActivity(assessment.activity)}
-                  >
-                    <Text className="text-white font-bold">{assessment.type === "Quiz" ? "Start quiz" : assessment.type === "Exam" ? "Start exam" : "Submit work"}</Text>
-                  </Pressable>
-                ) : null}
+                  <MaterialCommunityIcons name={expanded ? "chevron-up" : "chevron-down"} size={24} color="#756C7D" />
+                </Pressable>
+                {expanded ? items.map(renderAssessmentCard) : null}
               </View>
             );
           })
