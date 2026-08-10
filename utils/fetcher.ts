@@ -5,6 +5,7 @@ import { BASE_URL } from "../utils/constants";
 // Create axios instance
 export const apiClient = create({
   baseURL: BASE_URL,
+  timeout: 30_000,
   headers: {
     "X-Client-Type": "mobile",
   },

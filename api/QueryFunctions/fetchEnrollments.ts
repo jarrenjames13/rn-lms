@@ -3,13 +3,13 @@ import { getData } from "@/utils/fetcher";
 
 export const fetchEnrollments = async (userId: number) => {
   try {
-    const response = await getData<Enrollment[]>(
+    const response = await getData<Enrollment[] | { enrollments: Enrollment[] }>(
       `/enrollments/student/${userId}`,
       {}
     );
     const data = response.data;
 
-    return data;
+    return Array.isArray(data) ? data : data.enrollments;
   } catch (error: any) {
     throw new Error(
       error?.response?.data?.detail ||
