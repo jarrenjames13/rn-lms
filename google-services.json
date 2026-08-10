@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "891580682146",
+    "project_id": "device-streaming-c5296dd5",
+    "storage_bucket": "device-streaming-c5296dd5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:891580682146:android:42b344314c99dd46002cfb",
+        "android_client_info": {
+          "package_name": "com.auroralms.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDb7Kf1hDkR1KEQ7TYPNI2JBe5SepW4MBE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

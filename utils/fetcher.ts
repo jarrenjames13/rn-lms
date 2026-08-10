@@ -1,9 +1,9 @@
-import axios, { isAxiosError } from "axios";
+import { create, isAxiosError } from "axios";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "../utils/constants";
 
 // Create axios instance
-export const apiClient = axios.create({
+export const apiClient = create({
   baseURL: BASE_URL,
   headers: {
     "X-Client-Type": "mobile",
@@ -47,14 +47,15 @@ const refreshToken = async (): Promise<string> => {
       throw new Error("No refresh token available");
     }
 
-    const response = await axios.post(
+    const response = await apiClient.post(
       `${BASE_URL}/auth/refresh`,
       {},
       {
         headers: {
           Authorization: `Bearer ${refreshTokenValue}`,
         },
-      },
+        _skipAuthInterceptor: true,
+      } as any,
     );
 
     const newAccessToken = response.data.access_token;
@@ -110,7 +111,7 @@ apiClient.interceptors.response.use(
     // Handle 401 (unauthorized) or 422 (token expired/invalid)
     if (
       (error.response?.status === 401 || error.response?.status === 422) &&
-      !originalRequest._retry
+      !originalRequest._retry && !originalRequest._skipAuthInterceptor
     ) {
       if (isRefreshing) {
         // If already refreshing, queue this request
