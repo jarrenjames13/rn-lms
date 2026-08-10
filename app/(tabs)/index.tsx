@@ -1,11 +1,13 @@
 import Skeleton from "@/components/skeletons/Skeleton";
+import { createNotificationsOptions } from "@/api/QueryOptions/notificationsOptions";
 import { AppScreen, StateView } from "@/components/ui";
 import { useAuth } from "@/context/authContext";
 import { useCourseStore } from "@/store/useCourseStore";
+import { useAppTheme } from "@/theme";
 import { Enrollment } from "@/types/api";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,9 +21,9 @@ import createEnrollmentsOptions from "../../api/QueryOptions/enrollmentsOptions"
 
 // Skeleton Components
 const CourseCardSkeleton = () => (
-  <View className="bg-white rounded-2xl mb-4 shadow-sm border border-gray-100 overflow-hidden">
+  <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl mb-4 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] overflow-hidden">
     {/* Color Accent Bar */}
-    <View className="h-2 bg-gray-200" />
+    <View className="h-2 bg-[#F2ECF8] dark:bg-[#2A2038]" />
 
     <View className="p-5">
       {/* Title */}
@@ -69,6 +71,7 @@ const CourseCardSkeleton = () => (
 );
 
 export default function Index() {
+  const { theme } = useAppTheme();
   const router = useRouter();
   const { setCourseId, setInstanceId } = useCourseStore();
   const [isNavigating, setIsNavigating] = useState(false);
@@ -76,6 +79,12 @@ export default function Index() {
   const { authState } = useAuth();
 
   const userId = authState?.user?.user_id ?? null;
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsNavigating(false);
+    }, []),
+  );
 
   const {
     data,
@@ -86,6 +95,11 @@ export default function Index() {
     ...createEnrollmentsOptions(userId!),
     enabled: !!userId,
   });
+  const { data: notificationData } = useQuery({
+    ...createNotificationsOptions(),
+    enabled: !!userId,
+  });
+  const unreadNotificationCount = notificationData?.unread_count ?? 0;
 
   const enrollments: Enrollment[] = data ?? [];
 
@@ -118,7 +132,7 @@ export default function Index() {
       setCourseId(course_id);
       setInstanceId(instance_id);
 
-      await router.replace({
+      await router.push({
         pathname: "/(course_tabs)/overview",
       });
     } catch (error) {
@@ -138,7 +152,7 @@ export default function Index() {
 
     return (
       <Pressable
-        className="bg-white rounded-2xl mb-4 shadow-sm border border-gray-100 overflow-hidden active:opacity-90"
+        className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl mb-4 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] overflow-hidden active:opacity-90"
         onPress={() => {
           if (!isNavigating) {
             handlePress(enrollment.course_id, enrollment.instance_id);
@@ -147,11 +161,13 @@ export default function Index() {
       >
         {/* Status Badge */}
         <View className="absolute top-4 right-4 z-10">
-          <View
-            className={`px-3 py-1 rounded-full ${isCompleted ? "bg-green-100" : "bg-lavender-100"}`}
-          >
+          <View className="px-3 py-1 rounded-full bg-[#F2ECF8] dark:bg-[#2A2038]">
             <Text
-              className={`text-xs font-semibold ${isCompleted ? "text-green-700" : "text-purple-700"}`}
+              className={`text-xs font-semibold ${
+                isCompleted
+                  ? "text-[#167A50] dark:text-[#58C99A]"
+                  : "text-[#6842A0] dark:text-[#A98ADC]"
+              }`}
             >
               {isCompleted ? "Completed" : "In Progress"}
             </Text>
@@ -159,11 +175,17 @@ export default function Index() {
         </View>
 
         {/* Color Accent Bar */}
-        <View className={`h-2 ${isCompleted ? "bg-gray-300" : "bg-red-500"}`} />
+        <View
+          className={`h-2 ${
+            isCompleted
+              ? "bg-[#E6E1E8] dark:bg-[#37313C]"
+              : "bg-[#B42335] dark:bg-[#F06A78]"
+          }`}
+        />
 
         <View className="p-5">
           {/* Course Title */}
-          <Text className="text-xl font-bold text-gray-900 mb-3 pr-24">
+          <Text className="text-xl font-bold text-[#201D25] dark:text-[#F7F4FA] mb-3 pr-24">
             {enrollment.course_title}
           </Text>
 
@@ -171,12 +193,12 @@ export default function Index() {
           <View className="space-y-3 mb-4">
             {/* Term */}
             <View className="flex-row items-center">
-              <View className="w-8 h-8 rounded-full bg-lavender-50 items-center justify-center mr-3">
-                <Feather name="bookmark" size={16} color="#8B5CF6" />
+              <View className="w-8 h-8 rounded-full bg-[#F2ECF8] dark:bg-[#2A2038] items-center justify-center mr-3">
+                <Feather name="bookmark" size={16} color={theme.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-xs text-gray-500 mb-0.5">Term</Text>
-                <Text className="text-sm font-semibold text-gray-800">
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mb-0.5">Term</Text>
+                <Text className="text-sm font-semibold text-[#201D25] dark:text-[#F7F4FA]">
                   {enrollment.term_code}
                 </Text>
               </View>
@@ -184,12 +206,12 @@ export default function Index() {
 
             {/* Duration */}
             <View className="flex-row items-center">
-              <View className="w-8 h-8 rounded-full bg-lavender-50 items-center justify-center mr-3">
-                <Feather name="calendar" size={16} color="#8B5CF6" />
+              <View className="w-8 h-8 rounded-full bg-[#F2ECF8] dark:bg-[#2A2038] items-center justify-center mr-3">
+                <Feather name="calendar" size={16} color={theme.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-xs text-gray-500 mb-0.5">Duration</Text>
-                <Text className="text-sm font-medium text-gray-700">
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mb-0.5">Duration</Text>
+                <Text className="text-sm font-medium text-[#201D25] dark:text-[#F7F4FA]">
                   {new Date(enrollment.start_date).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
@@ -210,14 +232,14 @@ export default function Index() {
           {!isCompleted && (
             <View className="mb-4">
               <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-xs text-gray-500">Course Progress</Text>
-                <Text className="text-xs font-semibold text-purple-600">
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">Course Progress</Text>
+                <Text className="text-xs font-semibold text-[#6842A0] dark:text-[#A98ADC]">
                   {progressPercentage}%
                 </Text>
               </View>
-              <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <View className="h-2 bg-[#F2ECF8] dark:bg-[#2A2038] rounded-full overflow-hidden">
                 <View
-                  className="h-full bg-gradient-to-r from-purple-500 to-red-500 rounded-full"
+                  className="h-full bg-[#6842A0] dark:bg-[#A98ADC] rounded-full"
                   style={{ width: `${progressPercentage}%` }}
                 />
               </View>
@@ -227,7 +249,9 @@ export default function Index() {
           {/* Action Button */}
           <Pressable
             className={`flex-row items-center justify-center rounded-xl px-4 py-3.5 ${
-              isCompleted ? "bg-gray-800" : "bg-red-500"
+              isCompleted
+                ? "bg-[#6842A0] dark:bg-[#A98ADC]"
+                : "bg-[#B42335] dark:bg-[#F06A78]"
             } active:opacity-80`}
             onPress={() => {
               if (!isNavigating) {
@@ -253,33 +277,34 @@ export default function Index() {
 
   const EmptyState = ({ message }: { message: string }) => (
     <View className="items-center justify-center py-12 px-6">
-      <View className="w-20 h-20 rounded-full bg-gray-50 items-center justify-center mb-4">
+      <View className="w-20 h-20 rounded-full bg-[#F2ECF8] dark:bg-[#2A2038] items-center justify-center mb-4">
         <MaterialCommunityIcons
           name="book-open-outline"
           size={40}
-          color="#9CA3AF"
+          color={theme.textMuted}
         />
       </View>
-      <Text className="text-gray-500 text-center text-base">{message}</Text>
+      <Text className="text-[#6C6572] dark:text-[#BEB6C5] text-center text-base">{message}</Text>
     </View>
   );
 
   return (
     <AppScreen>
       <ScrollView
-        className="flex-1 bg-gray-50"
+        className="flex-1 bg-[#F7F7FA] dark:bg-[#111014]"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#EF4444"]}
+            colors={[theme.danger]}
+            tintColor={theme.danger}
           />
         }
       >
         {/* Header Section */}
         {isEnrollmentsLoading || authState?.isLoading ? (
-          <View className="bg-white pt-6 pb-8 px-6 border-b border-gray-100">
+          <View className="bg-[#FFFFFF] dark:bg-[#1A181E] pt-6 pb-8 px-6 border-b border-[#E6E1E8] dark:border-[#37313C]">
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-1">
                 <Skeleton height={14} width={100} style={{ marginBottom: 8 }} />
@@ -302,26 +327,38 @@ export default function Index() {
             </View>
           </View>
         ) : (
-          <View className="bg-white pt-6 pb-8 px-6 border-b border-gray-100">
+          <View className="bg-[#FFFFFF] dark:bg-[#1A181E] pt-6 pb-8 px-6 border-b border-[#E6E1E8] dark:border-[#37313C]">
             <View className="flex-row items-center justify-between mb-2">
               <View>
-                <Text className="text-sm text-gray-500 mb-1">
+                <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] mb-1">
                   Welcome back,
                 </Text>
-                <Text className="text-2xl font-bold text-gray-900">
+                <Text className="text-2xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
                   {authState?.user?.full_name || "Student"}!
                 </Text>
               </View>
               <View className="flex-row items-center gap-3">
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Open notifications"
+                  accessibilityLabel={unreadNotificationCount > 0
+                    ? `Open notifications, ${unreadNotificationCount} unread`
+                    : "Open notifications"}
                   onPress={() => router.push("/(tabs)/notifications")}
-                  className="w-11 h-11 rounded-full bg-[#F3EEFA] items-center justify-center border border-[#E5DDF0]"
+                  className="w-11 h-11 rounded-full bg-[#F2ECF8] dark:bg-[#2A2038] items-center justify-center border border-[#E6E1E8] dark:border-[#37313C]"
                 >
-                  <Feather name="bell" size={20} color="#6D4C9B" />
+                  <Feather name="bell" size={20} color={theme.primary} />
+                  {unreadNotificationCount > 0 ? (
+                    <View
+                      className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full items-center justify-center border-2"
+                      style={{ backgroundColor: theme.school, borderColor: theme.surface }}
+                    >
+                      <Text className="text-[10px] leading-3 font-extrabold" style={{ color: "#FFFFFF" }}>
+                        {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                      </Text>
+                    </View>
+                  ) : null}
                 </Pressable>
-                <View className="w-12 h-12 rounded-full bg-[#6D4C9B] items-center justify-center">
+                <View className="w-12 h-12 rounded-full bg-[#6842A0] dark:bg-[#A98ADC] items-center justify-center">
                   <Text className="text-white text-lg font-bold">
                     {authState?.user?.full_name?.charAt(0) || "S"}
                   </Text>
@@ -331,19 +368,19 @@ export default function Index() {
 
             {/* Stats Cards */}
             <View className="flex-row mt-6 space-x-3">
-              <View className="flex-1 bg-lavender-50 rounded-xl p-4">
-                <Text className="text-2xl font-bold text-purple-700">
+              <View className="flex-1 bg-[#F2ECF8] dark:bg-[#2A2038] rounded-xl p-4">
+                <Text className="text-2xl font-bold text-[#6842A0] dark:text-[#A98ADC]">
                   {activeEnrollments.length}
                 </Text>
-                <Text className="text-xs text-purple-600 mt-1">
+                <Text className="text-xs text-[#6842A0] dark:text-[#A98ADC] mt-1">
                   Active Courses
                 </Text>
               </View>
-              <View className="flex-1 bg-gray-50 rounded-xl p-4">
-                <Text className="text-2xl font-bold text-gray-800">
+              <View className="flex-1 bg-[#F7F7FA] dark:bg-[#111014] rounded-xl p-4">
+                <Text className="text-2xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
                   {completedEnrollments.length}
                 </Text>
-                <Text className="text-xs text-gray-600 mt-1">Completed</Text>
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-1">Completed</Text>
               </View>
             </View>
           </View>
@@ -366,10 +403,10 @@ export default function Index() {
               {activeEnrollments.length > 0 && (
                 <View className="mt-6">
                   <View className="flex-row items-center justify-between mb-4">
-                    <Text className="text-xl font-bold text-gray-900">
+                    <Text className="text-xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
                       My Courses
                     </Text>
-                    <View className="bg-red-500 px-3 py-1 rounded-full">
+                    <View className="bg-[#B42335] dark:bg-[#F06A78] px-3 py-1 rounded-full">
                       <Text className="text-white text-xs font-semibold">
                         {activeEnrollments.length} Active
                       </Text>
@@ -387,7 +424,7 @@ export default function Index() {
 
               {activeEnrollments.length === 0 && (
                 <View className="mt-6">
-                  <Text className="text-xl font-bold text-gray-900 mb-4">
+                  <Text className="text-xl font-bold text-[#201D25] dark:text-[#F7F4FA] mb-4">
                     My Courses
                   </Text>
                   <EmptyState message="No active courses at the moment. Check back soon for new enrollments!" />
@@ -399,11 +436,11 @@ export default function Index() {
                 activeEnrollments.length > 0) && (
                 <View className="mt-8">
                   <View className="flex-row items-center justify-between mb-4">
-                    <Text className="text-xl font-bold text-gray-900">
+                    <Text className="text-xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
                       Completed
                     </Text>
                     {completedEnrollments.length > 0 && (
-                      <Text className="text-sm text-gray-500">
+                      <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5]">
                         {completedEnrollments.length} course
                         {completedEnrollments.length !== 1 ? "s" : ""}
                       </Text>
@@ -427,11 +464,14 @@ export default function Index() {
         </View>
       </ScrollView>
       {isNavigating && (
-        <View className="absolute inset-0 bg-[#2D2633]/45 items-center justify-center px-8">
-          <View className="bg-white rounded-3xl px-8 py-7 items-center shadow-lg">
-            <ActivityIndicator size="large" color="#6D4C9B" />
-            <Text className="text-base font-bold text-[#2D2633] mt-4">Opening course</Text>
-            <Text className="text-sm text-[#756C7D] text-center mt-1">Preparing your learning space...</Text>
+        <View
+          className="absolute inset-0 items-center justify-center px-8"
+          style={{ backgroundColor: "rgba(45, 38, 51, 0.45)" }}
+        >
+          <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-3xl px-8 py-7 items-center shadow-lg">
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text className="text-base font-bold text-[#201D25] dark:text-[#F7F4FA] mt-4">Opening course</Text>
+            <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] text-center mt-1">Preparing your learning space...</Text>
           </View>
         </View>
       )}

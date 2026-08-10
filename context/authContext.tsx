@@ -11,6 +11,9 @@ import { showToast } from "@/utils/toast/toast";
 import NetInfo from "@react-native-community/netinfo";
 import axios, { isAxiosError } from "axios";
 import * as SecureStore from "expo-secure-store";
+import { useExamStore } from "@/store/useExamStore";
+import { useQuizStore } from "@/store/useQuizStore";
+import { deactivatePushNotifications } from "@/api/services/pushNotifications";
 import {
   createContext,
   useCallback,
@@ -70,9 +73,14 @@ export const AuthProvider = ({ children }: any) => {
   const hasShownConnectionToast = useRef(false);
 
   const clearAuth = useCallback(async () => {
+    await deactivatePushNotifications(false);
     await SecureStore.deleteItemAsync("access_token");
     await SecureStore.deleteItemAsync("refresh_token");
     await SecureStore.deleteItemAsync("user");
+    await SecureStore.deleteItemAsync("active_quiz_attempt");
+    await SecureStore.deleteItemAsync("active_exam_attempt");
+    useQuizStore.getState().clearAttempt();
+    useExamStore.getState().clearAttempt();
     delete axios.defaults.headers.common["Authorization"];
     clearApiAuthorization();
 
@@ -472,6 +480,10 @@ export const AuthProvider = ({ children }: any) => {
     try {
       // Check internet connection before attempting logout
       const hasConnection = await checkConnection();
+
+      if (hasConnection) {
+        await deactivatePushNotifications();
+      }
 
       const refresh_token = await SecureStore.getItemAsync("refresh_token");
 
