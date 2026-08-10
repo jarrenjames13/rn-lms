@@ -1,17 +1,27 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
 import { useAppTheme } from "@/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CourseTabsLayout() {
   const router = useRouter();
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
+      backBehavior="none"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.tabInactive,
-        tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.border, height: 66, paddingTop: 6 },
+        tabBarStyle: {
+          backgroundColor: theme.surface,
+          borderTopColor: theme.border,
+          height: 66 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: 4 + insets.bottom,
+        },
         tabBarLabelStyle: { fontSize: 10, fontWeight: "600", paddingBottom: 4 },
       }}
     >
@@ -26,7 +36,7 @@ export default function CourseTabsLayout() {
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault(); // don't navigate to the screen
-            router.replace("/(tabs)"); // go to main tabs instead
+            router.replace("/(tabs)");
           },
         })}
       />
