@@ -1,28 +1,71 @@
 import { OptionKey } from "@/types/api";
+import type {
+  AssessmentResult,
+  AttemptStatus,
+  SubmissionReason,
+} from "@/types/assessmentAttempt";
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { assessmentStorage } from "./assessmentStorage";
+
 type ExamStore = {
   exam_id: number;
-  setExamId: (exam_id: number) => void;
   instance_id: number;
-  setInstanceId: (instance_id: number) => void;
   session_token: string;
-  setSessionToken: (session_token: string) => void;
+  deadline_at: number | null;
+  status: AttemptStatus;
+  submission_reason: SubmissionReason | null;
+  result: AssessmentResult | null;
+  recovery_error: string | null;
+  hasHydrated: boolean;
   selectedAnswers: Record<number, OptionKey>;
   setSelectedAnswers: (answers: Record<number, OptionKey>) => void;
-  clearAnswers: () => void;
+  beginAttempt: (exam_id: number, instance_id: number) => void;
+  setSession: (session_token: string, deadline_at: number) => void;
+  markSubmitting: (reason: SubmissionReason) => void;
+  markSubmitted: (result: AssessmentResult) => void;
+  markActive: () => void;
+  markRecoveryError: (message: string) => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
   clearAttempt: () => void;
 };
 
-export const useExamStore = create<ExamStore>((set) => ({
+const emptyAttempt = {
   exam_id: 0,
-  setExamId: (newExamId: number) => set({ exam_id: newExamId }),
   instance_id: 0,
-  setInstanceId: (newInstanceId: number) => set({ instance_id: newInstanceId }),
   session_token: "",
-  setSessionToken: (token: string) => set({ session_token: token }),
+  deadline_at: null,
+  status: "idle" as AttemptStatus,
+  submission_reason: null,
+  result: null,
+  recovery_error: null,
   selectedAnswers: {},
-  setSelectedAnswers: (answers: Record<number, OptionKey>) =>
-    set({ selectedAnswers: answers }),
-  clearAnswers: () => set({ selectedAnswers: {} }),
-  clearAttempt: () => set({ exam_id: 0, instance_id: 0, session_token: "", selectedAnswers: {} }),
-}));
+};
+
+export const useExamStore = create<ExamStore>()(
+  persist(
+    (set) => ({
+      ...emptyAttempt,
+      hasHydrated: false,
+      setSelectedAnswers: (selectedAnswers) => set({ selectedAnswers }),
+      beginAttempt: (exam_id, instance_id) =>
+        set({ ...emptyAttempt, exam_id, instance_id, status: "starting" }),
+      setSession: (session_token, deadline_at) =>
+        set({ session_token, deadline_at, status: "active", recovery_error: null }),
+      markSubmitting: (submission_reason) =>
+        set({ status: "submitting", submission_reason, recovery_error: null }),
+      markSubmitted: (result) =>
+        set({ status: "submitted", result, submission_reason: result.submission_reason, recovery_error: null }),
+      markActive: () => set({ status: "active", recovery_error: null }),
+      markRecoveryError: (recovery_error) => set({ status: "recovery_error", recovery_error }),
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
+      clearAttempt: () => set(emptyAttempt),
+    }),
+    {
+      name: "active_exam_attempt",
+      storage: createJSONStorage(() => assessmentStorage),
+      partialize: ({ hasHydrated: _hasHydrated, ...state }) => state,
+      onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
+    },
+  ),
+);

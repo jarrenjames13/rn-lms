@@ -1,19 +1,23 @@
 import {
-  QuizSubmitResponse,
   useQuizAnswers,
 } from "@/api/QueryOptions/quizAnswersMutation";
+import {
+  fetchQuizResult,
+  getApiErrorStatus,
+} from "@/api/QueryFunctions/fetchAssessmentResult";
 import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
 import createQuizQuestionsOptions from "@/api/QueryOptions/quizQuestionsOptions";
 import QuizSubmissionModal from "@/components/QuizSubmissionModal";
 import ScreenLoading from "@/components/ScreenLoading";
 import { useQuizStore } from "@/store/useQuizStore";
+import { flushAssessmentStorage } from "@/store/assessmentStorage";
+import { useAppTheme } from "@/theme";
 import type { OptionKey, Question } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePreventRemove } from "@react-navigation/native";
-import { usePreventScreenCapture } from "expo-screen-capture";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,49 +30,64 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-type SubmissionReason = "manual" | "time_expired" | "tab_switch" | "navigation_attempt";
+import type { SubmissionReason } from "@/types/assessmentAttempt";
+import { useAssessmentScreenCapture } from "@/utils/useAssessmentScreenCapture";
 
 export default function QuizTaking() {
+  const { theme } = useAppTheme();
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [submissionReason, setSubmissionReason] = useState("");
-  const [isStartingSession, setIsStartingSession] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [sessionRetry, setSessionRetry] = useState(0);
+  const [recoveryRetry, setRecoveryRetry] = useState(0);
+  const [navigationAllowed, setNavigationAllowed] = useState(false);
 
   const appState = useRef(AppState.currentState);
-  const hasSubmittedRef = useRef(false);
+  const startInFlightRef = useRef(false);
+  const submissionInFlightRef = useRef(false);
+  const recoveryInFlightRef = useRef(false);
+  const dialogOpenRef = useRef(false);
   const router = useRouter();
   const queryClient = useQueryClient();
-  usePreventScreenCapture();
+  useAssessmentScreenCapture("quiz-taking");
 
   const {
     quiz_id,
     instance_id,
     session_token,
+    deadline_at: deadlineAt,
+    status,
+    submission_reason: submissionReason,
+    result,
+    recovery_error: recoveryError,
+    hasHydrated,
     selectedAnswers,
     setSelectedAnswers,
-    clearAnswers,
-    setSessionToken,
+    setSession,
+    markSubmitting,
+    markSubmitted,
+    markActive,
+    markRecoveryError,
     clearAttempt,
   } = useQuizStore();
 
   const listRef = useRef<any>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      clearAnswers();
-      hasSubmittedRef.current = false;
-      console.log("Quiz Taking Mounted, answers reset.");
-    }, [clearAnswers]),
-  );
+  const statusRef = useRef(status);
 
   useEffect(() => {
-    if (quiz_id <= 0 || instance_id <= 0 || session_token) return;
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    if (
+      !hasHydrated ||
+      status !== "starting" ||
+      quiz_id <= 0 ||
+      instance_id <= 0 ||
+      startInFlightRef.current
+    ) return;
+
     let cancelled = false;
-    setIsStartingSession(true);
+    startInFlightRef.current = true;
     setSessionError(null);
     startAssessmentSession({
       assessment_id: quiz_id,
@@ -77,8 +96,9 @@ export default function QuizTaking() {
     })
       .then(({ session_token: nextToken, deadline_at }) => {
         if (!cancelled) {
-          setSessionToken(nextToken);
-          setDeadlineAt(new Date(deadline_at).getTime());
+          const deadline = new Date(deadline_at).getTime();
+          setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+          setSession(nextToken, deadline);
         }
       })
       .catch((error: any) => {
@@ -87,13 +107,13 @@ export default function QuizTaking() {
         }
       })
       .finally(() => {
-        if (!cancelled) setIsStartingSession(false);
+        startInFlightRef.current = false;
       });
 
     return () => {
       cancelled = true;
     };
-  }, [instance_id, quiz_id, sessionRetry, session_token, setSessionToken]);
+  }, [hasHydrated, instance_id, quiz_id, sessionRetry, setSession, status]);
 
   const {
     data: questionsData,
@@ -102,46 +122,128 @@ export default function QuizTaking() {
     error,
   } = useQuery({
     ...createQuizQuestionsOptions(quiz_id, instance_id, session_token),
-    enabled: quiz_id > 0 && instance_id > 0 && !!session_token,
+    enabled: status === "active" && quiz_id > 0 && instance_id > 0 && !!session_token,
   });
 
-  // Submission mutation
-
-  const submitMutation = useQuizAnswers({
-    onSuccess: (data: QuizSubmitResponse) => {
-      console.log("quiz submitted Successfully:", data);
-      setShowResultModal(true);
-    },
-    onError: (error: Error) => {
-      Alert.alert("Submission failed", `${error.message}\n\nYour answers are still available. Please try again.`);
-      hasSubmittedRef.current = false;
-    },
+  const { mutateAsync: submitAnswers, isPending: isSubmitting } = useQuizAnswers({
+    onError: () => undefined,
   });
+
+  const recoverExistingResult = useCallback(async () => {
+    const recovered = await fetchQuizResult(quiz_id, instance_id, session_token);
+    markSubmitted(recovered);
+  }, [instance_id, markSubmitted, quiz_id, session_token]);
+
+  const submitAttempt = useCallback(
+    async (reason: SubmissionReason, recovering = false) => {
+      const attempt = useQuizStore.getState();
+      if (!attempt.session_token || submissionInFlightRef.current) return;
+      if (!recovering && attempt.status !== "active") return;
+
+      submissionInFlightRef.current = true;
+      markSubmitting(reason);
+      try {
+        await flushAssessmentStorage();
+        const submittedResult = await submitAnswers({
+          quiz_id: attempt.quiz_id,
+          instance_id: attempt.instance_id,
+          answers: attempt.selectedAnswers,
+          submission_reason: reason,
+          session_token: attempt.session_token,
+        });
+        markSubmitted(submittedResult);
+      } catch (error) {
+        if (getApiErrorStatus(error) === 409 && /already submitted/i.test((error as Error).message)) {
+          try {
+            await recoverExistingResult();
+            return;
+          } catch (recoveryError) {
+            markRecoveryError((recoveryError as Error).message);
+            return;
+          }
+        }
+
+        const message = (error as Error).message || "Unable to submit quiz.";
+        if (reason === "manual" && !recovering) {
+          try {
+            await recoverExistingResult();
+          } catch (recoveryError) {
+            if (getApiErrorStatus(recoveryError) === 404) {
+              markActive();
+              Alert.alert("Submission failed", `${message}\n\nYour answers are still available. Please try again.`);
+            } else {
+              markRecoveryError((recoveryError as Error).message);
+            }
+          }
+        } else {
+          markRecoveryError(message);
+        }
+      } finally {
+        submissionInFlightRef.current = false;
+      }
+    },
+    [
+      markActive,
+      markRecoveryError,
+      markSubmitted,
+      markSubmitting,
+      recoverExistingResult,
+      submitAnswers,
+    ],
+  );
 
   const performSubmission = useCallback(
     (reason: SubmissionReason) => {
-      if (hasSubmittedRef.current || !session_token) return;
-
-      hasSubmittedRef.current = true;
-      setSubmissionReason(reason);
-
-      submitMutation.mutate({
-        quiz_id,
-        instance_id,
-        answers: selectedAnswers,
-        submission_reason: reason,
-        session_token,
-      });
+      void submitAttempt(reason);
     },
-    [quiz_id, instance_id, selectedAnswers, submitMutation, session_token],
+    [submitAttempt],
   );
 
-  usePreventRemove(!showResultModal && Boolean(session_token) && !hasSubmittedRef.current, () => {
-    performSubmission("navigation_attempt");
+  usePreventRemove(status !== "idle" && !navigationAllowed, () => {
+    const attempt = useQuizStore.getState();
+    if (attempt.status === "active" && attempt.session_token) {
+      performSubmission("navigation_attempt");
+    }
   });
 
+  const recoverSubmission = useCallback(async () => {
+    if (!session_token || recoveryInFlightRef.current || submissionInFlightRef.current) return;
+    recoveryInFlightRef.current = true;
+    try {
+      await recoverExistingResult();
+    } catch (error) {
+      if (getApiErrorStatus(error) === 404) {
+        await submitAttempt(submissionReason ?? "navigation_attempt", true);
+      } else {
+        markRecoveryError((error as Error).message || "Unable to recover quiz result.");
+      }
+    } finally {
+      recoveryInFlightRef.current = false;
+    }
+  }, [markRecoveryError, recoverExistingResult, session_token, submissionReason, submitAttempt]);
+
   useEffect(() => {
-    if (!deadlineAt || hasSubmittedRef.current) return;
+    if (
+      hasHydrated &&
+      (status === "submitting" || status === "recovery_error") &&
+      AppState.currentState === "active"
+    ) {
+      void recoverSubmission();
+    }
+  }, [hasHydrated, recoverSubmission, recoveryRetry, status]);
+
+  useEffect(() => {
+    if (
+      status === "active" &&
+      session_token &&
+      (AppState.currentState === "background" || AppState.currentState === "inactive")
+    ) {
+      performSubmission("tab_switch");
+    }
+  }, [performSubmission, session_token, status]);
+
+  useEffect(() => {
+    if (!deadlineAt || status !== "active") return;
     const updateTimer = () => {
       const remaining = Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000));
       setSecondsLeft((previous) => {
@@ -153,33 +255,107 @@ export default function QuizTaking() {
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [deadlineAt, performSubmission]);
+  }, [deadlineAt, performSubmission, status]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener(
       "change",
       (nextAppState: AppStateStatus) => {
-        if (appState.current === "active" && nextAppState !== "active") {
+        const leftApp = nextAppState === "background";
+        const becameInactive = appState.current === "active" && nextAppState === "inactive";
+        if (
+          statusRef.current === "active" &&
+          (leftApp || (becameInactive && !dialogOpenRef.current))
+        ) {
           performSubmission("tab_switch");
+        } else if (
+          nextAppState === "active" &&
+          (statusRef.current === "submitting" || statusRef.current === "recovery_error")
+        ) {
+          void recoverSubmission();
         }
         appState.current = nextAppState;
       },
     );
 
     return () => subscription.remove();
-  }, [performSubmission]);
+  }, [performSubmission, recoverSubmission]);
 
-  if (!sessionError && (isStartingSession || !session_token || isLoading)) {
-    return <ScreenLoading message={isStartingSession || !session_token ? "Preparing your secure quiz session..." : "Loading quiz questions..."} />;
+  const handleModalClose = () => {
+    queryClient.removeQueries({ queryKey: ["quiz_questions", quiz_id, instance_id, session_token] });
+    void queryClient.invalidateQueries({ queryKey: ["list_quizzes", instance_id] });
+    setNavigationAllowed(true);
+    clearAttempt();
+  };
+
+  useEffect(() => {
+    if (navigationAllowed) {
+      router.replace("/(course_tabs)/assessments");
+    }
+  }, [navigationAllowed, router]);
+
+  if (!hasHydrated) {
+    return <ScreenLoading message="Restoring your quiz attempt..." />;
+  }
+
+  if (navigationAllowed) {
+    return <ScreenLoading message="Returning to assessments..." />;
+  }
+
+  if (status === "idle" || quiz_id <= 0 || instance_id <= 0) {
+    return (
+      <SafeAreaView className="flex-1 justify-center items-center bg-[#F7F7FA] dark:bg-[#111014] px-6">
+        <Ionicons name="alert-circle-outline" size={64} color={theme.danger} />
+        <Text className="text-lg font-semibold text-[#201D25] dark:text-[#F7F4FA] mt-4">Unable to prepare quiz</Text>
+        <Text className="text-base text-[#6C6572] dark:text-[#BEB6C5] text-center mt-2">Return to assessments and confirm a new quiz attempt.</Text>
+        <Pressable onPress={() => router.replace("/(course_tabs)/assessments")} className="mt-6 px-6 py-3 rounded-xl" style={{ backgroundColor: theme.school }}>
+          <Text className="text-white font-semibold">Back to assessments</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  if (status === "submitted" && result) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#F7F7FA] dark:bg-[#111014]">
+        <QuizSubmissionModal
+          visible
+          onClose={handleModalClose}
+          submissionReason={submissionReason ?? result.submission_reason}
+          resultData={result}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (status === "submitting") {
+    return <ScreenLoading message="Submitting your quiz and preparing the result..." />;
+  }
+
+  if (status === "recovery_error") {
+    return (
+      <SafeAreaView className="flex-1 justify-center items-center bg-[#F7F7FA] dark:bg-[#111014] px-6">
+        <Ionicons name="cloud-offline-outline" size={64} color={theme.danger} />
+        <Text className="text-lg font-semibold text-[#201D25] dark:text-[#F7F4FA] mt-4">Unable to recover quiz result</Text>
+        <Text className="text-base text-[#6C6572] dark:text-[#BEB6C5] text-center mt-2">{recoveryError}</Text>
+        <Pressable onPress={() => setRecoveryRetry((value) => value + 1)} className="mt-6 px-6 py-3 rounded-xl" style={{ backgroundColor: theme.school }}>
+          <Text className="text-white font-semibold">Try again</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  if (!sessionError && (status === "starting" || !session_token || deadlineAt === null || isLoading)) {
+    return <ScreenLoading message={!session_token || deadlineAt === null ? "Preparing your secure quiz session..." : "Loading quiz questions..."} />;
   }
 
   if (sessionError) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center bg-gray-50 px-6">
-        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text className="text-lg font-semibold text-gray-800 mt-4">Unable to start quiz</Text>
-        <Text className="text-base text-gray-500 text-center mt-2">{sessionError}</Text>
-        <Pressable onPress={() => setSessionRetry((value) => value + 1)} className="mt-6 bg-red-500 px-6 py-3 rounded-xl">
+      <SafeAreaView className="flex-1 justify-center items-center bg-[#F7F7FA] dark:bg-[#111014] px-6">
+        <Ionicons name="alert-circle-outline" size={64} color={theme.danger} />
+        <Text className="text-lg font-semibold text-[#201D25] dark:text-[#F7F4FA] mt-4">Unable to start quiz</Text>
+        <Text className="text-base text-[#6C6572] dark:text-[#BEB6C5] text-center mt-2">{sessionError}</Text>
+        <Pressable onPress={() => setSessionRetry((value) => value + 1)} className="mt-6 bg-[#B42335] dark:bg-[#F06A78] px-6 py-3 rounded-xl">
           <Text className="text-white font-semibold">Try again</Text>
         </Pressable>
       </SafeAreaView>
@@ -188,17 +364,17 @@ export default function QuizTaking() {
 
   if (isError) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center bg-gray-50 px-6">
-        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text className="text-lg font-semibold text-gray-800 mt-4">
+      <SafeAreaView className="flex-1 justify-center items-center bg-[#F7F7FA] dark:bg-[#111014] px-6">
+        <Ionicons name="alert-circle-outline" size={64} color={theme.danger} />
+        <Text className="text-lg font-semibold text-[#201D25] dark:text-[#F7F4FA] mt-4">
           Error Loading Quiz
         </Text>
-        <Text className="text-base text-gray-500 text-center mt-2">
+        <Text className="text-base text-[#6C6572] dark:text-[#BEB6C5] text-center mt-2">
           {(error as Error).message}
         </Text>
         <Pressable
           onPress={() => router.back()}
-          className="mt-6 bg-red-500 active:bg-red-600 px-6 py-3 rounded-xl"
+          className="mt-6 bg-[#B42335] active:bg-[#B42335] dark:bg-[#F06A78] dark:active:bg-[#F06A78] px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Go Back</Text>
         </Pressable>
@@ -207,12 +383,13 @@ export default function QuizTaking() {
   }
 
   const handleSubmitQuiz = () => {
-    if (hasSubmittedRef.current) return;
+    if (status !== "active") return;
 
     const questions = questionsData?.questions || [];
     const answeredCount = Object.keys(selectedAnswers).length;
 
     if (answeredCount === questions.length) {
+      dialogOpenRef.current = true;
       Alert.alert(
         "Submit Quiz",
         "Are you sure you want to submit your answers? You cannot change them after submission.",
@@ -220,22 +397,27 @@ export default function QuizTaking() {
           {
             text: "Cancel",
             style: "cancel",
+            onPress: () => {
+              dialogOpenRef.current = false;
+            },
           },
           {
             text: "Submit",
             style: "destructive",
             onPress: () => {
+              dialogOpenRef.current = false;
               performSubmission("manual");
-              console.log("Submitted Answers:", selectedAnswers);
             },
           },
         ],
+        { onDismiss: () => { dialogOpenRef.current = false; } },
       );
     } else {
       const firstUnansweredIndex = questions.findIndex(
         (q) => !selectedAnswers[q.item_id],
       );
 
+      dialogOpenRef.current = true;
       Alert.alert(
         "Incomplete Quiz",
         `You have answered ${answeredCount} out of ${questions.length} questions. Please answer all questions before submitting.`,
@@ -243,6 +425,7 @@ export default function QuizTaking() {
           {
             text: "OK",
             onPress: () => {
+              dialogOpenRef.current = false;
               if (firstUnansweredIndex !== -1 && listRef.current) {
                 listRef.current.scrollToIndex({
                   index: firstUnansweredIndex,
@@ -253,15 +436,9 @@ export default function QuizTaking() {
             },
           },
         ],
+        { onDismiss: () => { dialogOpenRef.current = false; } },
       );
     }
-  };
-
-  const handleModalClose = () => {
-    setShowResultModal(false);
-    queryClient.removeQueries({ queryKey: ["quiz_questions", quiz_id, instance_id, session_token] });
-    clearAttempt();
-    router.replace("/(course_tabs)/assessments");
   };
 
   const renderQuestion = ({ item }: LegendListRenderItemProps<Question>) => {
@@ -269,18 +446,18 @@ export default function QuizTaking() {
     const isAnswered = !!selectedAnswers[item.item_id];
 
     return (
-      <View className="mb-4 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <View className="mb-4 bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl border border-[#E6E1E8] dark:border-[#37313C] shadow-sm overflow-hidden">
         {/* Question Header */}
         <View
-          style={{ backgroundColor: isAnswered ? "#FEF2F2" : "#F9FAFB" }}
-          className="px-5 py-4 border-b border-gray-100"
+          style={{ backgroundColor: isAnswered ? theme.surfaceAccent : theme.canvas }}
+          className="px-5 py-4 border-b border-[#E6E1E8] dark:border-[#37313C]"
         >
           <View className="flex-row items-start justify-between">
             <View className="flex-1 pr-3">
               <View className="flex-row items-center mb-2">
                 <View
                   style={{
-                    backgroundColor: isAnswered ? "#EF4444" : "#9CA3AF",
+                    backgroundColor: isAnswered ? theme.danger : theme.textMuted,
                   }}
                   className="w-8 h-8 rounded-lg items-center justify-center mr-2"
                 >
@@ -290,11 +467,11 @@ export default function QuizTaking() {
                 </View>
                 {!isAnswered && (
                   <View
-                    style={{ backgroundColor: "#FEE2E2" }}
+                    style={{ backgroundColor: theme.surfaceAccent }}
                     className="px-3 py-1 rounded-full"
                   >
                     <Text
-                      style={{ color: "#991B1B" }}
+                      style={{ color: theme.danger }}
                       className="text-xs font-bold"
                     >
                       UNANSWERED
@@ -303,11 +480,11 @@ export default function QuizTaking() {
                 )}
                 {isAnswered && (
                   <View
-                    style={{ backgroundColor: "#D1FAE5" }}
+                    style={{ backgroundColor: theme.surfaceMuted }}
                     className="px-3 py-1 rounded-full"
                   >
                     <Text
-                      style={{ color: "#065F46" }}
+                      style={{ color: theme.success }}
                       className="text-xs font-bold"
                     >
                       ANSWERED
@@ -315,7 +492,7 @@ export default function QuizTaking() {
                   </View>
                 )}
               </View>
-              <Text className="text-base font-semibold text-gray-900 leading-6">
+              <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA] leading-6">
                 {item.question}
               </Text>
             </View>
@@ -331,8 +508,8 @@ export default function QuizTaking() {
                 key={key}
                 className={`mb-3 rounded-xl border-2 overflow-hidden ${
                   isSelected
-                    ? "border-red-500 bg-red-50"
-                    : "border-gray-200 bg-white"
+                    ? "border-[#B42335] bg-[#FCECEF] dark:border-[#F06A78] dark:bg-[#3A2025]"
+                    : "border-[#E6E1E8] bg-[#FFFFFF] dark:border-[#37313C] dark:bg-[#1A181E]"
                 }`}
                 onPress={() => {
                   setSelectedAnswers({
@@ -346,8 +523,8 @@ export default function QuizTaking() {
                   <View
                     className={`w-6 h-6 rounded-full border-2 mr-3 items-center justify-center ${
                       isSelected
-                        ? "border-red-500 bg-red-500"
-                        : "border-gray-300"
+                        ? "border-[#B42335] bg-[#B42335] dark:border-[#F06A78] dark:bg-[#F06A78]"
+                        : "border-[#E6E1E8] dark:border-[#37313C]"
                     }`}
                   >
                     {isSelected && (
@@ -358,12 +535,12 @@ export default function QuizTaking() {
                   {/* Option Letter Badge */}
                   <View
                     style={{
-                      backgroundColor: isSelected ? "#EF4444" : "#F3F4F6",
+                      backgroundColor: isSelected ? theme.danger : theme.surfaceMuted,
                     }}
                     className="w-8 h-8 rounded-lg items-center justify-center mr-3"
                   >
                     <Text
-                      style={{ color: isSelected ? "white" : "#374151" }}
+                      style={{ color: isSelected ? "white" : theme.text }}
                       className="font-bold text-sm"
                     >
                       {key}
@@ -374,8 +551,8 @@ export default function QuizTaking() {
                   <Text
                     className={`flex-1 text-base leading-6 ${
                       isSelected
-                        ? "text-gray-900 font-semibold"
-                        : "text-gray-700"
+                        ? "text-[#201D25] dark:text-[#F7F4FA] font-semibold"
+                        : "text-[#6C6572] dark:text-[#BEB6C5]"
                     }`}
                   >
                     {item.options[key]}
@@ -386,7 +563,7 @@ export default function QuizTaking() {
                     <MaterialIcons
                       name="check-circle"
                       size={24}
-                      color="#EF4444"
+                      color={theme.danger}
                     />
                   )}
                 </View>
@@ -406,10 +583,10 @@ export default function QuizTaking() {
   const isLowTime = secondsLeft <= 600; // 10 minutes or less
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-[#F7F7FA] dark:bg-[#111014]">
       {/* Timer Header */}
       <View
-        style={{ backgroundColor: isLowTime ? "#FEE2E2" : "#EF4444" }}
+        style={{ backgroundColor: isLowTime ? theme.surfaceAccent : theme.danger }}
         className="px-6 py-4"
       >
         <View className="flex-row items-center justify-between">
@@ -417,7 +594,7 @@ export default function QuizTaking() {
             <View
               style={{
                 backgroundColor: isLowTime
-                  ? "#991B1B"
+                  ? theme.danger
                   : "rgba(255, 255, 255, 0.25)",
               }}
               className="w-12 h-12 rounded-xl items-center justify-center mr-3"
@@ -425,18 +602,18 @@ export default function QuizTaking() {
               <Ionicons
                 name={isLowTime ? "warning" : "timer"}
                 size={24}
-                color={isLowTime ? "#FEE2E2" : "white"}
+                color={isLowTime ? theme.surfaceAccent : "white"}
               />
             </View>
             <View>
               <Text
-                style={{ color: isLowTime ? "#991B1B" : "white" }}
+                style={{ color: isLowTime ? theme.danger : "white" }}
                 className="text-xs font-semibold mb-1"
               >
                 {isLowTime ? "TIME RUNNING OUT!" : "TIME REMAINING"}
               </Text>
               <Text
-                style={{ color: isLowTime ? "#7F1D1D" : "white" }}
+                style={{ color: isLowTime ? theme.danger : "white" }}
                 className="text-2xl font-bold"
               >
                 {minutes.toString().padStart(2, "0")}:
@@ -448,24 +625,24 @@ export default function QuizTaking() {
       </View>
 
       {/* Progress Bar */}
-      <View className="bg-white px-6 py-4 border-b border-gray-200">
+      <View className="bg-[#FFFFFF] dark:bg-[#1A181E] px-6 py-4 border-b border-[#E6E1E8] dark:border-[#37313C]">
         <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-sm font-semibold text-gray-700">Progress</Text>
-          <Text className="text-sm font-bold text-gray-900">
+          <Text className="text-sm font-semibold text-[#6C6572] dark:text-[#BEB6C5]">Progress</Text>
+          <Text className="text-sm font-bold text-[#201D25] dark:text-[#F7F4FA]">
             {answeredCount}/{totalQuestions}
           </Text>
         </View>
-        <View className="h-3 bg-gray-200 rounded-full overflow-hidden">
+        <View className="h-3 bg-[#F2ECF8] dark:bg-[#2A2038] rounded-full overflow-hidden">
           <View
             className="h-full rounded-full"
             style={{
               width: `${progressPercentage}%`,
               backgroundColor:
-                progressPercentage === 100 ? "#10B981" : "#EF4444",
+                progressPercentage === 100 ? theme.success : theme.danger,
             }}
           />
         </View>
-        <Text className="text-xs text-gray-500 mt-1">
+        <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-1">
           {answeredCount === totalQuestions
             ? "All questions answered!"
             : `${totalQuestions - answeredCount} question${totalQuestions - answeredCount !== 1 ? "s" : ""} remaining`}
@@ -484,7 +661,7 @@ export default function QuizTaking() {
       />
 
       {/* Submit Button Footer */}
-      <View className="bg-white border-t border-gray-200 px-6 py-4">
+      <View className="bg-[#FFFFFF] dark:bg-[#1A181E] border-t border-[#E6E1E8] dark:border-[#37313C] px-6 py-4">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <MaterialIcons
@@ -494,18 +671,18 @@ export default function QuizTaking() {
                   : "radio-button-unchecked"
               }
               size={20}
-              color={answeredCount === totalQuestions ? "#10B981" : "#9CA3AF"}
+              color={answeredCount === totalQuestions ? theme.success : theme.textMuted}
             />
-            <Text className="text-sm text-gray-600 ml-2">
+            <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] ml-2">
               {answeredCount} of {totalQuestions} answered
             </Text>
           </View>
           {answeredCount < totalQuestions && (
             <View
-              style={{ backgroundColor: "#FEF3C7" }}
+              style={{ backgroundColor: theme.surfaceMuted }}
               className="px-2 py-1 rounded-full"
             >
-              <Text style={{ color: "#92400E" }} className="text-xs font-bold">
+              <Text style={{ color: theme.warning }} className="text-xs font-bold">
                 INCOMPLETE
               </Text>
             </View>
@@ -513,40 +690,41 @@ export default function QuizTaking() {
         </View>
 
         <Pressable
-          className={`py-4 rounded-xl items-center ${
-            answeredCount === totalQuestions
-              ? "bg-red-500 active:bg-red-600"
-              : "bg-gray-300"
-          }`}
           onPress={handleSubmitQuiz}
-          disabled={submitMutation.isPending}
+          disabled={isSubmitting || status !== "active"}
         >
-          {submitMutation.isPending ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <View className="flex-row items-center">
-              <MaterialIcons name="send" size={20} color="white" />
-              <Text className="font-bold text-white text-base ml-2">
-                Submit Quiz
-              </Text>
+          {({ pressed }) => (
+            <View
+              className="py-4 rounded-xl items-center"
+              style={{
+                backgroundColor: answeredCount !== totalQuestions
+                  ? theme.surfaceMuted
+                  : pressed
+                    ? theme.primaryPressed
+                    : theme.school,
+              }}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <View className="flex-row items-center">
+                  <MaterialIcons name="send" size={20} color={answeredCount === totalQuestions ? "#FFFFFF" : theme.textMuted} />
+                  <Text className="font-bold text-base ml-2" style={{ color: answeredCount === totalQuestions ? "#FFFFFF" : theme.textMuted }}>
+                    Submit Quiz
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </Pressable>
 
         {answeredCount < totalQuestions && (
-          <Text className="text-xs text-center text-gray-500 mt-2">
+          <Text className="text-xs text-center text-[#6C6572] dark:text-[#BEB6C5] mt-2">
             Please answer all questions before submitting
           </Text>
         )}
       </View>
 
-      <QuizSubmissionModal
-        visible={showResultModal}
-        onClose={handleModalClose}
-        submissionReason={submissionReason}
-        resultData={submitMutation.data}
-        isLoading={submitMutation.isPending}
-      />
     </SafeAreaView>
   );
 }

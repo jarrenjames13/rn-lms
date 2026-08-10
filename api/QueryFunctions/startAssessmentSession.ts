@@ -19,5 +19,15 @@ export const startAssessmentSession = async (
     "/assessment-sessions/start-assessment-session",
     payload,
   );
-  return response.data;
+  const data = response.data;
+  const deadline = new Date(data?.deadline_at).getTime();
+
+  if (!data?.session_token?.trim()) {
+    throw new Error("The assessment session did not return a valid session token.");
+  }
+  if (!Number.isFinite(deadline)) {
+    throw new Error("The assessment session did not return a valid deadline.");
+  }
+
+  return data;
 };

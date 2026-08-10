@@ -1,14 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Alert } from "react-native";
+import type { AssessmentResult } from "@/types/assessmentAttempt";
 import { postExamAnswers } from "../QueryFunctions/postExamAnswers";
 
-export type ExamSubmitResponse = {
-  success: boolean;
-  score: number;
-  correct_answers: number;
-  total_questions: number;
-};
+export type ExamSubmitResponse = AssessmentResult;
 // export default function createExamAnswersOptions(queryClient: QueryClient) {
 //   return {
 //     mutationFn: postExamAnswers,

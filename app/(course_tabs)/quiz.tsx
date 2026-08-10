@@ -1,8 +1,11 @@
 import createListQuizzesOptions from "@/api/QueryOptions/listQuizzesOptions";
+import AssessmentStartModal from "@/components/AssessmentStartModal";
 import Skeleton from "@/components/skeletons/Skeleton";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useQuizStore } from "@/store/useQuizStore";
+import { useAppTheme } from "@/theme";
 import { QuizDetails } from "@/types/api";
+import { MAX_QUIZ_ATTEMPTS } from "@/utils/constants";
 import {
   Entypo,
   Feather,
@@ -14,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,9 +28,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 // Skeleton Components
 const QuizCardSkeleton = () => (
-  <View className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4 border border-gray-100">
+  <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl shadow-sm overflow-hidden mb-4 border border-[#E6E1E8] dark:border-[#37313C]">
     {/* Header */}
-    <View className="bg-gray-50 px-5 py-4 border-b border-gray-100">
+    <View className="bg-[#F7F7FA] dark:bg-[#111014] px-5 py-4 border-b border-[#E6E1E8] dark:border-[#37313C]">
       <View className="flex-row justify-between items-start">
         <View className="flex-1 pr-4">
           <Skeleton height={20} width="70%" style={{ marginBottom: 8 }} />
@@ -54,7 +58,7 @@ const QuizCardSkeleton = () => (
 const QuizPeriodSkeleton = () => (
   <View className="mb-6">
     {/* Header */}
-    <View className="bg-gray-300 px-5 py-4 rounded-t-2xl">
+    <View className="bg-[#E6E1E8] dark:bg-[#37313C] px-5 py-4 rounded-t-2xl">
       <View className="flex-row items-center">
         <Skeleton
           height={40}
@@ -83,7 +87,7 @@ const QuizPeriodSkeleton = () => (
     </View>
 
     {/* Content */}
-    <View className="bg-gray-50 p-4 rounded-b-2xl border-x border-b border-gray-200">
+    <View className="bg-[#F7F7FA] dark:bg-[#111014] p-4 rounded-b-2xl border-x border-b border-[#E6E1E8] dark:border-[#37313C]">
       <QuizCardSkeleton />
       <QuizCardSkeleton />
     </View>
@@ -91,10 +95,18 @@ const QuizPeriodSkeleton = () => (
 );
 
 export default function Quiz() {
+  const { theme } = useAppTheme();
   const router = useRouter();
-  const { setQuizId, setInstanceId, setSessionToken } = useQuizStore();
+  const {
+    beginAttempt,
+    hasHydrated: attemptHydrated,
+    status: attemptStatus,
+    quiz_id: activeQuizId,
+    instance_id: activeInstanceId,
+  } = useQuizStore();
   const { instance_id } = useCourseStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [quizToStart, setQuizToStart] = useState<QuizDetails | null>(null);
 
   const {
     data: quizzesData,
@@ -157,62 +169,85 @@ export default function Quiz() {
   const getPeriodColor = (period: string) => {
     switch (period) {
       case "Prelim":
-        return "#3B82F6"; // Blue
+        return theme.primary;
       case "Midterm":
-        return "#8B5CF6"; // Purple
+        return theme.primary;
       case "Pre-Final":
-        return "#F97316"; // Orange
+        return theme.warning;
       case "Final":
-        return "#EF4444"; // Red
+        return theme.school;
       default:
-        return "#6B7280"; // Gray
+        return theme.textMuted;
     }
   };
 
   const getPeriodBgColor = (period: string) => {
     switch (period) {
       case "Prelim":
-        return "#EFF6FF"; // Blue light
+        return theme.surfaceMuted;
       case "Midterm":
-        return "#FAF5FF"; // Purple light
+        return theme.surfaceMuted;
       case "Pre-Final":
-        return "#FFF7ED"; // Orange light
+        return theme.surfaceMuted;
       case "Final":
-        return "#FEF2F2"; // Red light
+        return theme.surfaceAccent;
       default:
-        return "#F9FAFB"; // Gray light
+        return theme.canvas;
     }
   };
 
-  const handlePress = async (quiz: QuizDetails) => {
-    setQuizId(quiz.quiz_id);
-    setSessionToken("");
-    if (instanceId !== null) {
-      setInstanceId(instanceId);
-    }
+  const beginQuiz = () => {
+    if (!quizToStart) return;
+
+    const quiz = quizToStart;
+    setQuizToStart(null);
+    if (instanceId === null) return;
+    beginAttempt(quiz.quiz_id, instanceId);
     router.replace("/quiz_taking");
+  };
+
+  const requestQuizStart = (quiz: QuizDetails) => {
+    if (!attemptHydrated || instanceId === null) return;
+    if (attemptStatus === "idle") {
+      setQuizToStart(quiz);
+      return;
+    }
+
+    if (activeQuizId === quiz.quiz_id && activeInstanceId === instanceId) {
+      router.replace("/quiz_taking");
+      return;
+    }
+
+    Alert.alert(
+      "Quiz attempt already active",
+      "Finish or view the result of your current quiz attempt before starting another one.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Resume attempt", onPress: () => router.replace("/quiz_taking") },
+      ],
+    );
   };
 
   // Render a single quiz card
   const renderQuizCard = (quiz: QuizDetails) => {
     const attemptsMade = quiz.attempts_made || 0;
-    const remainingAttempts = 5 - attemptsMade;
-    const maxAttemptsReached = attemptsMade >= 5;
+    const remainingAttempts = Math.max(0, MAX_QUIZ_ATTEMPTS - attemptsMade);
+    const maxAttemptsReached = attemptsMade >= MAX_QUIZ_ATTEMPTS;
     const isPassing = quiz.score !== null && quiz.score >= 75;
 
     return (
       <View
         key={quiz.quiz_id}
-        className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4 border border-gray-100"
+        className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl shadow-sm overflow-hidden mb-4 border border-[#E6E1E8] dark:border-[#37313C]"
       >
         {/* Header with Status */}
-        <View className="bg-gray-50 px-5 py-4 border-b border-gray-100">
+        <View className="bg-[#F7F7FA] dark:bg-[#111014] px-5 py-4 border-b border-[#E6E1E8] dark:border-[#37313C]">
           <View className="flex-row justify-between items-start">
             <View className="flex-1 pr-4">
-              <Text className="text-lg font-bold text-gray-900 mb-1">
+              <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA] mb-1">
                 {quiz.quiz_name}
               </Text>
-              <Text className="text-sm text-gray-600 leading-5">
+              <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] leading-5">
                 {quiz.description}
               </Text>
             </View>
@@ -222,7 +257,7 @@ export default function Quiz() {
               {maxAttemptsReached ? (
                 <View
                   style={{
-                    backgroundColor: isPassing ? "#D1FAE5" : "#FEE2E2",
+                    backgroundColor: isPassing ? theme.surfaceMuted : theme.surfaceAccent,
                   }}
                   className="px-3 py-2 rounded-xl"
                 >
@@ -230,38 +265,38 @@ export default function Quiz() {
                     <MaterialIcons
                       name={isPassing ? "check-circle" : "cancel"}
                       size={16}
-                      color={isPassing ? "#065F46" : "#991B1B"}
+                      color={isPassing ? theme.success : theme.danger}
                     />
                     <Text
-                      style={{ color: isPassing ? "#065F46" : "#991B1B" }}
+                      style={{ color: isPassing ? theme.success : theme.danger }}
                       className="text-xs font-bold ml-1"
                     >
                       DONE
                     </Text>
                   </View>
                   <Text
-                    style={{ color: isPassing ? "#065F46" : "#991B1B" }}
+                    style={{ color: isPassing ? theme.success : theme.danger }}
                     className="text-[10px] font-medium mt-0.5"
                   >
-                    {attemptsMade}/5
+                    {attemptsMade}/{MAX_QUIZ_ATTEMPTS}
                   </Text>
                 </View>
-              ) : quiz.is_taken ? (
+              ) : attemptsMade > 0 ? (
                 <View
-                  style={{ backgroundColor: "#FEF3C7" }}
+                  style={{ backgroundColor: theme.surfaceMuted }}
                   className="px-3 py-2 rounded-xl"
                 >
                   <View className="flex-row items-center">
-                    <Ionicons name="reload" size={16} color="#92400E" />
+                    <Ionicons name="reload" size={16} color={theme.warning} />
                     <Text
-                      style={{ color: "#92400E" }}
+                      style={{ color: theme.warning }}
                       className="text-xs font-bold ml-1"
                     >
                       IN PROGRESS
                     </Text>
                   </View>
                   <Text
-                    style={{ color: "#92400E" }}
+                    style={{ color: theme.warning }}
                     className="text-[10px] font-medium mt-0.5"
                   >
                     {remainingAttempts} left
@@ -269,27 +304,27 @@ export default function Quiz() {
                 </View>
               ) : (
                 <View
-                  style={{ backgroundColor: "#DBEAFE" }}
+                  style={{ backgroundColor: theme.surfaceMuted }}
                   className="px-3 py-2 rounded-xl"
                 >
                   <View className="flex-row items-center">
                     <MaterialIcons
                       name="play-arrow"
                       size={16}
-                      color="#1E40AF"
+                      color={theme.primary}
                     />
                     <Text
-                      style={{ color: "#1E40AF" }}
+                      style={{ color: theme.primary }}
                       className="text-xs font-bold ml-1"
                     >
                       START
                     </Text>
                   </View>
                   <Text
-                    style={{ color: "#1E40AF" }}
+                    style={{ color: theme.primary }}
                     className="text-[10px] font-medium mt-0.5"
                   >
-                    5 attempts
+                    {MAX_QUIZ_ATTEMPTS} attempts
                   </Text>
                 </View>
               )}
@@ -302,77 +337,80 @@ export default function Quiz() {
           {/* Quiz Info Grid */}
           <View className="flex-row flex-wrap gap-3 mb-4">
             {/* Total Items */}
-            <View className="flex-1 min-w-[45%] bg-red-50 rounded-xl p-3 border border-red-100">
+            <View className="flex-1 min-w-[45%] bg-[#FCECEF] dark:bg-[#3A2025] rounded-xl p-3 border border-[#E6E1E8] dark:border-[#37313C]">
               <View className="flex-row items-center mb-1">
-                <MaterialIcons name="quiz" size={16} color="#EF4444" />
-                <Text className="text-xs text-gray-600 ml-1 font-medium">
+                <MaterialIcons name="quiz" size={16} color={theme.school} />
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] ml-1 font-medium">
                   Questions
                 </Text>
               </View>
-              <Text className="text-xl font-bold text-gray-900">
+              <Text className="text-xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
                 {quiz.total_items}
               </Text>
             </View>
 
             {/* Duration */}
-            <View className="flex-1 min-w-[45%] bg-purple-50 rounded-xl p-3 border border-purple-100">
+            <View className="flex-1 min-w-[45%] bg-[#F2ECF8] dark:bg-[#2A2038] rounded-xl p-3 border border-[#E6E1E8] dark:border-[#37313C]">
               <View className="flex-row items-center mb-1">
                 <MaterialCommunityIcons
                   name="clock-outline"
                   size={16}
-                  color="#8B5CF6"
+                  color={theme.primary}
                 />
-                <Text className="text-xs text-gray-600 ml-1 font-medium">
+                <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] ml-1 font-medium">
                   Duration
                 </Text>
               </View>
-              <Text className="text-xl font-bold text-gray-900">60 min</Text>
+              <Text className="text-xl font-bold text-[#201D25] dark:text-[#F7F4FA]">60 min</Text>
             </View>
           </View>
 
           {/* Attempts Progress (for started quizzes) */}
-          {quiz.is_taken && !maxAttemptsReached && (
+          {attemptsMade > 0 && !maxAttemptsReached && (
             <View
-              style={{ backgroundColor: "#EFF6FF" }}
-              className="rounded-xl p-4 mb-4 border border-blue-100"
+              style={{ backgroundColor: theme.surfaceMuted }}
+              className="rounded-xl p-4 mb-4 border border-[#E6E1E8] dark:border-[#37313C]"
             >
               <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-sm font-semibold text-gray-700">
+                <Text className="text-sm font-semibold text-[#201D25] dark:text-[#F7F4FA]">
                   Attempts Progress
                 </Text>
                 <Text
-                  style={{ color: "#1E40AF" }}
+                  style={{ color: theme.primary }}
                   className="text-xs font-bold"
                 >
-                  {attemptsMade}/5 used
+                  {attemptsMade}/{MAX_QUIZ_ATTEMPTS} used
                 </Text>
               </View>
-              <View className="h-2 bg-blue-100 rounded-full overflow-hidden">
+              <View className="h-2 bg-[#E6E1E8] dark:bg-[#37313C] rounded-full overflow-hidden">
                 <View
-                  className="h-full bg-blue-500 rounded-full"
-                  style={{ width: `${(attemptsMade / 5) * 100}%` }}
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(100, (attemptsMade / MAX_QUIZ_ATTEMPTS) * 100)}%`,
+                    backgroundColor: theme.primary,
+                  }}
                 />
               </View>
             </View>
           )}
 
           {/* Score Section (if taken) */}
-          {quiz.is_taken && (
-            <View className="bg-gray-50 rounded-xl p-4 mb-4">
+          {attemptsMade > 0 && (
+            <View className="bg-[#F7F7FA] dark:bg-[#111014] rounded-xl p-4 mb-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
-                  <Text className="text-xs text-gray-500 mb-1 font-medium">
+                  <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mb-1 font-medium">
                     {maxAttemptsReached ? "Final Score" : "Latest Score"}
                   </Text>
                   <View className="flex-row items-center">
                     <Text
-                      style={{ color: isPassing ? "#10B981" : "#EF4444" }}
+                      style={{ color: isPassing ? theme.success : theme.danger }}
                       className="text-4xl font-bold"
                     >
                       {quiz.score ?? "N/A"}
                     </Text>
                     <Text
-                      style={{ color: isPassing ? "#10B981" : "#EF4444" }}
+                      style={{ color: isPassing ? theme.success : theme.danger }}
                       className="text-xl font-bold ml-1"
                     >
                       %
@@ -380,12 +418,12 @@ export default function Quiz() {
                   </View>
                   <View
                     style={{
-                      backgroundColor: isPassing ? "#D1FAE5" : "#FEE2E2",
+                      backgroundColor: isPassing ? theme.surfaceMuted : theme.surfaceAccent,
                     }}
                     className="mt-2 px-3 py-1 rounded-full self-start"
                   >
                     <Text
-                      style={{ color: isPassing ? "#065F46" : "#991B1B" }}
+                      style={{ color: isPassing ? theme.success : theme.danger }}
                       className="text-xs font-semibold"
                     >
                       {isPassing ? "PASSING" : "FAILING"}
@@ -395,11 +433,11 @@ export default function Quiz() {
 
                 {quiz.completed_at && (
                   <View className="items-end">
-                    <View className="bg-white rounded-lg px-3 py-2 border border-gray-200">
-                      <Text className="text-[10px] text-gray-500 mb-1 font-medium">
+                    <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-lg px-3 py-2 border border-[#E6E1E8] dark:border-[#37313C]">
+                      <Text className="text-[10px] text-[#6C6572] dark:text-[#BEB6C5] mb-1 font-medium">
                         Last Attempt
                       </Text>
-                      <Text className="text-xs text-gray-700 font-semibold">
+                      <Text className="text-xs text-[#201D25] dark:text-[#F7F4FA] font-semibold">
                         {new Date(quiz.last_attempted_at + "Z").toLocaleString(
                           "en-PH",
                           {
@@ -410,7 +448,7 @@ export default function Quiz() {
                           },
                         )}
                       </Text>
-                      <Text className="text-xs text-gray-600">
+                      <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">
                         {new Date(quiz.last_attempted_at + "Z").toLocaleString(
                           "en-PH",
                           {
@@ -430,35 +468,65 @@ export default function Quiz() {
           {/* Action Buttons */}
           {!maxAttemptsReached && (
             <View>
-              {quiz.is_taken ? (
+              {attemptsMade > 0 ? (
                 // Retake Button
                 <Pressable
-                  className="bg-red-500 active:bg-red-600 py-4 rounded-xl items-center"
-                  onPress={() => handlePress(quiz)}
+                  onPress={() => requestQuizStart(quiz)}
+                  disabled={!attemptHydrated}
                 >
-                  <View className="flex-row items-center">
-                    <MaterialCommunityIcons
-                      name="reload"
-                      size={20}
-                      color="white"
-                    />
-                    <Text className="text-white font-bold text-base ml-2">
-                      Retake Quiz
-                    </Text>
-                  </View>
+                  {({ pressed }) => (
+                    <View
+                      style={{
+                        minHeight: 52,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: !attemptHydrated
+                          ? theme.tabInactive
+                          : pressed
+                            ? theme.primaryPressed
+                            : theme.school,
+                        opacity: attemptHydrated ? 1 : 0.55,
+                      }}
+                    >
+                      <View className="flex-row items-center">
+                        <MaterialCommunityIcons name="reload" size={20} color="#FFFFFF" />
+                        <Text style={{ color: "#FFFFFF" }} className="font-bold text-base ml-2">
+                          Retake Quiz
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </Pressable>
               ) : (
                 // Start Button
                 <Pressable
-                  className="bg-red-500 active:bg-red-600 py-4 rounded-xl items-center"
-                  onPress={() => handlePress(quiz)}
+                  onPress={() => requestQuizStart(quiz)}
+                  disabled={!attemptHydrated}
                 >
-                  <View className="flex-row items-center">
-                    <MaterialIcons name="play-arrow" size={24} color="white" />
-                    <Text className="text-white font-bold text-base ml-1">
-                      Start Quiz
-                    </Text>
-                  </View>
+                  {({ pressed }) => (
+                    <View
+                      style={{
+                        minHeight: 52,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: !attemptHydrated
+                          ? theme.tabInactive
+                          : pressed
+                            ? theme.primaryPressed
+                            : theme.school,
+                        opacity: attemptHydrated ? 1 : 0.55,
+                      }}
+                    >
+                      <View className="flex-row items-center">
+                        <MaterialIcons name="play-arrow" size={24} color="#FFFFFF" />
+                        <Text style={{ color: "#FFFFFF" }} className="font-bold text-base ml-1">
+                          Start Quiz
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </Pressable>
               )}
             </View>
@@ -466,10 +534,10 @@ export default function Quiz() {
 
           {/* Max Attempts Reached Message */}
           {maxAttemptsReached && (
-            <View className="bg-gray-100 px-4 py-3 rounded-xl border border-gray-200">
+            <View className="bg-[#F2ECF8] dark:bg-[#2A2038] px-4 py-3 rounded-xl border border-[#E6E1E8] dark:border-[#37313C]">
               <View className="flex-row items-center justify-center">
-                <Ionicons name="lock-closed" size={16} color="#6B7280" />
-                <Text className="text-center text-gray-600 text-sm font-medium ml-2">
+                <Ionicons name="lock-closed" size={16} color={theme.textMuted} />
+                <Text className="text-center text-[#6C6572] dark:text-[#BEB6C5] text-sm font-medium ml-2">
                   All attempts completed
                 </Text>
               </View>
@@ -484,12 +552,12 @@ export default function Quiz() {
   const renderGroupedQuizzes = () => {
     if (sortedPeriods.length === 0) {
       return (
-        <View className="bg-white rounded-2xl p-8 items-center">
-          <MaterialIcons name="quiz" size={64} color="#D1D5DB" />
-          <Text className="text-lg font-bold text-gray-800 mt-4">
+        <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-8 items-center">
+          <MaterialIcons name="quiz" size={64} color={theme.tabInactive} />
+          <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA] mt-4">
             No Quizzes Available
           </Text>
-          <Text className="text-sm text-gray-500 text-center mt-2">
+          <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] text-center mt-2">
             Quizzes will appear here once they are added to this course.
           </Text>
         </View>
@@ -513,7 +581,7 @@ export default function Quiz() {
                   style={{ backgroundColor: "rgba(255, 255, 255, 0.25)" }}
                   className="w-10 h-10 rounded-xl items-center justify-center mr-3"
                 >
-                  <MaterialIcons name="school" size={20} color="white" />
+                  <MaterialIcons name="school" size={20} color="#FFFFFF" />
                 </View>
                 <View>
                   <Text className="text-white text-xl font-bold">{period}</Text>
@@ -532,7 +600,7 @@ export default function Quiz() {
           {/* Quizzes in this period */}
           <View
             style={{ backgroundColor: periodBgColor }}
-            className="p-4 rounded-b-2xl border-x border-b border-gray-200"
+            className="p-4 rounded-b-2xl border-x border-b border-[#E6E1E8] dark:border-[#37313C]"
           >
             {groupedQuizzes[period].map(renderQuizCard)}
           </View>
@@ -543,18 +611,18 @@ export default function Quiz() {
 
   if (isError) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1 bg-[#F7F7FA] dark:bg-[#111014]">
         <View className="flex-1 justify-center items-center px-6">
-          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-          <Text className="text-lg font-semibold text-gray-800 mt-4">
+          <Ionicons name="alert-circle-outline" size={64} color={theme.danger} />
+          <Text className="text-lg font-semibold text-[#201D25] dark:text-[#F7F4FA] mt-4">
             Error Loading Quizzes
           </Text>
-          <Text className="text-base text-gray-500 text-center mt-2">
+          <Text className="text-base text-[#6C6572] dark:text-[#BEB6C5] text-center mt-2">
             {error?.message || "Unknown error occurred"}
           </Text>
           <Pressable
             onPress={() => refetch()}
-            className="mt-6 bg-red-500 active:bg-red-600 px-6 py-3 rounded-xl"
+            className="mt-6 bg-[#B42335] dark:bg-[#F06A78] active:bg-[#B42335] dark:active:bg-[#F06A78] px-6 py-3 rounded-xl"
           >
             <Text className="text-white font-semibold">Retry</Text>
           </Pressable>
@@ -564,7 +632,7 @@ export default function Quiz() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-[#F7F7FA] dark:bg-[#111014]">
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -572,18 +640,18 @@ export default function Quiz() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#EF4444"]}
-            tintColor="#EF4444"
+            colors={[theme.school]}
+            tintColor={theme.school}
             title="Pull to refresh"
-            titleColor="#6B7280"
+            titleColor={theme.textMuted}
           />
         }
       >
         {/* Header */}
-        <View className="bg-red-500 px-6 py-6">
+        <View className="bg-[#B42335] dark:bg-[#F06A78] px-6 py-6">
           <View className="flex-row items-center">
             <View className="w-12 h-12 bg-white/20 rounded-xl items-center justify-center mr-3">
-              <MaterialIcons name="quiz" size={24} color="white" />
+              <MaterialIcons name="quiz" size={24} color="#FFFFFF" />
             </View>
             <View>
               <Text className="text-2xl font-bold text-white">Quizzes</Text>
@@ -599,53 +667,53 @@ export default function Quiz() {
 
         <View className="px-6 mt-6">
           {/* Instructions Card */}
-          <View className="bg-white rounded-2xl p-5 mb-6 border border-gray-100 shadow-sm">
+          <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-5 mb-6 border border-[#E6E1E8] dark:border-[#37313C] shadow-sm">
             <View className="flex-row items-center mb-4">
-              <View className="w-10 h-10 bg-red-50 rounded-xl items-center justify-center mr-3">
-                <Ionicons name="information-circle" size={20} color="#EF4444" />
+              <View className="w-10 h-10 bg-[#FCECEF] dark:bg-[#3A2025] rounded-xl items-center justify-center mr-3">
+                <Ionicons name="information-circle" size={20} color={theme.school} />
               </View>
-              <Text className="text-lg font-bold text-gray-900">
+              <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA]">
                 Quiz Guidelines
               </Text>
             </View>
 
             <View className="space-y-3">
               <View className="flex-row items-start">
-                <View className="w-8 h-8 bg-blue-50 rounded-lg items-center justify-center mr-3 mt-0.5">
-                  <Entypo name="eye" size={16} color="#3B82F6" />
+                <View className="w-8 h-8 bg-[#F2ECF8] dark:bg-[#2A2038] rounded-lg items-center justify-center mr-3 mt-0.5">
+                  <Entypo name="eye" size={16} color={theme.primary} />
                 </View>
-                <Text className="text-sm text-gray-700 flex-1 leading-5">
+                <Text className="text-sm text-[#201D25] dark:text-[#F7F4FA] flex-1 leading-5">
                   Do not switch tabs while taking a quiz
                 </Text>
               </View>
 
               <View className="flex-row items-start">
-                <View className="w-8 h-8 bg-orange-50 rounded-lg items-center justify-center mr-3 mt-0.5">
-                  <Feather name="clock" size={16} color="#F97316" />
+                <View className="w-8 h-8 bg-[#F2ECF8] dark:bg-[#2A2038] rounded-lg items-center justify-center mr-3 mt-0.5">
+                  <Feather name="clock" size={16} color={theme.warning} />
                 </View>
-                <Text className="text-sm text-gray-700 flex-1 leading-5">
+                <Text className="text-sm text-[#201D25] dark:text-[#F7F4FA] flex-1 leading-5">
                   You have a limited time to complete each quiz
                 </Text>
               </View>
 
               <View className="flex-row items-start">
-                <View className="w-8 h-8 bg-green-50 rounded-lg items-center justify-center mr-3 mt-0.5">
+                <View className="w-8 h-8 bg-[#F2ECF8] dark:bg-[#2A2038] rounded-lg items-center justify-center mr-3 mt-0.5">
                   <MaterialCommunityIcons
                     name="reload"
                     size={16}
-                    color="#10B981"
+                    color={theme.success}
                   />
                 </View>
-                <Text className="text-sm text-gray-700 flex-1 leading-5">
-                  You have 5 attempts per quiz to improve your score
+                <Text className="text-sm text-[#201D25] dark:text-[#F7F4FA] flex-1 leading-5">
+                  You have {MAX_QUIZ_ATTEMPTS} attempts per quiz to improve your score
                 </Text>
               </View>
 
               <View className="flex-row items-start">
-                <View className="w-8 h-8 bg-red-50 rounded-lg items-center justify-center mr-3 mt-0.5">
-                  <MaterialIcons name="send" size={16} color="#EF4444" />
+                <View className="w-8 h-8 bg-[#FCECEF] dark:bg-[#3A2025] rounded-lg items-center justify-center mr-3 mt-0.5">
+                  <MaterialIcons name="send" size={16} color={theme.school} />
                 </View>
-                <Text className="text-sm text-gray-700 flex-1 leading-5">
+                <Text className="text-sm text-[#201D25] dark:text-[#F7F4FA] flex-1 leading-5">
                   Quiz will auto-submit when time is up
                 </Text>
               </View>
@@ -666,6 +734,14 @@ export default function Quiz() {
         {/* Bottom Spacing */}
         <View className="h-6" />
       </ScrollView>
+      <AssessmentStartModal
+        visible={!!quizToStart}
+        type="quiz"
+        title={quizToStart?.quiz_name ?? "Quiz"}
+        isReattempt={(quizToStart?.attempts_made ?? 0) > 0}
+        onCancel={() => setQuizToStart(null)}
+        onBegin={beginQuiz}
+      />
     </SafeAreaView>
   );
 }

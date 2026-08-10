@@ -1,4 +1,5 @@
 import { ExamSubmitResponse } from "@/api/QueryOptions/examAnswersMutation";
+import { useAppTheme } from "@/theme";
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -19,17 +20,18 @@ export default function ExamSubmissionModal({
   resultData,
   isLoading = false,
 }: ExamSubmissionModalProps) {
+  const { theme } = useAppTheme();
   const getScoreColor = (percentage: number) => {
-    if (percentage >= 80) return "text-green-600";
-    if (percentage >= 60) return "text-yellow-600";
-    return "text-red-600";
+    if (percentage >= 80) return theme.success;
+    if (percentage >= 60) return theme.warning;
+    return theme.danger;
   };
   let reasonText = "";
 
   const getScoreBgColor = (percentage: number) => {
-    if (percentage >= 80) return "bg-green-50";
-    if (percentage >= 60) return "bg-yellow-50";
-    return "bg-red-50";
+    if (percentage >= 80) return theme.surfaceMuted;
+    if (percentage >= 60) return theme.surfaceAccent;
+    return theme.surfaceAccent;
   };
 
   if (!visible) return null;
@@ -37,9 +39,9 @@ export default function ExamSubmissionModal({
   if (submissionReason === "time_expired") {
     reasonText = "Time ran out (120 minutes)";
   } else if (submissionReason === "tab_switch") {
-    reasonText = "Submitted automatically — app switch detected";
+    reasonText = "Submitted automatically because the app was left";
   } else if (submissionReason === "navigation_attempt") {
-    reasonText = "Submitted automatically — navigation attempt detected";
+    reasonText = "Submitted automatically because navigation was attempted";
   } else if (submissionReason === "manual") {
     reasonText = "Manually submitted by user";
   } else {
@@ -50,14 +52,14 @@ export default function ExamSubmissionModal({
       visible={visible}
       animationType="fade"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={() => undefined}
     >
       <View className="flex-1 bg-black/50 justify-center items-center p-4">
-        <View className="bg-white rounded-2xl w-full max-w-md p-6">
+        <View className="rounded-2xl w-full max-w-md p-6" style={{ backgroundColor: theme.surface }}>
           {isLoading ? (
             <View className="items-center py-8">
-              <ActivityIndicator size="large" color="#3b82f6" />
-              <Text className="mt-4 text-gray-600 text-center">
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text className="mt-4 text-center" style={{ color: theme.textMuted }}>
                 Submitting your exam...
               </Text>
             </View>
@@ -65,38 +67,30 @@ export default function ExamSubmissionModal({
             <>
               {/* Header */}
               <View className="items-center mb-6">
-                <View className="bg-blue-100 p-4 rounded-full mb-3">
-                  <Ionicons name="checkmark-circle" size={48} color="#3b82f6" />
+                <View className="p-4 rounded-full mb-3" style={{ backgroundColor: theme.surfaceMuted }}>
+                  <Ionicons name="checkmark-circle" size={48} color={theme.success} />
                 </View>
-                <Text className="text-2xl font-bold text-gray-800">
+                <Text className="text-2xl font-bold" style={{ color: theme.text }}>
                   Exam Submitted!
                 </Text>
-                <Text className="text-sm text-gray-500 mt-1">{reasonText}</Text>
+                <Text className="text-sm mt-1" style={{ color: theme.textMuted }}>{reasonText}</Text>
               </View>
 
               {/* Score Display */}
               <View
-                className={`${getScoreBgColor(
-                  (resultData.correct_answers / resultData.total_questions) *
-                    100,
-                )} p-6 rounded-xl mb-6`}
+                className="p-6 rounded-xl mb-6"
+                style={{ backgroundColor: getScoreBgColor(resultData.score) }}
               >
-                <Text className="text-center text-gray-600 mb-2">
+                <Text className="text-center mb-2" style={{ color: theme.textMuted }}>
                   Your Score
                 </Text>
                 <Text
-                  className={`text-center text-5xl font-bold ${getScoreColor(
-                    (resultData.correct_answers / resultData.total_questions) *
-                      100,
-                  )}`}
+                  className="text-center text-5xl font-bold"
+                  style={{ color: getScoreColor(resultData.score) }}
                 >
-                  {Math.round(
-                    (resultData.correct_answers / resultData.total_questions) *
-                      100,
-                  )}
-                  %
+                  {Math.round(resultData.score)}%
                 </Text>
-                <Text className="text-center text-gray-600 mt-2">
+                <Text className="text-center mt-2" style={{ color: theme.textMuted }}>
                   {resultData.correct_answers} out of{" "}
                   {resultData.total_questions} correct
                 </Text>
@@ -104,21 +98,21 @@ export default function ExamSubmissionModal({
 
               {/* Statistics */}
               <View className="space-y-3 mb-6">
-                <View className="flex-row justify-between items-center py-2 border-b border-gray-200">
-                  <Text className="text-gray-600">Correct Answers</Text>
-                  <Text className="font-semibold text-green-600">
+                <View className="flex-row justify-between items-center py-2 border-b" style={{ borderColor: theme.border }}>
+                  <Text style={{ color: theme.textMuted }}>Correct Answers</Text>
+                  <Text className="font-semibold" style={{ color: theme.success }}>
                     {resultData.correct_answers}
                   </Text>
                 </View>
-                <View className="flex-row justify-between items-center py-2 border-b border-gray-200">
-                  <Text className="text-gray-600">Incorrect Answers</Text>
-                  <Text className="font-semibold text-red-600">
+                <View className="flex-row justify-between items-center py-2 border-b" style={{ borderColor: theme.border }}>
+                  <Text style={{ color: theme.textMuted }}>Incorrect Answers</Text>
+                  <Text className="font-semibold" style={{ color: theme.danger }}>
                     {resultData.total_questions - resultData.correct_answers}
                   </Text>
                 </View>
                 <View className="flex-row justify-between items-center py-2">
-                  <Text className="text-gray-600">Total Questions</Text>
-                  <Text className="font-semibold text-gray-800">
+                  <Text style={{ color: theme.textMuted }}>Total Questions</Text>
+                  <Text className="font-semibold" style={{ color: theme.text }}>
                     {resultData.total_questions}
                   </Text>
                 </View>
@@ -126,25 +120,37 @@ export default function ExamSubmissionModal({
 
               {/* Action Button */}
               <Pressable
-                className="bg-blue-600 py-4 rounded-lg active:bg-blue-700"
                 onPress={onClose}
               >
-                <Text className="text-white text-center font-semibold text-lg">
-                  Back to Exams
-                </Text>
+                {({ pressed }) => (
+                  <View
+                    className="py-4 rounded-lg"
+                    style={{ backgroundColor: pressed ? theme.primaryPressed : theme.primary }}
+                  >
+                    <Text className="text-white text-center font-semibold text-lg">
+                      Back to Exams
+                    </Text>
+                  </View>
+                )}
               </Pressable>
             </>
           ) : (
             <View className="items-center py-8">
-              <Ionicons name="alert-circle" size={48} color="#ef4444" />
-              <Text className="mt-4 text-gray-600 text-center">
+              <Ionicons name="alert-circle" size={48} color={theme.danger} />
+              <Text className="mt-4 text-center" style={{ color: theme.textMuted }}>
                 No result data available
               </Text>
               <Pressable
-                className="bg-blue-600 py-3 px-6 rounded-lg mt-4"
                 onPress={onClose}
               >
-                <Text className="text-white font-semibold">Close</Text>
+                {({ pressed }) => (
+                  <View
+                    className="py-3 px-6 rounded-lg mt-4"
+                    style={{ backgroundColor: pressed ? theme.primaryPressed : theme.primary }}
+                  >
+                    <Text className="text-white font-semibold">Close</Text>
+                  </View>
+                )}
               </Pressable>
             </View>
           )}
