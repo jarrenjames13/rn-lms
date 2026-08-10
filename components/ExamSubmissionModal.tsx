@@ -35,9 +35,11 @@ export default function ExamSubmissionModal({
   if (!visible) return null;
 
   if (submissionReason === "time_expired") {
-    reasonText = "Time ran out (60 minutes)";
+    reasonText = "Time ran out (120 minutes)";
   } else if (submissionReason === "tab_switch") {
-    reasonText = "Switched to another app / returned to home screen";
+    reasonText = "Submitted automatically — app switch detected";
+  } else if (submissionReason === "navigation_attempt") {
+    reasonText = "Submitted automatically — navigation attempt detected";
   } else if (submissionReason === "manual") {
     reasonText = "Manually submitted by user";
   } else {

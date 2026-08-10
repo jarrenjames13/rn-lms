@@ -1,20 +1,24 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter } from "expo-router";
+import { useAppTheme } from "@/theme";
 
 export default function CourseTabsLayout() {
   const router = useRouter();
+  const { theme } = useAppTheme();
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#6D4C9B",
-        tabBarInactiveTintColor: "#8A8190",
+        headerShown: false,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.tabInactive,
+        tabBarStyle: { backgroundColor: theme.surface, borderTopColor: theme.border, height: 66, paddingTop: 6 },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600", paddingBottom: 4 },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          headerShown: false,
-          tabBarLabel: "Home",
+          tabBarLabel: "All Courses",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" color={color} size={size} />
           ),
@@ -29,7 +33,6 @@ export default function CourseTabsLayout() {
       <Tabs.Screen
         name="overview"
         options={{
-          headerShown: false,
           tabBarLabel: "Overview",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="information-circle" color={color} size={size} />
@@ -39,7 +42,6 @@ export default function CourseTabsLayout() {
       <Tabs.Screen
         name="assessments"
         options={{
-          headerShown: false,
           tabBarLabel: "Assessments",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="clipboard" color={color} size={size} />
@@ -49,7 +51,6 @@ export default function CourseTabsLayout() {
       <Tabs.Screen
         name="modules"
         options={{
-          headerShown: false,
           tabBarLabel: "Modules",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="book" color={color} size={size} />
@@ -71,7 +72,6 @@ export default function CourseTabsLayout() {
       <Tabs.Screen
         name="grade"
         options={{
-          headerShown: false,
           tabBarLabel: "Grades",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="bar-chart" color={color} size={size} />

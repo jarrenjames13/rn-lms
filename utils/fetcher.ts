@@ -1,4 +1,4 @@
-import { create, isAxiosError } from "axios";
+import { create } from "axios";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "../utils/constants";
 
@@ -102,15 +102,15 @@ apiClient.interceptors.request.use(
   },
 );
 
-// Response interceptor to handle 401/422 errors (token expiration)
+// Only authentication failures should attempt a token refresh. Validation errors must reach the caller.
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 (unauthorized) or 422 (token expired/invalid)
+    // Handle a single unauthorized retry.
     if (
-      (error.response?.status === 401 || error.response?.status === 422) &&
+      error.response?.status === 401 &&
       !originalRequest._retry && !originalRequest._skipAuthInterceptor
     ) {
       if (isRefreshing) {
@@ -177,24 +177,12 @@ const request = async <T = any>(
   params: Record<string, string | number | boolean> = {},
   headers: Record<string, string> = {},
 ) => {
-  try {
-    const fullUrl = buildUrlWithParams(url, params);
+  const fullUrl = buildUrlWithParams(url, params);
+  return apiClient.request<T>({ method, url: fullUrl, data, headers });
+};
 
-    const config = {
-      method,
-      url: fullUrl,
-      data,
-      headers,
-    };
-
-    const res = await apiClient.request<T>(config);
-    return res;
-  } catch (error: any) {
-    if (isAxiosError(error) && error.response) {
-      return error.response;
-    }
-    throw error;
-  }
+export const clearApiAuthorization = () => {
+  delete apiClient.defaults.headers.common.Authorization;
 };
 
 // Exported functions

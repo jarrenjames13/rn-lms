@@ -8,11 +8,13 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import Toast from "react-native-toast-message";
+import { AppThemeProvider, useAppTheme } from "@/theme";
 import "../global.css";
 
 const RootLayoutNav = React.memo(function RootLayoutNav() {
   const { authState } = useAuth();
   const queryClient = useQueryClient();
+  const { isDark, theme } = useAppTheme();
 
   useEffect(() => {
     if (authState?.success !== true) return;
@@ -32,6 +34,7 @@ const RootLayoutNav = React.memo(function RootLayoutNav() {
   useEffect(() => {
     if (authState?.success !== true) {
       sseService.disconnect();
+      queryClient.clear();
       return;
     }
     void sseService.connect();
@@ -47,14 +50,14 @@ const RootLayoutNav = React.memo(function RootLayoutNav() {
   if (authState?.isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#8b5cf6" />
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
     <>
-      <StatusBar style="auto" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack>
         <Stack.Protected guard={authState?.success !== true}>
           <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -87,11 +90,13 @@ export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        <RootLayoutNav />
-        <Toast config={ToastConfig} />
-      </QueryClientProvider>
-    </AuthProvider>
+    <AppThemeProvider>
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <RootLayoutNav />
+          <Toast config={ToastConfig} />
+        </QueryClientProvider>
+      </AuthProvider>
+    </AppThemeProvider>
   );
 }

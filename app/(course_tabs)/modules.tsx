@@ -4,6 +4,7 @@ import createCourseDetailsOptions from "@/api/QueryOptions/courseDetailsOptions"
 import createModuleProgressOptions from "@/api/QueryOptions/moduleProgressOptions";
 import { useTrackSection } from "@/api/QueryOptions/trackSectionMutation";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
+import { AppScreen } from "@/components/ui";
 import CommentsModal from "@/components/commentsModal";
 import ModuleProgressBar from "@/components/ModuleProgressBar";
 import { useCourseStore } from "@/store/useCourseStore";
@@ -29,7 +30,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 // Skeleton components
 import ActivitySkeleton from "@/components/skeletons/activitySkeleton";
@@ -635,7 +635,7 @@ export default function Modules() {
     );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <AppScreen>
       <LegendList
         ref={listRef}
         data={loadingModules || !moduleData ? [] : parsedModules}
@@ -688,6 +688,6 @@ export default function Modules() {
           moduleId={commentsModuleId ?? undefined}
         />
       )}
-    </SafeAreaView>
+    </AppScreen>
   );
 }

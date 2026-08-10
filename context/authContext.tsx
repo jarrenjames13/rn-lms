@@ -6,7 +6,7 @@ import {
 } from "@/types/api";
 
 import { BASE_URL } from "@/utils/constants";
-import { setLogoutCallback } from "@/utils/fetcher";
+import { clearApiAuthorization, setLogoutCallback } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
 import NetInfo from "@react-native-community/netinfo";
 import axios, { isAxiosError } from "axios";
@@ -74,6 +74,7 @@ export const AuthProvider = ({ children }: any) => {
     await SecureStore.deleteItemAsync("refresh_token");
     await SecureStore.deleteItemAsync("user");
     delete axios.defaults.headers.common["Authorization"];
+    clearApiAuthorization();
 
     setAuthState({
       access_token: null,

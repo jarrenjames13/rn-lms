@@ -10,6 +10,7 @@ type ExamStore = {
   selectedAnswers: Record<number, OptionKey>;
   setSelectedAnswers: (answers: Record<number, OptionKey>) => void;
   clearAnswers: () => void;
+  clearAttempt: () => void;
 };
 
 export const useExamStore = create<ExamStore>((set) => ({
@@ -23,4 +24,5 @@ export const useExamStore = create<ExamStore>((set) => ({
   setSelectedAnswers: (answers: Record<number, OptionKey>) =>
     set({ selectedAnswers: answers }),
   clearAnswers: () => set({ selectedAnswers: {} }),
+  clearAttempt: () => set({ exam_id: 0, instance_id: 0, session_token: "", selectedAnswers: {} }),
 }));

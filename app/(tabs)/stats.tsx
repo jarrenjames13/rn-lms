@@ -1,4 +1,5 @@
 import createStatsOptions from "@/api/QueryOptions/statsOptions";
+import { AppHeader, AppScreen, StateView } from "@/components/ui";
 import Skeleton from "@/components/skeletons/Skeleton";
 import {
   FontAwesome5,
@@ -8,7 +9,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 // Skeleton Components
 const StatsSkeleton = () => (
@@ -123,21 +123,11 @@ export default function Stats() {
   const isLoadingStats = isLoading || isFetching || (!stats && !error);
 
   if (error) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-50 px-6">
-        <View className="w-20 h-20 bg-red-100 rounded-full items-center justify-center mb-4">
-          <Ionicons name="alert-circle" size={40} color="#DC2626" />
-        </View>
-        <Text className="text-lg font-bold text-gray-900 mb-2">
-          Unable to Load Stats
-        </Text>
-        <Text className="text-red-600 text-center">{error.message}</Text>
-      </View>
-    );
+    return <AppScreen><StateView icon="cloud-offline-outline" title="Statistics unavailable" message="Your learning summary could not be loaded. Please try again." actionLabel="Try again" onAction={() => void refetch()} /></AppScreen>;
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <AppScreen>
       <ScrollView
         className="flex-1"
         refreshControl={
@@ -161,25 +151,7 @@ export default function Stats() {
             </View>
           </View>
         ) : (
-          <View className="px-6 pt-6 pb-8 bg-white">
-            <View className="flex-row items-center mb-2">
-              <View className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-700 rounded-full items-center justify-center mr-4 shadow-lg">
-                <MaterialCommunityIcons
-                  name="chart-line"
-                  size={24}
-                  color="#FFFFFF"
-                />
-              </View>
-              <View>
-                <Text className="text-3xl font-bold text-gray-900">
-                  Statistics
-                </Text>
-                <Text className="text-sm text-gray-500 mt-1">
-                  Track your learning journey
-                </Text>
-              </View>
-            </View>
-          </View>
+          <View style={{ paddingHorizontal: 20, paddingTop: 18 }}><AppHeader eyebrow="LEARNING SUMMARY" title="Statistics" subtitle="Track your learning journey." /></View>
         )}
 
         {isLoadingStats ? (
@@ -387,6 +359,6 @@ export default function Stats() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

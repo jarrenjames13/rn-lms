@@ -1,4 +1,5 @@
 import createComprehensiveGradesOptions from "@/api/QueryOptions/comprehensiveGradesOptions";
+import { AppScreen, StateView } from "@/components/ui";
 import Skeleton from "@/components/skeletons/Skeleton";
 import { useCourseStore } from "@/store/useCourseStore";
 import { ComprehensiveGradesResponse, SubmissionGrade } from "@/types/api";
@@ -12,7 +13,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type TabKey = "overview" | "activities" | "quizzes" | "exams" | "submissions";
@@ -921,31 +921,11 @@ export default function ComprehensiveGradesScreen() {
   });
 
   if (isError) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <View className="flex-1 items-center justify-center px-8">
-          <View className="w-16 h-16 bg-red-50 rounded-2xl items-center justify-center mb-4">
-            <Ionicons name="alert-circle" size={32} color="#EF4444" />
-          </View>
-          <Text className="text-gray-900 text-lg font-bold text-center mb-2">
-            Failed to Load Grades
-          </Text>
-          <Text className="text-gray-400 text-sm text-center mb-6">
-            Something went wrong while fetching your grades. Please try again.
-          </Text>
-          <Pressable
-            onPress={() => refetch()}
-            className="bg-red-500 rounded-xl px-6 py-3 active:bg-red-600"
-          >
-            <Text className="text-white font-bold">Try Again</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
+    return <AppScreen><StateView icon="cloud-offline-outline" title="Grades unavailable" message="Your academic performance report could not be loaded." actionLabel="Try again" onAction={() => void refetch()} /></AppScreen>;
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <AppScreen>
       {/* ── Header ──────────────────────────────────────────────── */}
       <View className="bg-white border-b border-gray-200">
         {/* Crimson accent line */}
@@ -1044,6 +1024,6 @@ export default function ComprehensiveGradesScreen() {
 
         <View className="h-8" />
       </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }

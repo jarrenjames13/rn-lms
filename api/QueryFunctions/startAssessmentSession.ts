@@ -9,6 +9,7 @@ export type StartSessionPayload = {
 export type StartSessionResponse = {
   session_token: string;
   started_at: string;
+  deadline_at: string;
 };
 
 export const startAssessmentSession = async (

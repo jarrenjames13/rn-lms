@@ -10,7 +10,9 @@ import { useQuizStore } from "@/store/useQuizStore";
 import type { OptionKey, Question } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePreventRemove } from "@react-navigation/native";
+import { usePreventScreenCapture } from "expo-screen-capture";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -25,10 +27,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const QUIZ_DURATION_SECONDS = 60 * 60;
+type SubmissionReason = "manual" | "time_expired" | "tab_switch" | "navigation_attempt";
 
 export default function QuizTaking() {
-  const [secondsLeft, setSecondsLeft] = useState(QUIZ_DURATION_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [submissionReason, setSubmissionReason] = useState("");
   const [isStartingSession, setIsStartingSession] = useState(false);
@@ -38,6 +41,8 @@ export default function QuizTaking() {
   const appState = useRef(AppState.currentState);
   const hasSubmittedRef = useRef(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
+  usePreventScreenCapture();
 
   const {
     quiz_id,
@@ -47,6 +52,7 @@ export default function QuizTaking() {
     setSelectedAnswers,
     clearAnswers,
     setSessionToken,
+    clearAttempt,
   } = useQuizStore();
 
   const listRef = useRef<any>(null);
@@ -69,8 +75,11 @@ export default function QuizTaking() {
       instance_id,
       category: "quiz",
     })
-      .then(({ session_token: nextToken }) => {
-        if (!cancelled) setSessionToken(nextToken);
+      .then(({ session_token: nextToken, deadline_at }) => {
+        if (!cancelled) {
+          setSessionToken(nextToken);
+          setDeadlineAt(new Date(deadline_at).getTime());
+        }
       })
       .catch((error: any) => {
         if (!cancelled) {
@@ -92,7 +101,7 @@ export default function QuizTaking() {
     isError,
     error,
   } = useQuery({
-    ...createQuizQuestionsOptions(quiz_id, instance_id),
+    ...createQuizQuestionsOptions(quiz_id, instance_id, session_token),
     enabled: quiz_id > 0 && instance_id > 0 && !!session_token,
   });
 
@@ -103,10 +112,14 @@ export default function QuizTaking() {
       console.log("quiz submitted Successfully:", data);
       setShowResultModal(true);
     },
+    onError: (error: Error) => {
+      Alert.alert("Submission failed", `${error.message}\n\nYour answers are still available. Please try again.`);
+      hasSubmittedRef.current = false;
+    },
   });
 
   const performSubmission = useCallback(
-    (reason: string) => {
+    (reason: SubmissionReason) => {
       if (hasSubmittedRef.current || !session_token) return;
 
       hasSubmittedRef.current = true;
@@ -116,41 +129,38 @@ export default function QuizTaking() {
         quiz_id,
         instance_id,
         answers: selectedAnswers,
+        submission_reason: reason,
         session_token,
       });
     },
     [quiz_id, instance_id, selectedAnswers, submitMutation, session_token],
   );
 
+  usePreventRemove(!showResultModal && Boolean(session_token) && !hasSubmittedRef.current, () => {
+    performSubmission("navigation_attempt");
+  });
+
   useEffect(() => {
-    if (hasSubmittedRef.current) return;
-
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          performSubmission("Ran out of time (60 minutes)");
-          return 0;
-        }
-
-        if (prev === 600) {
-          Vibration.vibrate(500);
-          console.log("10 minute remaining");
-        }
-
-        return prev - 1;
+    if (!deadlineAt || hasSubmittedRef.current) return;
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000));
+      setSecondsLeft((previous) => {
+        if (previous > 600 && remaining <= 600) Vibration.vibrate(500);
+        return remaining;
       });
-    }, 1000);
-
+      if (remaining === 0) performSubmission("time_expired");
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [performSubmission]);
+  }, [deadlineAt, performSubmission]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener(
       "change",
       (nextAppState: AppStateStatus) => {
-        if (appState.current === "active" && nextAppState === "background") {
-          performSubmission("Auto-submitted due to app going to background");
+        if (appState.current === "active" && nextAppState !== "active") {
+          performSubmission("tab_switch");
         }
         appState.current = nextAppState;
       },
@@ -215,7 +225,7 @@ export default function QuizTaking() {
             text: "Submit",
             style: "destructive",
             onPress: () => {
-              performSubmission("Manually submitted by user");
+              performSubmission("manual");
               console.log("Submitted Answers:", selectedAnswers);
             },
           },
@@ -249,7 +259,9 @@ export default function QuizTaking() {
 
   const handleModalClose = () => {
     setShowResultModal(false);
-    router.replace("/(course_tabs)/quiz");
+    queryClient.removeQueries({ queryKey: ["quiz_questions", quiz_id, instance_id, session_token] });
+    clearAttempt();
+    router.replace("/(course_tabs)/assessments");
   };
 
   const renderQuestion = ({ item }: LegendListRenderItemProps<Question>) => {

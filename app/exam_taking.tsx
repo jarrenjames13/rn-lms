@@ -7,7 +7,9 @@ import { useExamStore } from "@/store/useExamStore";
 import type { ExamQuestion, OptionKey } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LegendList, LegendListRenderItemProps } from "@legendapp/list";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePreventRemove } from "@react-navigation/native";
+import { usePreventScreenCapture } from "expo-screen-capture";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -21,10 +23,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const EXAM_DURATION_SECONDS = 120 * 60;
+type SubmissionReason = "manual" | "time_expired" | "tab_switch" | "navigation_attempt";
 
 export default function ExamTaking() {
-  const [secondsLeft, setSecondsLeft] = useState(EXAM_DURATION_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [submissionReason, setSubmissionReason] = useState("");
   const [isStartingSession, setIsStartingSession] = useState(false);
@@ -34,6 +37,8 @@ export default function ExamTaking() {
   const appState = useRef(AppState.currentState);
   const hasSubmittedRef = useRef(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
+  usePreventScreenCapture();
 
   const {
     exam_id,
@@ -43,6 +48,7 @@ export default function ExamTaking() {
     setSelectedAnswers,
     clearAnswers,
     setSessionToken,
+    clearAttempt,
   } = useExamStore();
 
   const listRef = useRef<any>(null);
@@ -64,8 +70,11 @@ export default function ExamTaking() {
       instance_id,
       category: "exam",
     })
-      .then(({ session_token: nextToken }) => {
-        if (!cancelled) setSessionToken(nextToken);
+      .then(({ session_token: nextToken, deadline_at }) => {
+        if (!cancelled) {
+          setSessionToken(nextToken);
+          setDeadlineAt(new Date(deadline_at).getTime());
+        }
       })
       .catch((error: any) => {
         if (!cancelled) {
@@ -87,7 +96,7 @@ export default function ExamTaking() {
     isError,
     error,
   } = useQuery({
-    ...createExamQuestionsOptions(exam_id, instance_id),
+    ...createExamQuestionsOptions(exam_id, instance_id, session_token),
     enabled: exam_id > 0 && instance_id > 0 && !!session_token,
   });
 
@@ -102,7 +111,7 @@ export default function ExamTaking() {
   });
 
   const performSubmission = useCallback(
-    (reason: string) => {
+    (reason: SubmissionReason) => {
       if (hasSubmittedRef.current || !session_token) return;
       hasSubmittedRef.current = true;
       setSubmissionReason(reason);
@@ -118,28 +127,35 @@ export default function ExamTaking() {
     [exam_id, instance_id, selectedAnswers, submitMutation, session_token],
   );
 
+  usePreventRemove(!showResultModal && Boolean(session_token) && !hasSubmittedRef.current, () => {
+    performSubmission("navigation_attempt");
+  });
+
+  const handleModalClose = () => {
+    setShowResultModal(false);
+    queryClient.removeQueries({ queryKey: ["exam_questions", exam_id, instance_id, session_token] });
+    clearAttempt();
+    router.replace("/(course_tabs)/assessments");
+  };
+
   useEffect(() => {
-    if (hasSubmittedRef.current) return;
-
-    const interval = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          performSubmission("time_expired");
-          return 0;
-        }
-
-        if (prev === 600) Vibration.vibrate(500);
-        return prev - 1;
+    if (!deadlineAt || hasSubmittedRef.current) return;
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000));
+      setSecondsLeft((previous) => {
+        if (previous > 600 && remaining <= 600) Vibration.vibrate(500);
+        return remaining;
       });
-    }, 1000);
-
+      if (remaining === 0) performSubmission("time_expired");
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [performSubmission]);
+  }, [deadlineAt, performSubmission]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
-      if (appState.current === "active" && next === "background") {
+      if (appState.current === "active" && next !== "active") {
         performSubmission("tab_switch");
       }
       appState.current = next;
@@ -343,7 +359,7 @@ export default function ExamTaking() {
 
       <ExamSubmissionModal
         visible={showResultModal}
-        onClose={() => router.replace("/(course_tabs)/exams")}
+        onClose={handleModalClose}
         submissionReason={submissionReason}
         resultData={submitMutation.data}
         isLoading={submitMutation.isPending}

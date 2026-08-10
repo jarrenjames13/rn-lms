@@ -4,6 +4,7 @@ export type QuizSubmitPayload = {
   quiz_id: number;
   instance_id: number;
   answers: Record<number, string>;
+  submission_reason: string;
   session_token: string;
 };
 

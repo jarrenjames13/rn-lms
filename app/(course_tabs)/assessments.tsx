@@ -3,18 +3,18 @@ import createCourseDetailsOptions from "@/api/QueryOptions/courseDetailsOptions"
 import createListExamsOptions from "@/api/QueryOptions/listExamsOption";
 import createListQuizzesOptions from "@/api/QueryOptions/listQuizzesOptions";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
+import { AppButton, AppHeader, AppScreen, Card, StateView } from "@/components/ui";
 import ScreenLoading from "@/components/ScreenLoading";
 import SubmissionModal from "@/components/SubmissionModal";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useExamStore } from "@/store/useExamStore";
 import { useQuizStore } from "@/store/useQuizStore";
 import { ActivityWithGrade, ExamDetails, Module, QuizDetails, SingleActivity } from "@/types/api";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 type Assessment = {
   id: number;
@@ -51,15 +51,15 @@ export default function Assessments() {
     Submission: true,
   });
 
-  const { data: quizzes, isLoading: loadingQuizzes } = useQuery({
+  const { data: quizzes, isLoading: loadingQuizzes, isError: quizzesError, refetch: refetchQuizzes } = useQuery({
     ...createListQuizzesOptions(instance_id!),
     enabled: !!instance_id,
   });
-  const { data: exams, isLoading: loadingExams } = useQuery({
+  const { data: exams, isLoading: loadingExams, isError: examsError, refetch: refetchExams } = useQuery({
     ...createListExamsOptions(instance_id!),
     enabled: !!instance_id,
   });
-  const { data: courseDetails, isLoading: loadingCourse } = useQuery({
+  const { data: courseDetails, isLoading: loadingCourse, isError: courseError, refetch: refetchCourse } = useQuery({
     ...createCourseDetailsOptions(course_id!),
     enabled: !!course_id,
   });
@@ -142,7 +142,7 @@ export default function Assessments() {
     const actionable = assessment.status === "Available";
 
     return (
-      <View key={`${assessment.type}-${assessment.id}`} className="bg-white rounded-3xl border border-[#E8E2E9] p-5 mt-3">
+       <Card key={`${assessment.type}-${assessment.id}`} style={{ marginTop: 12 }}>
         <View className="flex-row items-start">
           <View style={{ backgroundColor: style.bg }} className="w-11 h-11 rounded-2xl items-center justify-center mr-3">
             <MaterialCommunityIcons name={style.icon} size={22} color={style.color} />
@@ -159,39 +159,23 @@ export default function Assessments() {
         </View>
         {assessment.score !== null && assessment.score !== undefined ? <Text className="text-sm font-semibold text-[#6D4C9B] mt-4">Score: {assessment.score}%</Text> : null}
         {actionable ? (
-          <Pressable
-            accessibilityRole="button"
-            className="bg-[#6D4C9B] rounded-2xl py-3.5 items-center mt-4 active:opacity-80"
-            onPress={() => assessment.quiz ? startQuiz(assessment.quiz) : assessment.exam && assessment.type === "Exam" ? startExam(assessment.exam) : assessment.exam ? setSelectedExam(assessment.exam) : assessment.activity && setSelectedActivity(assessment.activity)}
-          >
-            <Text className="text-white font-bold">{assessment.type === "Quiz" ? "Start quiz" : assessment.type === "Exam" ? "Start exam" : "Submit work"}</Text>
-          </Pressable>
+          <View style={{ marginTop: 16 }}><AppButton label={assessment.type === "Quiz" ? "Start quiz" : assessment.type === "Exam" ? "Start exam" : "Submit work"} onPress={() => assessment.quiz ? startQuiz(assessment.quiz) : assessment.exam && assessment.type === "Exam" ? startExam(assessment.exam) : assessment.exam ? setSelectedExam(assessment.exam) : assessment.activity && setSelectedActivity(assessment.activity)} /></View>
         ) : null}
-      </View>
+      </Card>
     );
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8F7F5]">
+    <AppScreen>
       <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-        <View className="flex-row items-center justify-between mb-2">
-          <View>
-            <Text className="text-3xl font-bold text-[#2D2633]">Assessments</Text>
-            <Text className="text-sm text-[#756C7D] mt-1">Quizzes, exams, and submissions in one place</Text>
-          </View>
-          <View className="w-11 h-11 rounded-2xl bg-[#EEE8F7] items-center justify-center">
-            <MaterialCommunityIcons name="clipboard-check-outline" size={23} color="#6D4C9B" />
-          </View>
-        </View>
+        <AppHeader eyebrow="COURSE WORK" title="Assessments" subtitle="Quizzes, exams, and submissions in one place." />
 
         {loading ? (
           <ScreenLoading message="Loading your assessments..." />
+        ) : quizzesError || examsError || courseError ? (
+          <StateView icon="cloud-offline-outline" title="Assessments unavailable" message="We could not load all of your course work." actionLabel="Try again" onAction={() => { void refetchQuizzes(); void refetchExams(); void refetchCourse(); }} />
         ) : assessments.length === 0 ? (
-          <View className="bg-white rounded-3xl border border-[#E8E2E9] p-8 items-center mt-6">
-            <Ionicons name="checkmark-circle-outline" size={56} color="#B8AFC0" />
-            <Text className="text-lg font-bold text-[#2D2633] mt-4">You are all caught up</Text>
-            <Text className="text-sm text-[#756C7D] text-center mt-2">New assessments will appear here when they are published.</Text>
-          </View>
+          <StateView icon="checkmark-circle-outline" title="You are all caught up" message="New assessments will appear here when they are published." />
         ) : (
           assessmentGroups.map(({ type, items }) => {
             const style = typeStyles[type];
@@ -222,6 +206,6 @@ export default function Assessments() {
       </ScrollView>
       {selectedExam && instance_id ? <SubmissionModal visible exam={selectedExam} instanceId={instance_id} onClose={() => setSelectedExam(null)} /> : null}
       {selectedActivity ? <ActivitySubmissionModal visible activity={selectedActivity} onClose={() => setSelectedActivity(null)} /> : null}
-    </SafeAreaView>
+    </AppScreen>
   );
 }

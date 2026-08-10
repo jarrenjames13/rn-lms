@@ -3,6 +3,7 @@ import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOption
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
 import CommentsModal from "@/components/commentsModal";
 import Skeleton from "@/components/skeletons/Skeleton";
+import { AppScreen, StateView } from "@/components/ui";
 import { useCourseStore } from "@/store/useCourseStore";
 import {
   CourseAllDetails,
@@ -20,7 +21,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
 
 export default function Overview() {
@@ -91,31 +91,11 @@ export default function Overview() {
   }, [refetch, refetchStats, refetchProgress, refetchComments]);
 
   if (detailsError || statsError || progressError) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-50 px-6">
-        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text className="text-lg font-semibold text-gray-800 mt-4">
-          Error Loading Course
-        </Text>
-        <Text className="text-base text-gray-500 text-center mt-2">
-          Unable to fetch course details. Please try again.
-        </Text>
-        <Pressable
-          onPress={() => {
-            refetch();
-            refetchStats();
-            refetchProgress();
-          }}
-          className="mt-6 bg-red-500 active:bg-red-600 px-6 py-3 rounded-xl"
-        >
-          <Text className="text-white font-semibold">Retry</Text>
-        </Pressable>
-      </View>
-    );
+    return <AppScreen><StateView icon="cloud-offline-outline" title="Course unavailable" message="Course details could not be loaded. Please try again." actionLabel="Try again" onAction={() => { void refetch(); void refetchStats(); void refetchProgress(); }} /></AppScreen>;
   }
 
   const details: CourseAllDetails = courseDetails ?? {
-    course: null,
+    course: { course_code: "", course_title: "", description: "" },
     modules: [],
   };
 
@@ -231,7 +211,7 @@ export default function Overview() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <AppScreen>
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -566,6 +546,6 @@ export default function Overview() {
           instanceId={instance_id}
         />
       )}
-    </SafeAreaView>
+    </AppScreen>
   );
 }

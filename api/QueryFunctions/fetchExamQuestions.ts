@@ -4,11 +4,13 @@ import { getData } from "@/utils/fetcher";
 export const fetchExamQuestions = async (
   examId: number,
   instanceId: number,
+  sessionToken: string,
 ) => {
   try {
     const res = await getData<ExamQuestionsResponse>(
       `/modules/student-exam-questions-unique/${examId}/${instanceId}`,
       {},
+      { "X-Assessment-Session": sessionToken },
     );
     const data: ExamQuestionsResponse = res.data;
     return data;

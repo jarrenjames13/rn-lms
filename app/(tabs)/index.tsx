@@ -1,4 +1,5 @@
 import Skeleton from "@/components/skeletons/Skeleton";
+import { AppScreen, StateView } from "@/components/ui";
 import { useAuth } from "@/context/authContext";
 import { useCourseStore } from "@/store/useCourseStore";
 import { Enrollment } from "@/types/api";
@@ -14,7 +15,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import createEnrollmentsOptions from "../../api/QueryOptions/enrollmentsOptions";
 
 // Skeleton Components
@@ -87,7 +87,7 @@ export default function Index() {
     enabled: !!userId,
   });
 
-  const enrollments: Enrollment[] = data?.enrollments ?? [];
+  const enrollments: Enrollment[] = data ?? [];
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -96,25 +96,7 @@ export default function Index() {
   }, [refetch]);
 
   if (enrollmentsError) {
-    return (
-      <View className="flex-1 justify-center items-center bg-white px-6">
-        <MaterialCommunityIcons
-          name="alert-circle-outline"
-          size={64}
-          color="#EF4444"
-        />
-        <Text className="text-xl font-bold text-gray-800 mt-4">Oops!</Text>
-        <Text className="text-base text-gray-600 text-center mt-2">
-          We could not load your enrollments. Please try again.
-        </Text>
-        <Pressable
-          className="mt-6 bg-red-500 px-6 py-3 rounded-full"
-          onPress={() => refetch()}
-        >
-          <Text className="text-white font-semibold">Retry</Text>
-        </Pressable>
-      </View>
-    );
+    return <AppScreen><StateView icon="cloud-offline-outline" title="Courses unavailable" message="Your enrollments could not be loaded. Please try again." actionLabel="Try again" onAction={() => void refetch()} /></AppScreen>;
   }
 
   const activeEnrollments = enrollments.filter((enrollment) => {
@@ -283,7 +265,7 @@ export default function Index() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <AppScreen>
       <ScrollView
         className="flex-1 bg-gray-50"
         showsVerticalScrollIndicator={false}
@@ -453,6 +435,6 @@ export default function Index() {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </AppScreen>
   );
 }

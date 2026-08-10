@@ -1,185 +1,60 @@
+import { AppButton, AppScreen, Card } from "@/components/ui";
 import { useAuth } from "@/context/authContext";
-import { FontAwesome5, Ionicons, MaterialIcons } from "@expo/vector-icons";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useAppTheme } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Settings() {
   const { onLogout, authState } = useAuth();
-
+  const { theme, isDark, setColorScheme } = useAppTheme();
   const user = authState?.user;
-
-  const handleLogout = async () => {
-    try {
-      await onLogout?.();
-    } catch (error) {
-      console.log("Logout error:", error);
-    }
-  };
+  const [appearanceMode, setAppearanceMode] = useState<"light" | "dark" | "system">("system");
 
   if (authState?.isLoading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#DC2626" />
-      </View>
-    );
+    return <AppScreen style={styles.center}><ActivityIndicator size="large" color={theme.primary} /></AppScreen>;
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1">
-        {/* Header */}
-        <View className="px-6 pt-6 pb-8 bg-white">
-          <View className="flex-row items-center mb-2">
-            <View className="w-12 h-12 bg-red-600 rounded-full items-center justify-center mr-4">
-              <Ionicons name="settings" size={24} color="#FFFFFF" />
-            </View>
-            <View>
-              <Text className="text-3xl font-bold text-gray-900">Settings</Text>
-              <Text className="text-sm text-gray-500 mt-1">
-                Manage your account
-              </Text>
-            </View>
-          </View>
+    <AppScreen>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={[styles.headerMark, { backgroundColor: theme.surfaceAccent }]}><Ionicons name="school-outline" size={24} color={theme.school} /></View>
+          <View><Text style={[styles.eyebrow, { color: theme.school }]}>STUDENT ACCOUNT</Text><Text style={[styles.title, { color: theme.text }]}>Settings</Text><Text style={[styles.subtitle, { color: theme.textMuted }]}>Personalize your learning space.</Text></View>
         </View>
 
-        <View className="px-6 py-4">
-          {/* Profile Card */}
-          <View className="mb-6">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-1">
-              Profile Information
-            </Text>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>PROFILE</Text>
+        <Card style={styles.profileCard}>
+          {user ? <>
+            <View style={[styles.avatar, { backgroundColor: theme.primary }]}><Text style={styles.avatarText}>{user.full_name?.charAt(0).toUpperCase()}</Text></View>
+            <Text style={[styles.name, { color: theme.text }]}>{user.full_name}</Text>
+            <View style={[styles.role, { backgroundColor: theme.surfaceMuted }]}><Ionicons name="shield-checkmark-outline" size={15} color={theme.primary} /><Text style={[styles.roleText, { color: theme.primary }]}>{user.role}</Text></View>
+            <View style={[styles.rule, { backgroundColor: theme.border }]} />
+            <Detail icon="person-outline" label="Student ID" value={user.external_id} />
+          </> : <Text style={[styles.subtitle, { color: theme.textMuted }]}>Profile details are unavailable.</Text>}
+        </Card>
 
-            {user ? (
-              <View className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* User Avatar Section */}
-                <View className="bg-purple-50 p-6 border-b border-gray-100">
-                  <View className="items-center">
-                    <View className="w-20 h-20 bg-red-600 rounded-full items-center justify-center mb-3 shadow-lg">
-                      <Text className="text-white text-3xl font-bold">
-                        {user.full_name?.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <Text className="text-xl font-bold text-gray-900">
-                      {user.full_name}
-                    </Text>
-                    <View className="flex-row items-center mt-2 bg-white px-4 py-2 rounded-full">
-                      <MaterialIcons
-                        name="verified-user"
-                        size={16}
-                        color="#9333EA"
-                      />
-                      <Text className="text-sm font-medium text-purple-700 ml-2">
-                        {user.role}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* User Details */}
-                <View className="p-4">
-                  <View className="py-4 border-b border-gray-100">
-                    <View className="flex-row items-center mb-2">
-                      <Ionicons name="person" size={16} color="#9CA3AF" />
-                      <Text className="text-xs font-medium text-gray-500 ml-2">
-                        FULL NAME
-                      </Text>
-                    </View>
-                    <Text className="text-base font-semibold text-gray-900 ml-6">
-                      {user.full_name}
-                    </Text>
-                  </View>
-
-                  <View className="py-4 border-b border-gray-100">
-                    <View className="flex-row items-center mb-2">
-                      <Ionicons name="finger-print" size={16} color="#9CA3AF" />
-                      <Text className="text-xs font-medium text-gray-500 ml-2">
-                        USER ID
-                      </Text>
-                    </View>
-                    <Text className="text-base text-gray-700 font-mono ml-6">
-                      {user.external_id}
-                    </Text>
-                  </View>
-
-                  <View className="py-4">
-                    <View className="flex-row items-center mb-2">
-                      <FontAwesome5
-                        name="user-shield"
-                        size={14}
-                        color="#9CA3AF"
-                      />
-                      <Text className="text-xs font-medium text-gray-500 ml-2">
-                        ROLE
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center ml-6">
-                      <View className="w-2 h-2 bg-purple-500 rounded-full mr-2" />
-                      <Text className="text-base font-semibold text-gray-900 capitalize">
-                        {user.role}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ) : (
-              <View className="bg-white rounded-2xl p-8 items-center border border-gray-100">
-                <View className="w-16 h-16 bg-gray-100 rounded-full items-center justify-center mb-4">
-                  <Ionicons
-                    name="person-circle-outline"
-                    size={40}
-                    color="#9CA3AF"
-                  />
-                </View>
-                <Text className="text-base font-medium text-gray-500">
-                  No user data available
-                </Text>
-                <Text className="text-sm text-gray-400 mt-1">
-                  Please log in to view your profile
-                </Text>
-              </View>
-            )}
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>APPEARANCE</Text>
+        <Card style={styles.appearanceCard}>
+          <View style={styles.row}><View style={[styles.rowIcon, { backgroundColor: theme.surfaceMuted }]}><Ionicons name={isDark ? "moon-outline" : "sunny-outline"} size={20} color={theme.primary} /></View><View style={styles.rowText}><Text style={[styles.rowTitle, { color: theme.text }]}>Display</Text><Text style={[styles.rowDescription, { color: theme.textMuted }]}>Choose how Aurora LMS looks.</Text></View></View>
+          <View style={[styles.segmented, { backgroundColor: theme.canvas, borderColor: theme.border }]}>
+            {(["light", "dark", "system"] as const).map((mode) => <Pressable key={mode} accessibilityRole="button" accessibilityLabel={`${mode} appearance`} accessibilityState={{ selected: mode === appearanceMode }} onPress={() => { setAppearanceMode(mode); setColorScheme(mode); }} style={[styles.segment, mode === appearanceMode && { backgroundColor: theme.primary }]}><Text style={[styles.segmentText, { color: mode === appearanceMode ? "#FFFFFF" : theme.textMuted }]}>{mode[0].toUpperCase() + mode.slice(1)}</Text></Pressable>)}
           </View>
+        </Card>
 
-          {/* Actions Section */}
-          <View className="mb-6">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-1">
-              Account Actions
-            </Text>
-
-            <Pressable
-              onPress={handleLogout}
-              className="bg-red-600 active:bg-red-700 rounded-2xl py-4 px-6 shadow-lg"
-              style={({ pressed }) => [
-                {
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                  opacity: pressed ? 0.95 : 1,
-                },
-              ]}
-            >
-              <View className="flex-row items-center justify-center">
-                <Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
-                <Text className="text-white text-lg font-bold ml-2">
-                  Sign Out
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-
-          {/* Footer Info */}
-          <View className="items-center py-6">
-            <Text className="text-xs text-gray-400">Version 1.0.0</Text>
-            <Text className="text-xs text-gray-400 mt-1">
-              © 2026 All rights reserved
-            </Text>
-          </View>
-        </View>
+        <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>ACCOUNT</Text>
+        <AppButton label="Sign out" variant="danger" onPress={() => void onLogout?.()} accessibilityLabel="Sign out of Aurora LMS" />
+        <Text style={[styles.footer, { color: theme.textMuted }]}>Aurora LMS 1.0.0</Text>
       </ScrollView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }
+
+function Detail({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; value: string }) {
+  const { theme } = useAppTheme();
+  return <View style={styles.detail}><Ionicons name={icon} size={18} color={theme.textMuted} /><View><Text style={[styles.detailLabel, { color: theme.textMuted }]}>{label}</Text><Text style={[styles.detailValue, { color: theme.text }]}>{value}</Text></View></View>;
+}
+
+const styles = StyleSheet.create({
+  center: { justifyContent: "center", alignItems: "center" }, content: { padding: 20, paddingBottom: 36 }, header: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 18, marginBottom: 14 }, headerMark: { width: 48, height: 48, borderRadius: 16, justifyContent: "center", alignItems: "center" }, eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 1.1 }, title: { fontSize: 30, fontWeight: "800", letterSpacing: -0.6 }, subtitle: { fontSize: 14, marginTop: 3 }, sectionTitle: { fontSize: 11, fontWeight: "800", letterSpacing: 1, marginTop: 18, marginBottom: 8 }, profileCard: { alignItems: "center" }, avatar: { width: 68, height: 68, borderRadius: 34, justifyContent: "center", alignItems: "center" }, avatarText: { color: "#FFFFFF", fontSize: 28, fontWeight: "800" }, name: { fontSize: 20, fontWeight: "800", marginTop: 12 }, role: { flexDirection: "row", gap: 6, alignItems: "center", borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, marginTop: 8 }, roleText: { fontSize: 13, fontWeight: "700", textTransform: "capitalize" }, rule: { height: 1, alignSelf: "stretch", marginVertical: 18 }, detail: { flexDirection: "row", gap: 10, alignSelf: "stretch", alignItems: "center" }, detailLabel: { fontSize: 12, fontWeight: "600" }, detailValue: { fontSize: 15, fontWeight: "700", marginTop: 2 }, appearanceCard: { gap: 16 }, row: { flexDirection: "row", alignItems: "center", gap: 12 }, rowIcon: { width: 42, height: 42, borderRadius: 14, justifyContent: "center", alignItems: "center" }, rowText: { flex: 1 }, rowTitle: { fontSize: 16, fontWeight: "800" }, rowDescription: { fontSize: 13, marginTop: 2 }, segmented: { flexDirection: "row", borderWidth: 1, borderRadius: 13, padding: 3 }, segment: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" }, segmentText: { fontSize: 13, fontWeight: "700" }, footer: { textAlign: "center", fontSize: 12, marginTop: 24 },
+});

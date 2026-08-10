@@ -3,12 +3,14 @@ import { getData } from "@/utils/fetcher";
 
 export const fetchQuizQuestions = async (
   quizId: number,
-  instanceId: number
+  instanceId: number,
+  sessionToken: string,
 ) => {
   try {
     const res = await getData<QuestionsResponse>(
       `/modules/student-quiz-questions/${quizId}/${instanceId}`,
-      {}
+      {},
+      { "X-Assessment-Session": sessionToken },
     );
     const data: QuestionsResponse = res.data;
     return data;
