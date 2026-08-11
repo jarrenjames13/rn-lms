@@ -3,6 +3,7 @@ import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppTheme } from "@/theme";
+import { useAsyncAction } from "@/utils/useAsyncAction";
 
 export function AppScreen({ children, style }: React.PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
   const { theme } = useAppTheme();
@@ -14,11 +15,13 @@ export function Card({ children, style }: React.PropsWithChildren<{ style?: Styl
   return <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border, shadowColor: theme.text }, style]}>{children}</View>;
 }
 
-export function AppButton({ label, onPress, loading, disabled, variant = "primary", accessibilityLabel }: { label: string; onPress: () => void; loading?: boolean; disabled?: boolean; variant?: "primary" | "secondary" | "danger"; accessibilityLabel?: string }) {
+export function AppButton({ label, onPress, loading, disabled, variant = "primary", accessibilityLabel }: { label: string; onPress: () => void | Promise<void>; loading?: boolean; disabled?: boolean; variant?: "primary" | "secondary" | "danger"; accessibilityLabel?: string }) {
   const { theme } = useAppTheme();
+  const { isPending, run } = useAsyncAction();
   const backgroundColor = variant === "danger" ? theme.danger : variant === "secondary" ? theme.surfaceMuted : theme.primary;
   const labelColor = variant === "secondary" ? theme.primary : "#FFFFFF";
-  return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: Boolean(disabled || loading), busy: Boolean(loading) }} disabled={disabled || loading} onPress={onPress} style={({ pressed }) => [styles.button, { backgroundColor }, (disabled || loading) && styles.disabled, pressed && !disabled && styles.pressed]}>{loading ? <ActivityIndicator color={labelColor} /> : <Text style={[styles.buttonLabel, { color: labelColor }]}>{label}</Text>}</Pressable>;
+  const busy = Boolean(loading || isPending);
+  return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: Boolean(disabled || busy), busy }} disabled={disabled || busy} onPress={() => void run(onPress)}>{({ pressed }) => <View style={[styles.button, { backgroundColor }, (disabled || busy) && styles.disabled, pressed && !disabled && !busy && styles.pressed]}>{busy ? <ActivityIndicator color={labelColor} /> : <Text style={[styles.buttonLabel, { color: labelColor }]}>{label}</Text>}</View>}</Pressable>;
 }
 
 export function IconButton({ icon, label, onPress }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; onPress: () => void }) {

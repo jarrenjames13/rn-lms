@@ -1,5 +1,6 @@
 import { ExamSubmitResponse } from "@/api/QueryOptions/examAnswersMutation";
 import { useAppTheme } from "@/theme";
+import { useAsyncAction } from "@/utils/useAsyncAction";
 
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -21,6 +22,7 @@ export default function ExamSubmissionModal({
   isLoading = false,
 }: ExamSubmissionModalProps) {
   const { theme } = useAppTheme();
+  const { isPending: isClosing, run: close } = useAsyncAction();
   const getScoreColor = (percentage: number) => {
     if (percentage >= 80) return theme.success;
     if (percentage >= 60) return theme.warning;
@@ -120,7 +122,8 @@ export default function ExamSubmissionModal({
 
               {/* Action Button */}
               <Pressable
-                onPress={onClose}
+                onPress={() => void close(onClose)}
+                disabled={isClosing}
               >
                 {({ pressed }) => (
                   <View
@@ -128,7 +131,7 @@ export default function ExamSubmissionModal({
                     style={{ backgroundColor: pressed ? theme.primaryPressed : theme.primary }}
                   >
                     <Text className="text-white text-center font-semibold text-lg">
-                      Back to Exams
+                      {isClosing ? "Returning..." : "Back to Exams"}
                     </Text>
                   </View>
                 )}
@@ -141,7 +144,8 @@ export default function ExamSubmissionModal({
                 No result data available
               </Text>
               <Pressable
-                onPress={onClose}
+                onPress={() => void close(onClose)}
+                disabled={isClosing}
               >
                 {({ pressed }) => (
                   <View

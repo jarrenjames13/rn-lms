@@ -69,6 +69,7 @@ export default function CommentsModal({
     name: string;
     type: string;
   } | null>(null);
+  const [isPickingImage, setIsPickingImage] = useState(false);
 
   // Track the comment being replied to
   const [replyingTo, setReplyingTo] = useState<{
@@ -103,20 +104,25 @@ export default function CommentsModal({
   const totalComments = data?.pages[0]?.total ?? 0;
 
   const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsMultipleSelection: false,
-      allowsEditing: true,
-      quality: 0.7,
-    });
-
-    if (!result.canceled && result.assets.length > 0) {
-      const asset = result.assets[0];
-      setSelectedImage({
-        uri: asset.uri,
-        name: asset.fileName ?? `image_${Date.now()}.jpg`,
-        type: asset.mimeType ?? "image/jpeg",
+    if (isPickingImage) return;
+    setIsPickingImage(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: false,
+        allowsEditing: true,
+        quality: 0.7,
       });
+      if (!result.canceled && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setSelectedImage({
+          uri: asset.uri,
+          name: asset.fileName ?? `image_${Date.now()}.jpg`,
+          type: asset.mimeType ?? "image/jpeg",
+        });
+      }
+    } finally {
+      setIsPickingImage(false);
     }
   };
 
@@ -244,7 +250,7 @@ export default function CommentsModal({
               <Pressable
                 onPress={onClose}
                 className="w-8 h-8 items-center justify-center rounded-full"
-                style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
+                style={{ backgroundColor: theme.surfaceMuted }}
               >
                 <Ionicons name="close" size={20} color={theme.text} />
               </Pressable>
@@ -277,9 +283,10 @@ export default function CommentsModal({
                   Failed to load comments
                 </Text>
                 <Pressable
-                  onPress={() => refetchComments()}
+                  onPress={() => void refetchComments()}
+                  disabled={loadingComments}
                   className="mt-4 px-6 py-2 rounded-lg"
-                  style={({ pressed }) => ({ backgroundColor: pressed ? theme.primaryPressed : theme.school })}
+                  style={{ backgroundColor: theme.school }}
                 >
                   <Text className="text-white font-semibold">Retry</Text>
                 </Pressable>
@@ -360,9 +367,10 @@ export default function CommentsModal({
                     </View>
                   ) : hasNextPage ? (
                     <Pressable
-                      onPress={() => fetchNextPage()}
+                      onPress={() => void fetchNextPage()}
+                      disabled={isFetchingNextPage}
                       className="mx-4 my-4 py-3 rounded-lg items-center"
-                      style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
+                      style={{ backgroundColor: theme.surfaceMuted }}
                     >
                       <Text className="font-medium" style={{ color: theme.text }}>
                         Load More Comments
@@ -425,12 +433,13 @@ export default function CommentsModal({
               <View className="flex-row justify-between items-center mt-3 pt-3 border-t" style={{ borderColor: theme.border }}>
                 <Pressable
                   onPress={handlePickImage}
+                  disabled={isPickingImage || postingComment}
                   className="flex-row items-center rounded-full py-2 px-4 border"
-                  style={({ pressed }) => ({ backgroundColor: pressed ? theme.surfaceMuted : theme.surface, borderColor: theme.border })}
+                  style={{ backgroundColor: theme.surface, borderColor: theme.border }}
                 >
                   <AntDesign name="picture" size={18} color={theme.text} />
                   <Text className="ml-2 text-sm font-medium" style={{ color: theme.text }}>
-                    Photo
+                    {isPickingImage ? "Opening..." : "Photo"}
                   </Text>
                 </Pressable>
 
@@ -440,10 +449,10 @@ export default function CommentsModal({
                   disabled={
                     (!comment.trim() && !selectedImage) || postingComment
                   }
-                  style={({ pressed }) => ({
+                  style={{
                     opacity: (comment.trim() || selectedImage) && !postingComment ? 1 : 0.5,
-                    backgroundColor: pressed ? theme.primaryPressed : theme.school,
-                  })}
+                    backgroundColor: theme.school,
+                  }}
                 >
                   {postingComment ? (
                     <ActivityIndicator size="small" color="white" />

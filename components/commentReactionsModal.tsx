@@ -59,7 +59,7 @@ export default function CommentReactionsModal({
             <Pressable
               onPress={onClose}
               className="w-8 h-8 items-center justify-center rounded-full"
-              style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
+              style={{ backgroundColor: theme.surfaceMuted }}
             >
               <Ionicons name="close" size={20} color={theme.text} />
             </Pressable>

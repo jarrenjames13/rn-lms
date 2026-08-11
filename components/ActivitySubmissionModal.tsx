@@ -285,7 +285,7 @@ export default function ActivitySubmissionModal({
                 onPress={onClose}
                 disabled={submitMutation.isPending}
                 className="flex-1 rounded-lg py-3 items-center"
-                style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
+                style={{ backgroundColor: theme.surfaceMuted }}
               >
                 <Text className="text-base font-semibold" style={{ color: theme.text }}>
                   Cancel
@@ -300,14 +300,12 @@ export default function ActivitySubmissionModal({
                   loadingExistingAnswer
                 }
                 className="flex-1 rounded-lg py-3 items-center flex-row justify-center"
-                style={({ pressed }) => ({
+                style={{
                   backgroundColor:
                     !answer.trim() || submitMutation.isPending || loadingExistingAnswer
                       ? theme.tabInactive
-                      : pressed
-                        ? theme.primaryPressed
-                        : theme.primary,
-                })}
+                      : theme.primary,
+                }}
               >
                 {submitMutation.isPending ? (
                   <>

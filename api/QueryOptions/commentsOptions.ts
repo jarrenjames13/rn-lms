@@ -9,7 +9,7 @@ export default function createCommentsOptions(
   perPage: number = 5,
 ) {
   return queryOptions({
-    queryKey: ["comments", instance_id, parent_id, page],
+    queryKey: ["comments", instance_id, parent_id, page, perPage],
     queryFn: () => fetchComments(instance_id, parent_id, page, perPage),
     staleTime: 30 * 1000,
   });

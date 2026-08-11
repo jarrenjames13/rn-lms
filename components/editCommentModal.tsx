@@ -71,7 +71,7 @@ export default function EditCommentModal({
               <Pressable
                 onPress={onCancel}
                 className="w-7 h-7 items-center justify-center rounded-full"
-                style={({ pressed }) => ({ backgroundColor: pressed ? theme.border : theme.surfaceMuted })}
+                style={{ backgroundColor: theme.surfaceMuted }}
               >
                 <Ionicons name="close" size={16} color={theme.text} />
               </Pressable>
@@ -105,7 +105,7 @@ export default function EditCommentModal({
                 onPress={onCancel}
                 disabled={isLoading}
                 className="flex-1 py-4 items-center"
-                style={({ pressed }) => ({ backgroundColor: pressed ? theme.canvas : theme.surface })}
+                style={{ backgroundColor: theme.surface }}
               >
                 <Text className="font-semibold" style={{ color: theme.text }}>Cancel</Text>
               </Pressable>
@@ -116,7 +116,7 @@ export default function EditCommentModal({
                 onPress={() => onConfirm(text.trim())}
                 disabled={!canSubmit}
                 className="flex-1 py-4 items-center"
-                style={({ pressed }) => ({ opacity: canSubmit ? 1 : 0.4, backgroundColor: pressed ? theme.surfaceMuted : theme.surface })}
+                style={{ opacity: canSubmit ? 1 : 0.4, backgroundColor: theme.surface }}
               >
                 {isLoading ? (
                   <ActivityIndicator size="small" color={theme.primary} />

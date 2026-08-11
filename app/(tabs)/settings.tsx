@@ -41,7 +41,7 @@ export default function Settings() {
         </Card>
 
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>ACCOUNT</Text>
-        <AppButton label="Sign out" variant="danger" onPress={() => void onLogout?.()} accessibilityLabel="Sign out of Aurora LMS" />
+        <AppButton label="Sign out" variant="danger" onPress={() => onLogout?.() ?? Promise.resolve()} accessibilityLabel="Sign out of Aurora LMS" />
         <Text style={[styles.footer, { color: theme.textMuted }]}>Aurora LMS 1.0.0</Text>
       </ScrollView>
     </AppScreen>

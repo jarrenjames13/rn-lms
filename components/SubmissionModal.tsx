@@ -37,6 +37,7 @@ export default function SubmissionModal({
   instanceId,
 }: SubmissionModalProps) {
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [isPickingDocuments, setIsPickingDocuments] = useState(false);
   const insets = useSafeAreaInsets();
   const { theme } = useAppTheme();
 
@@ -44,6 +45,8 @@ export default function SubmissionModal({
   const { mutate, isPending } = useSubmissionFile();
 
   const handlePickDocuments = async () => {
+    if (isPickingDocuments) return;
+    setIsPickingDocuments(true);
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "application/pdf",
@@ -88,6 +91,8 @@ export default function SubmissionModal({
     } catch (error) {
       console.error("Error picking documents:", error);
       Alert.alert("Error", "Failed to pick documents. Please try again.");
+    } finally {
+      setIsPickingDocuments(false);
     }
   };
 
@@ -272,16 +277,14 @@ export default function SubmissionModal({
                 {/* Upload Button */}
                 <Pressable
                   onPress={handlePickDocuments}
-                  disabled={selectedFiles.length >= 10 || isPending}
+                  disabled={selectedFiles.length >= 10 || isPending || isPickingDocuments}
                   className="border-2 border-dashed rounded-2xl p-8 items-center"
-                  style={({ pressed }) => ({
-                    borderColor: selectedFiles.length >= 10 ? theme.border : theme.school,
-                    backgroundColor: selectedFiles.length >= 10
-                      ? theme.canvas
-                      : pressed
-                        ? theme.surfaceAccent
-                        : theme.surfaceAccent,
-                  })}
+                   style={{
+                     borderColor: selectedFiles.length >= 10 ? theme.border : theme.school,
+                     backgroundColor: selectedFiles.length >= 10
+                       ? theme.canvas
+                       : theme.surfaceAccent,
+                   }}
                 >
                   <View className="w-16 h-16 rounded-2xl items-center justify-center mb-3" style={{ backgroundColor: theme.surfaceAccent }}>
                     <Ionicons
@@ -294,7 +297,9 @@ export default function SubmissionModal({
                     className="text-base font-bold mb-1"
                     style={{ color: selectedFiles.length >= 10 ? theme.tabInactive : theme.text }}
                   >
-                    {selectedFiles.length >= 10
+                    {isPickingDocuments
+                      ? "Opening file picker..."
+                      : selectedFiles.length >= 10
                       ? "Maximum files reached"
                       : "Tap to select PDF files"}
                   </Text>
@@ -335,7 +340,7 @@ export default function SubmissionModal({
                           onPress={() => handleRemoveFile(index)}
                           disabled={isPending}
                           className="w-8 h-8 rounded-lg items-center justify-center"
-                          style={({ pressed }) => ({ backgroundColor: pressed ? theme.surfaceAccent : theme.canvas })}
+                          style={{ backgroundColor: theme.canvas }}
                         >
                           <Ionicons name="trash" size={18} color={theme.danger} />
                         </Pressable>
@@ -356,13 +361,11 @@ export default function SubmissionModal({
               onPress={handleSubmit}
               disabled={selectedFiles.length === 0 || isPending}
               className="py-4 rounded-xl items-center"
-              style={({ pressed }) => ({
+              style={{
                 backgroundColor: selectedFiles.length === 0 || isPending
                   ? theme.tabInactive
-                  : pressed
-                    ? theme.primaryPressed
-                    : theme.school,
-              })}
+                  : theme.school,
+              }}
             >
               {isPending ? (
                 <View className="flex-row items-center">

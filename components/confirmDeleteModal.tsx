@@ -54,7 +54,7 @@ export default function ConfirmDeleteModal({
             <Pressable
               onPress={onCancel}
               className="flex-1 py-4 items-center"
-              style={({ pressed }) => ({ backgroundColor: pressed ? theme.canvas : theme.surface })}
+              style={{ backgroundColor: theme.surface }}
               disabled={isLoading}
             >
               <Text className="font-semibold" style={{ color: theme.text }}>Cancel</Text>
@@ -65,7 +65,7 @@ export default function ConfirmDeleteModal({
             <Pressable
               onPress={onConfirm}
               className="flex-1 py-4 items-center"
-              style={({ pressed }) => ({ backgroundColor: pressed ? theme.surfaceAccent : theme.surface })}
+              style={{ backgroundColor: theme.surface }}
               disabled={isLoading}
             >
               {isLoading ? (

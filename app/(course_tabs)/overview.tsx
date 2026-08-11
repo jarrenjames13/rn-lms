@@ -1,19 +1,20 @@
 import createCommentsOptions from "@/api/QueryOptions/commentsOptions";
 import createCourseProgressOptions from "@/api/QueryOptions/courseProgressOptions";
 import createCourseStatsOptions from "@/api/QueryOptions/courseStatsOptions";
+import createCourseSummaryOptions from "@/api/QueryOptions/courseSummaryOptions";
 import CommentsModal from "@/components/commentsModal";
 import Skeleton from "@/components/skeletons/Skeleton";
 import { AppScreen, StateView } from "@/components/ui";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useAppTheme } from "@/theme";
 import {
-  CourseAllDetails,
   CourseDetails,
   CourseProgress,
   CourseQuickStats,
 } from "@/types/api";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   Pressable,
@@ -22,7 +23,6 @@ import {
   Text,
   View,
 } from "react-native";
-import createCourseDetailsOptions from "../../api/QueryOptions/courseDetailsOptions";
 
 export default function Overview() {
   const { theme } = useAppTheme();
@@ -33,46 +33,42 @@ export default function Overview() {
 
   const { data: commentsData, refetch: refetchComments } = useQuery({
     ...createCommentsOptions(instance_id!, undefined, 1, 5),
-    enabled: !!instance_id,
+    enabled: instance_id != null,
   });
 
   const {
-    data: courseDetails,
+    data: courseSummary,
     isLoading: loadingDetails,
+    isFetching: fetchingDetails,
     error: detailsError,
-    refetch,
+    refetch: refetchSummary,
   } = useQuery({
-    ...createCourseDetailsOptions(course_id!),
-    enabled: !!course_id,
+    ...createCourseSummaryOptions(course_id ?? 0),
+    enabled: course_id != null,
   });
 
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     if (course_id) {
-  //       refetch();
-  //       setModuleData(courseDetails?.modules || []);
-  //     }
-  //   }, [course_id, refetch, courseDetails?.modules, setModuleData]),
-  // );
+  useFocusEffect(
+    useCallback(() => {
+      if (detailsError) void refetchSummary();
+    }, [detailsError, refetchSummary]),
+  );
 
   const {
     data: courseStats,
     isLoading: loadingStats,
-    error: statsError,
     refetch: refetchStats,
   } = useQuery({
-    ...createCourseStatsOptions(course_id!),
-    enabled: !!course_id,
+    ...createCourseStatsOptions(course_id ?? 0),
+    enabled: course_id != null,
   });
 
   const {
     data: courseProgress,
     isLoading: loadingProgress,
-    error: progressError,
     refetch: refetchProgress,
   } = useQuery({
-    ...createCourseProgressOptions(course_id!),
-    enabled: !!course_id,
+    ...createCourseProgressOptions(course_id ?? 0),
+    enabled: course_id != null,
   });
 
   // Pull to refresh handler
@@ -80,7 +76,7 @@ export default function Overview() {
     setRefreshing(true);
     try {
       await Promise.all([
-        refetch(),
+        refetchSummary(),
         refetchStats(),
         refetchProgress(),
         refetchComments(),
@@ -90,18 +86,13 @@ export default function Overview() {
     } finally {
       setRefreshing(false);
     }
-  }, [refetch, refetchStats, refetchProgress, refetchComments]);
+  }, [refetchSummary, refetchStats, refetchProgress, refetchComments]);
 
-  if (detailsError || statsError || progressError) {
-    return <AppScreen><StateView icon="cloud-offline-outline" title="Course unavailable" message="Course details could not be loaded. Please try again." actionLabel="Try again" onAction={() => { void refetch(); void refetchStats(); void refetchProgress(); }} /></AppScreen>;
+  if (detailsError && !courseSummary) {
+    return <AppScreen><StateView icon="cloud-offline-outline" title="Course unavailable" message="Course details could not be loaded. Please try again." actionLabel="Try again" onAction={() => Promise.all([refetchSummary(), refetchStats(), refetchProgress()]).then(() => undefined)} /></AppScreen>;
   }
 
-  const details: CourseAllDetails = courseDetails ?? {
-    course: { course_code: "", course_title: "", description: "" },
-    modules: [],
-  };
-
-  const course: CourseDetails = details.course ?? {
+  const course: CourseDetails = courseSummary?.course ?? {
     course_code: "",
     course_title: "",
     description: "",
@@ -229,7 +220,7 @@ export default function Overview() {
         }
       >
         {/* Header Section */}
-        {loadingDetails ? (
+        {loadingDetails && !courseSummary ? (
           <View className="bg-[#B42335] dark:bg-[#F06A78] px-6 pt-6 pb-8">
             <View
               style={{ backgroundColor: "rgba(255, 255, 255, 0.15)" }}
@@ -289,6 +280,7 @@ export default function Overview() {
               >
                 {course.description || "No description available."}
               </Text>
+              {fetchingDetails ? <Text className="text-xs text-white/75 mt-3">Refreshing course details...</Text> : null}
             </View>
           </View>
         )}

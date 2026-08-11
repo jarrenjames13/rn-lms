@@ -18,7 +18,7 @@ export default function Notifications() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { theme } = useAppTheme();
-  const { setCourseId, setInstanceId } = useCourseStore();
+  const { selectCourse } = useCourseStore();
   const { data, isLoading, isError, refetch } = useQuery(createNotificationsOptions());
 
   const markReadMutation = useMutation({
@@ -77,8 +77,7 @@ export default function Notifications() {
   const openNotification = (item: NotificationItem) => {
     if (!item.is_read) markReadMutation.mutate([item.id]);
     if (item.course_id && item.instance_id) {
-      setCourseId(item.course_id);
-      setInstanceId(item.instance_id);
+      selectCourse(item.course_id, item.instance_id);
       router.push("/(course_tabs)/overview");
     }
   };

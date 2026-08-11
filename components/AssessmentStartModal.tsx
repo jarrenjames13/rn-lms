@@ -1,4 +1,5 @@
 import { useAppTheme } from "@/theme";
+import { useAsyncAction } from "@/utils/useAsyncAction";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Modal, Pressable, Text, View } from "react-native";
@@ -22,6 +23,7 @@ export default function AssessmentStartModal({
 }: AssessmentStartModalProps) {
   const { theme } = useAppTheme();
   const isQuiz = type === "quiz";
+  const { isPending, run } = useAsyncAction();
   const duration = isQuiz ? 60 : 120;
   const assessmentLabel = isQuiz ? "quiz" : "exam";
 
@@ -105,7 +107,8 @@ export default function AssessmentStartModal({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Begin ${assessmentLabel}`}
-              onPress={onBegin}
+              onPress={() => void run(onBegin)}
+              disabled={isPending}
               className="flex-1"
             >
               {({ pressed }) => (
@@ -113,7 +116,7 @@ export default function AssessmentStartModal({
                   className="min-h-14 items-center justify-center"
                   style={{ backgroundColor: pressed ? theme.primaryPressed : theme.school }}
                 >
-                  <Text className="font-bold" style={{ color: "#FFFFFF" }}>Begin</Text>
+                  <Text className="font-bold" style={{ color: "#FFFFFF" }}>{isPending ? "Starting..." : "Begin"}</Text>
                 </View>
               )}
             </Pressable>

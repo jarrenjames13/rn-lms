@@ -1,5 +1,6 @@
 import type { QuizSubmitResponse } from "@/api/QueryOptions/quizAnswersMutation";
 import { useAppTheme } from "@/theme";
+import { useAsyncAction } from "@/utils/useAsyncAction";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Modal, Pressable, Text, View } from "react-native";
@@ -20,6 +21,7 @@ export default function QuizSubmissionModal({
   isLoading = false,
 }: QuizSubmissionModalProps) {
   const { theme } = useAppTheme();
+  const { isPending: isClosing, run: close } = useAsyncAction();
   const getScoreColor = (percentage: number) => {
     if (percentage >= 80) return theme.success;
     if (percentage >= 75) return theme.warning;
@@ -115,7 +117,8 @@ export default function QuizSubmissionModal({
 
               {/* Action Button */}
               <Pressable
-                onPress={onClose}
+                onPress={() => void close(onClose)}
+                disabled={isClosing}
               >
                 {({ pressed }) => (
                   <View
@@ -123,7 +126,7 @@ export default function QuizSubmissionModal({
                     style={{ backgroundColor: pressed ? theme.primaryPressed : theme.primary }}
                   >
                     <Text className="text-white text-center font-semibold text-lg">
-                      Back to Quizzes
+                      {isClosing ? "Returning..." : "Back to Quizzes"}
                     </Text>
                   </View>
                 )}
@@ -136,7 +139,8 @@ export default function QuizSubmissionModal({
                 No result data available
               </Text>
               <Pressable
-                onPress={onClose}
+                onPress={() => void close(onClose)}
+                disabled={isClosing}
               >
                 {({ pressed }) => (
                   <View

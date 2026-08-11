@@ -8,7 +8,7 @@ import { Enrollment } from "@/types/api";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -73,8 +73,9 @@ const CourseCardSkeleton = () => (
 export default function Index() {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const { setCourseId, setInstanceId } = useCourseStore();
+  const { selectCourse } = useCourseStore();
   const [isNavigating, setIsNavigating] = useState(false);
+  const navigationLockRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const { authState } = useAuth();
 
@@ -83,6 +84,7 @@ export default function Index() {
   useFocusEffect(
     useCallback(() => {
       setIsNavigating(false);
+      navigationLockRef.current = false;
     }, []),
   );
 
@@ -127,17 +129,19 @@ export default function Index() {
   });
 
   const handlePress = async (course_id: number, instance_id: number) => {
+    if (navigationLockRef.current) return;
+    navigationLockRef.current = true;
     try {
       setIsNavigating(true);
-      setCourseId(course_id);
-      setInstanceId(instance_id);
+      selectCourse(course_id, instance_id);
 
-      await router.push({
+      router.push({
         pathname: "/(course_tabs)/overview",
       });
     } catch (error) {
       console.log("Navigation error:", error);
       setIsNavigating(false);
+      navigationLockRef.current = false;
     }
   };
 
