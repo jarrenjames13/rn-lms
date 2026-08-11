@@ -1,5 +1,6 @@
 import Clipboard from "@react-native-clipboard/clipboard";
 import RenderHTML, {
+  defaultHTMLElementModels,
   type CustomBlockRenderer,
   type MixedStyleRecord,
 } from "react-native-render-html";
@@ -19,14 +20,23 @@ interface CodeBlockProps {
 }
 
 interface DomTextNode {
+  name?: string;
+  type?: string;
   data?: string;
   children?: readonly DomTextNode[];
 }
+
+const HTML_MODELS = {
+  // The custom renderer owns <pre> children, so prevent their text nodes from
+  // entering the transient whitespace-collapse pass.
+  pre: defaultHTMLElementModels.pre.extend({ isOpaque: true }),
+};
 
 // Read the parsed DOM rather than transient render nodes, which collapse
 // whitespace before custom renderers receive them.
 function getRawDomText(node: unknown): string {
   const domNode = node as DomTextNode;
+  if (domNode.name === "br") return "\n";
   if (typeof domNode.data === "string") return domNode.data;
   return domNode.children?.map(getRawDomText).join("") ?? "";
 }
@@ -97,6 +107,7 @@ function createTagStyles(theme: Theme): MixedStyleRecord {
       fontFamily: "monospace",
       fontSize: 14,
     },
+    pre: { whiteSpace: "pre" },
     blockquote: {
       borderLeftColor: theme.border,
       borderLeftWidth: 4,
@@ -140,6 +151,7 @@ export const HTMLContent = React.memo(function HTMLContent({
           source={{ html: htmlContent }}
           baseStyle={{ color: theme.text, fontSize: 16, lineHeight: 24 }}
           tagsStyles={createTagStyles(theme)}
+          customHTMLElementModels={HTML_MODELS}
           renderers={{ pre: preRenderer }}
           ignoredDomTags={["script", "style", "iframe", "object", "embed"]}
           enableCSSInlineProcessing={false}
