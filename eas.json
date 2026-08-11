@@ -14,7 +14,11 @@
     },
     "release": {
       "autoIncrement": true,
+      "environment": "production",
       "channel": "release",
+      "env": {
+        "APP_VARIANT": "production"
+      },
       "android": {
         "buildType": "app-bundle"
       }
@@ -33,7 +37,11 @@
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "channel": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      },
       "android": {
         "buildType": "app-bundle"
       }
