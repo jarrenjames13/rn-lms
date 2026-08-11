@@ -3,6 +3,7 @@ import RenderHTML, {
   type CustomBlockRenderer,
   type MixedStyleRecord,
 } from "react-native-render-html";
+import type { TNode } from "@native-html/transient-render-engine";
 import React, { useState } from "react";
 import {
   ScrollView,
@@ -16,6 +17,11 @@ import { type Theme, useAppTheme } from "@/theme";
 interface CodeBlockProps {
   rawText: string;
   theme: Theme;
+}
+
+function getNodeText(node: TNode): string {
+  if (node.type === "text") return node.data;
+  return node.children.map(getNodeText).join("");
 }
 
 function CodeBlock({ rawText, theme }: CodeBlockProps) {
@@ -112,7 +118,7 @@ export const HTMLContent = React.memo(function HTMLContent({
 
   const preRenderer: CustomBlockRenderer = ({ tnode }) => (
     <CodeBlock
-      rawText={(tnode.domNode as { textContent?: string } | null)?.textContent ?? ""}
+      rawText={getNodeText(tnode)}
       theme={theme}
     />
   );
