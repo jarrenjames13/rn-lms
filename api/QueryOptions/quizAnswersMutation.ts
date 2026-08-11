@@ -22,7 +22,10 @@ export const useQuizAnswers = (options?: any) => {
     mutationFn: postQuizAnswers,
 
     onSuccess: async (data: QuizSubmitResponse) => {
-      await queryClient.invalidateQueries({ queryKey: ["list_quizzes"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["list_quizzes"] }),
+        queryClient.invalidateQueries({ queryKey: ["course_progress"] }),
+      ]);
 
       if (options?.onSuccess) {
         options.onSuccess(data);

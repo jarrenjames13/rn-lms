@@ -1,10 +1,10 @@
 import { CourseProgress } from "@/types/api";
 import { getData } from "@/utils/fetcher";
 
-export const fetchCourseProgress = async (courseId: number) => {
+export const fetchCourseProgress = async (courseId: number, instanceId?: number) => {
   try {
     const res = await getData<CourseProgress>(
-      `/modules/student-course-progress-comprehensive/${courseId}`,
+      `/modules/student-course-progress-comprehensive/${courseId}${instanceId ? `?instance_id=${instanceId}` : ""}`,
       {}
     );
     const data = res.data;

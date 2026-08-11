@@ -65,10 +65,11 @@ export default function Overview() {
   const {
     data: courseProgress,
     isLoading: loadingProgress,
+    error: courseProgressError,
     refetch: refetchProgress,
   } = useQuery({
-    ...createCourseProgressOptions(course_id ?? 0),
-    enabled: course_id != null,
+    ...createCourseProgressOptions(course_id ?? 0, instance_id ?? undefined),
+    enabled: course_id != null && instance_id != null,
   });
 
   // Pull to refresh handler
@@ -303,6 +304,21 @@ export default function Overview() {
                   <Skeleton height={8} width="100%" />
                 </View>
               ))}
+            </View>
+          ) : courseProgressError ? (
+            <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-6 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] mb-6">
+              <Text className="text-lg font-bold text-[#201D25] dark:text-[#F7F4FA] mb-2">
+                Overall Progress
+              </Text>
+              <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] mb-4">
+                Progress could not be loaded.
+              </Text>
+              <Pressable
+                onPress={() => void refetchProgress()}
+                className="self-start rounded-lg bg-[#B42335] dark:bg-[#F06A78] px-4 py-2"
+              >
+                <Text className="text-sm font-semibold text-white">Try again</Text>
+              </Pressable>
             </View>
           ) : (
             <View className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl p-6 shadow-sm border border-[#E6E1E8] dark:border-[#37313C] mb-6">

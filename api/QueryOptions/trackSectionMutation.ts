@@ -7,9 +7,10 @@ export const useTrackSection = () => {
   return useMutation({
     mutationFn: postTrackSection,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["module_progress"],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["module_progress"] }),
+        queryClient.invalidateQueries({ queryKey: ["course_progress"] }),
+      ]);
     },
     onError: (error: any) => {
       console.error("Failed to track section:", error);

@@ -116,9 +116,12 @@ export default function ActivitySubmissionModal({
         throw error;
       }
     },
-    onSuccess: () => {
-      // Invalidate activities queries to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["module_activities"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["module_activities"] }),
+        queryClient.invalidateQueries({ queryKey: ["module_progress"] }),
+        queryClient.invalidateQueries({ queryKey: ["course_progress"] }),
+      ]);
 
       setAnswer("");
       submitMutation.reset();

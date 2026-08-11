@@ -23,7 +23,10 @@ export const useExamAnswers = (options?: any) => {
     mutationFn: postExamAnswers,
 
     onSuccess: async (data: ExamSubmitResponse) => {
-      await queryClient.invalidateQueries({ queryKey: ["list_exams"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["list_exams"] }),
+        queryClient.invalidateQueries({ queryKey: ["course_progress"] }),
+      ]);
 
       if (options?.onSuccess) {
         options.onSuccess(data);
