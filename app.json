@@ -3,6 +3,12 @@
     "name": "Aurora LMS",
     "slug": "rn-lms",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4a820703-32cc-44ca-bad1-14fca2d51919"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rnlms",
@@ -43,6 +49,7 @@
       "expo-font",
       "expo-web-browser",
       "expo-image",
+      "expo-updates",
       "expo-secure-store",
       [
         "expo-notifications",

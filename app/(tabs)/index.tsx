@@ -332,16 +332,20 @@ export default function Index() {
           </View>
         ) : (
           <View className="bg-[#FFFFFF] dark:bg-[#1A181E] pt-6 pb-8 px-6 border-b border-[#E6E1E8] dark:border-[#37313C]">
-            <View className="flex-row items-center justify-between mb-2">
-              <View>
+            <View className="flex-row items-center mb-2">
+              <View className="flex-1 mr-3" style={{ minWidth: 0 }}>
                 <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] mb-1">
                   Welcome back,
                 </Text>
-                <Text className="text-2xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
+                <Text
+                  className="text-2xl font-bold text-[#201D25] dark:text-[#F7F4FA]"
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
                   {authState?.user?.full_name || "Student"}!
                 </Text>
               </View>
-              <View className="flex-row items-center gap-3">
+              <View className="flex-row items-center gap-3 shrink-0">
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={unreadNotificationCount > 0
