@@ -398,6 +398,8 @@ function LoginForm() {
                   value={externalId}
                   onChangeText={setExternalId}
                   keyboardType="numeric"
+                  autoComplete="username"
+                  importantForAutofill="yes"
                   editable={!authState?.isLoading}
                   className="flex-1 px-3 py-3 text-base text-[#201D25] dark:text-[#F7F4FA]"
                 />
@@ -422,6 +424,8 @@ function LoginForm() {
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
+                  autoComplete="current-password"
+                  importantForAutofill="yes"
                   editable={!authState?.isLoading}
                   className="flex-1 px-3 py-3 text-base text-[#201D25] dark:text-[#F7F4FA]"
                 />
