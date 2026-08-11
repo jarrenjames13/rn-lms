@@ -18,6 +18,7 @@ import Toast from "react-native-toast-message";
 import { AppThemeProvider, useAppTheme } from "@/theme";
 import { useExamStore } from "@/store/useExamStore";
 import { useQuizStore } from "@/store/useQuizStore";
+import { NativeUpdateProvider } from "@/components/NativeVersionGate";
 import "../global.css";
 
 const RootLayoutNav = React.memo(function RootLayoutNav() {
@@ -192,8 +193,10 @@ export default function RootLayout() {
       <AppThemeProvider>
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
-            <RootLayoutNav />
-            <ThemeToast />
+            <NativeUpdateProvider>
+              <RootLayoutNav />
+              <ThemeToast />
+            </NativeUpdateProvider>
           </QueryClientProvider>
         </AuthProvider>
       </AppThemeProvider>

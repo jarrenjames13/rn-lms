@@ -1,12 +1,15 @@
 import { AppButton, AppScreen, Card } from "@/components/ui";
 import { useAuth } from "@/context/authContext";
 import { useAppTheme } from "@/theme";
+import { useNativeUpdate } from "@/components/NativeVersionGate";
+import * as Application from "expo-application";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Settings() {
   const { onLogout, authState } = useAuth();
   const { theme, isDark, appearanceMode, setAppearanceMode } = useAppTheme();
+  const { checkForUpdate, isChecking } = useNativeUpdate();
   const user = authState?.user;
 
   if (authState?.isLoading) {
@@ -41,8 +44,9 @@ export default function Settings() {
         </Card>
 
         <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>ACCOUNT</Text>
+        <AppButton label="Check for updates" variant="secondary" loading={isChecking} onPress={checkForUpdate} accessibilityLabel="Check for Aurora LMS updates" />
         <AppButton label="Sign out" variant="danger" onPress={() => onLogout?.() ?? Promise.resolve()} accessibilityLabel="Sign out of Aurora LMS" />
-        <Text style={[styles.footer, { color: theme.textMuted }]}>Aurora LMS 1.0.0</Text>
+        <Text style={[styles.footer, { color: theme.textMuted }]}>Aurora LMS {Application.nativeApplicationVersion ?? ""} ({Application.nativeBuildVersion ?? ""})</Text>
       </ScrollView>
     </AppScreen>
   );
