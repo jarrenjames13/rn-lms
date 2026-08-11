@@ -3,7 +3,6 @@ import RenderHTML, {
   type CustomBlockRenderer,
   type MixedStyleRecord,
 } from "react-native-render-html";
-import type { TNode } from "@native-html/transient-render-engine";
 import React, { useState } from "react";
 import {
   ScrollView,
@@ -19,14 +18,24 @@ interface CodeBlockProps {
   theme: Theme;
 }
 
-function getNodeText(node: TNode): string {
-  if (node.type === "text") return node.data;
-  return node.children.map(getNodeText).join("");
+interface DomTextNode {
+  data?: string;
+  children?: readonly DomTextNode[];
+}
+
+// Read the parsed DOM rather than transient render nodes, which collapse
+// whitespace before custom renderers receive them.
+function getRawDomText(node: unknown): string {
+  const domNode = node as DomTextNode;
+  if (typeof domNode.data === "string") return domNode.data;
+  return domNode.children?.map(getRawDomText).join("") ?? "";
 }
 
 function CodeBlock({ rawText, theme }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
-  const content = rawText.trim();
+  const content = rawText
+    .replace(/\r\n?/g, "\n")
+    .replace(/^\n+|\n+$/g, "");
 
   const handleCopy = () => {
     Clipboard.setString(content);
@@ -118,7 +127,7 @@ export const HTMLContent = React.memo(function HTMLContent({
 
   const preRenderer: CustomBlockRenderer = ({ tnode }) => (
     <CodeBlock
-      rawText={getNodeText(tnode)}
+      rawText={getRawDomText(tnode.domNode)}
       theme={theme}
     />
   );
