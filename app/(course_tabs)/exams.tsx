@@ -232,7 +232,12 @@ export default function Exams() {
   const requestExamStart = (exam: ExamDetails) => {
     if (!attemptHydrated || instanceId === null) return;
     if (attemptStatus === "idle") {
-      setExamToStart(exam);
+      if (exam.active_session?.state === "resumable") {
+        beginAttempt(exam.exam_id, instanceId);
+        router.replace("/exam_taking");
+      } else {
+        setExamToStart(exam);
+      }
       return;
     }
 
@@ -256,6 +261,7 @@ export default function Exams() {
     const isPassing = exam.score !== null && exam.score >= 75;
     const isSubmissionType = exam.category.toLowerCase() === "submission";
     const isGraded = exam.score !== null; // If score exists, it's been graded
+    const sessionState = exam.active_session?.state;
 
     return (
       <View
@@ -384,7 +390,13 @@ export default function Exams() {
           )}
 
           {/* Important Notice for Available Exams */}
-          {!exam.is_taken && (
+          {sessionState === "expired_pending" ? (
+            <View className="bg-[#F2ECF8] dark:bg-[#2A2038] px-4 py-4 rounded-xl">
+              <Text className="text-center text-[#6C6572] dark:text-[#BEB6C5] font-semibold">
+                Finalizing result...
+              </Text>
+            </View>
+          ) : !exam.is_taken && (
             <View
               style={{ backgroundColor: theme.surfaceMuted }}
               className="rounded-xl p-4 mb-4 border border-[#E6E1E8] dark:border-[#37313C]"
@@ -539,7 +551,11 @@ export default function Exams() {
                         color="#FFFFFF"
                       />
                       <Text className="font-bold text-base ml-1" style={{ color: "#FFFFFF" }}>
-                        {isSubmissionType ? "Submit" : "Start Exam"}
+                        {isSubmissionType
+                          ? "Submit"
+                          : sessionState === "resumable"
+                            ? "Resume Exam"
+                            : "Start Exam"}
                       </Text>
                     </View>
                   </View>
