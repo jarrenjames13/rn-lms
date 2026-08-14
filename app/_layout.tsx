@@ -19,6 +19,11 @@ import { AppThemeProvider, useAppTheme } from "@/theme";
 import { useExamStore } from "@/store/useExamStore";
 import { useQuizStore } from "@/store/useQuizStore";
 import { NativeUpdateProvider } from "@/components/NativeVersionGate";
+import {
+  evictAssessmentLease,
+  onAssessmentLeaseTakenOver,
+  publishAssessmentLeaseTakenOver,
+} from "@/utils/assessmentLease";
 import "../global.css";
 
 const RootLayoutNav = React.memo(function RootLayoutNav() {
@@ -86,11 +91,53 @@ const RootLayoutNav = React.memo(function RootLayoutNav() {
       }
       void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
     });
+    const unsubscribeLeaseEvents = sseService.onAssessmentLeaseEvent((event) => {
+      publishAssessmentLeaseTakenOver(event, "sse");
+    });
     return () => {
       unsubscribe();
+      unsubscribeLeaseEvents();
       sseService.disconnect();
     };
   }, [authState?.success, queryClient]);
+
+  useEffect(
+    () =>
+      onAssessmentLeaseTakenOver((event) => {
+        const quiz = useQuizStore.getState();
+        const exam = useExamStore.getState();
+        const matches = (attempt: typeof quiz | typeof exam) => {
+          if (event.session_id == null || attempt.session_id == null) return false;
+          if (String(event.session_id) !== String(attempt.session_id)) return false;
+          if (
+            event.source === "api" &&
+            event.request_session_token &&
+            event.request_session_token !== attempt.session_token
+          ) return false;
+          return event.source !== "sse" ||
+            event.lease_generation == null ||
+            attempt.lease_generation == null ||
+            event.lease_generation > attempt.lease_generation;
+        };
+        const evictQuiz = matches(quiz);
+        const evictExam = matches(exam);
+        if (!evictQuiz && !evictExam) return;
+        if (evictQuiz) {
+          evictAssessmentLease(quiz.session_token, quiz.lease_token);
+          void queryClient.cancelQueries({ queryKey: ["quiz_questions"] });
+          queryClient.removeQueries({ queryKey: ["quiz_questions"] });
+          quiz.clearAttempt();
+        }
+        if (evictExam) {
+          evictAssessmentLease(exam.session_token, exam.lease_token);
+          void queryClient.cancelQueries({ queryKey: ["exam_questions"] });
+          queryClient.removeQueries({ queryKey: ["exam_questions"] });
+          exam.clearAttempt();
+        }
+        router.replace("/(course_tabs)/assessments");
+      }),
+    [queryClient, router],
+  );
 
   useEffect(() => {
     const badgeCount = authState?.success === true ? notificationData?.unread_count ?? 0 : 0;

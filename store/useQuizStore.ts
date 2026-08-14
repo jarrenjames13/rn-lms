@@ -1,12 +1,14 @@
 import { OptionKey } from "@/types/api";
 import type {
   AssessmentResult,
+  AssessmentSessionMetadata,
   AttemptStatus,
   SubmissionReason,
 } from "@/types/assessmentAttempt";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { assessmentStorage } from "./assessmentStorage";
+import { admitAssessmentLease } from "@/utils/assessmentLease";
 
 type QuizStore = {
   quiz_id: number;
@@ -19,9 +21,18 @@ type QuizStore = {
   recovery_error: string | null;
   hasHydrated: boolean;
   selectedAnswers: Record<number, OptionKey>;
+  session_id?: string | number;
+  lease_generation?: number;
+  lease_token?: string;
+  focus_loss_count?: number;
+  fullscreen_exit_count?: number;
+  answer_revision?: number;
+  resumed?: boolean;
   setSelectedAnswers: (answers: Record<number, OptionKey>) => void;
   beginAttempt: (quiz_id: number, instance_id: number) => void;
-  setSession: (session_token: string, deadline_at: number) => void;
+  setSession: (session_token: string, deadline_at: number, metadata?: AssessmentSessionMetadata) => void;
+  recordFocusLoss: () => number;
+  setAnswerRevision: (revision: number) => void;
   markSubmitting: (reason: SubmissionReason) => void;
   markSubmitted: (result: AssessmentResult) => void;
   markActive: () => void;
@@ -40,6 +51,13 @@ const emptyAttempt = {
   result: null,
   recovery_error: null,
   selectedAnswers: {},
+  session_id: undefined,
+  lease_generation: undefined,
+  lease_token: undefined,
+  focus_loss_count: 0,
+  fullscreen_exit_count: 0,
+  answer_revision: 0,
+  resumed: undefined,
 };
 
 export const useQuizStore = create<QuizStore>()(
@@ -47,11 +65,35 @@ export const useQuizStore = create<QuizStore>()(
     (set) => ({
       ...emptyAttempt,
       hasHydrated: false,
-      setSelectedAnswers: (selectedAnswers) => set({ selectedAnswers }),
+      setSelectedAnswers: (selectedAnswers) =>
+        set((state) => ({
+          selectedAnswers,
+          answer_revision: (state.answer_revision ?? 0) + 1,
+        })),
       beginAttempt: (quiz_id, instance_id) =>
         set({ ...emptyAttempt, quiz_id, instance_id, status: "starting" }),
-      setSession: (session_token, deadline_at) =>
-        set({ session_token, deadline_at, status: "active", recovery_error: null }),
+      setSession: (session_token, deadline_at, metadata = {}) => {
+        admitAssessmentLease(session_token, metadata.lease_token);
+        set({
+          session_token,
+          deadline_at,
+          ...metadata,
+          status: "active",
+          recovery_error: null,
+        });
+      },
+      recordFocusLoss: () => {
+        let count = 0;
+        set((state) => {
+          count = (state.focus_loss_count ?? 0) + 1;
+          return { focus_loss_count: count };
+        });
+        return count;
+      },
+      setAnswerRevision: (revision) =>
+        set((state) => ({
+          answer_revision: Math.max(state.answer_revision ?? 0, revision),
+        })),
       markSubmitting: (submission_reason) =>
         set({ status: "submitting", submission_reason, recovery_error: null }),
       markSubmitted: (result) =>

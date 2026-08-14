@@ -66,7 +66,7 @@ export default function AssessmentStartModal({
             <View className="flex-row items-start">
               <Ionicons name="warning-outline" size={20} color={theme.warning} />
               <Text className="flex-1 text-sm leading-5 ml-3" style={{ color: theme.text }}>
-                Switching apps, sending this app to the background, or navigating away will automatically submit your {assessmentLabel}.
+                The first time you switch apps or send this app to the background, you will receive a warning. A second time will automatically submit your {assessmentLabel}. Navigating away still submits immediately.
               </Text>
             </View>
             {isQuiz && isReattempt ? (

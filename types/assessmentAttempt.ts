@@ -22,3 +22,13 @@ export type AssessmentResult = {
   remaining_attempts?: number;
   best_score?: number;
 };
+
+export type AssessmentSessionMetadata = {
+  session_id?: string | number;
+  lease_generation?: number;
+  lease_token?: string;
+  focus_loss_count?: number;
+  fullscreen_exit_count?: number;
+  answer_revision?: number;
+  resumed?: boolean;
+};

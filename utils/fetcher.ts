@@ -1,6 +1,7 @@
 import { create } from "axios";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "../utils/constants";
+import { publishAssessmentLeaseTakenOver } from "./assessmentLease";
 
 // Create axios instance
 export const apiClient = create({
@@ -108,6 +109,20 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    let requestData = originalRequest?.data;
+    if (typeof requestData === "string") {
+      try {
+        requestData = JSON.parse(requestData);
+      } catch {
+        requestData = undefined;
+      }
+    }
+    publishAssessmentLeaseTakenOver(
+      error.response?.data,
+      "api",
+      requestData?.session_token ?? originalRequest?.headers?.["X-Assessment-Session"],
+    );
 
     // Handle a single unauthorized retry.
     if (

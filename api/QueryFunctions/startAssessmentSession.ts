@@ -4,12 +4,18 @@ export type StartSessionPayload = {
   assessment_id: number;
   instance_id: number;
   category: "quiz" | "exam";
+  client_id: string;
 };
 
 export type StartSessionResponse = {
   session_token: string;
   started_at: string;
   deadline_at: string;
+  session_id?: string | number;
+  remaining_seconds?: number;
+  resumed?: boolean;
+  lease_generation?: number;
+  lease_token?: string;
 };
 
 export const startAssessmentSession = async (

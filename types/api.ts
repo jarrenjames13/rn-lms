@@ -309,23 +309,29 @@ export interface Options {
 export interface Question {
   question_number: number;
   item_id: number;
+  session_question_id?: number;
   question: string;
   options: Options;
 }
 
 export interface QuestionsResponse {
   questions: Question[];
+  saved_answers?: Record<number, OptionKey>;
+  answer_versions?: Record<number, number>;
 }
 
 export interface ExamQuestion {
   question_number: number;
   item_id: number;
+  session_question_id?: number;
   question_text: string;
   options: Options;
 }
 
 export interface ExamQuestionsResponse {
   questions: ExamQuestion[];
+  saved_answers?: Record<number, OptionKey>;
+  answer_versions?: Record<number, number>;
 }
 
 export interface ActivityGrade {
