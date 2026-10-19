@@ -12,8 +12,8 @@ interface LoginResponseSuccess {
     full_name: string;
     role: string;
   };
-  access_token: string;
-  refresh_token: string;
+  access_token?: string;
+  refresh_token?: string;
 }
 
 interface LoginResponseError {
@@ -325,6 +325,9 @@ export interface Question {
   session_question_id?: number;
   question: string;
   options: Options;
+  question_html?: string | null;
+  options_html?: Partial<Options> | null;
+  content_format_version?: number;
 }
 
 export interface QuestionsResponse {
@@ -339,6 +342,9 @@ export interface ExamQuestion {
   session_question_id?: number;
   question_text: string;
   options: Options;
+  question_html?: string | null;
+  options_html?: Partial<Options> | null;
+  content_format_version?: number;
 }
 
 export interface ExamQuestionsResponse {

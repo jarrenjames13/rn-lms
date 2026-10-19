@@ -35,6 +35,7 @@ import { useAssessmentFocusGuard } from "@/utils/useAssessmentFocusGuard";
 import { isAssessmentLeaseEvicted } from "@/utils/assessmentLease";
 import { getAssessmentClientId } from "@/utils/assessmentClientId";
 import { useAssessmentSessionRuntime } from "@/utils/useAssessmentSessionRuntime";
+import { HTMLContent } from "@/utils/RenderHTML";
 
 export default function ExamTaking() {
   const { theme } = useAppTheme();
@@ -554,9 +555,15 @@ export default function ExamTaking() {
             </View>
           </View>
 
-          <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
-            {item.question_text}
-          </Text>
+          <View className="mt-1">
+            {item.content_format_version && item.question_html ? (
+              <HTMLContent htmlContent={item.question_html} />
+            ) : (
+              <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
+                {item.question_text}
+              </Text>
+            )}
+          </View>
         </View>
 
         <View className="p-5">
@@ -586,9 +593,18 @@ export default function ExamTaking() {
                       : "border-[#E6E1E8] dark:border-[#37313C]"
                   }`}
                 />
-                <Text className="flex-1 text-base text-[#201D25] dark:text-[#F7F4FA]">
-                  {key}. {item.options[key]}
-                </Text>
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
+                    {key}.
+                  </Text>
+                  {item.content_format_version && item.options_html?.[key] ? (
+                    <HTMLContent htmlContent={item.options_html[key]!} />
+                  ) : (
+                    <Text className="text-base text-[#201D25] dark:text-[#F7F4FA]">
+                      {item.options[key]}
+                    </Text>
+                  )}
+                </View>
                 {isSelected && (
                   <MaterialIcons
                     name="check-circle"

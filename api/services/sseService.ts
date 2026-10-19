@@ -1,6 +1,6 @@
 import EventSource from 'react-native-sse';
-import * as SecureStore from 'expo-secure-store';
 import { BASE_URL } from '@/utils/constants';
+import { getAuthCookieHeaders } from '@/utils/fetcher';
 import type { AssessmentLeaseEvent } from '@/utils/assessmentLease';
 
 type Listener = (data: any) => void;
@@ -47,8 +47,8 @@ class SSEService {
     this.moduleId = moduleId;
     if (this.es) return;
 
-    const token = await SecureStore.getItemAsync('access_token');
-    if (!token) return;
+    const headers = await getAuthCookieHeaders('GET', '/events');
+    if (!headers.Cookie) return;
 
     const params = new URLSearchParams();
     if (instanceId != null) params.set('instance_id', String(instanceId));
@@ -56,7 +56,7 @@ class SSEService {
     const qs = params.toString();
 
     this.es = new EventSource(`${BASE_URL}/events${qs ? `?${qs}` : ''}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
     });
 
     this.es.addEventListener('open', () => { this.attempts = 0; });

@@ -38,6 +38,7 @@ import { useAssessmentFocusGuard } from "@/utils/useAssessmentFocusGuard";
 import { isAssessmentLeaseEvicted } from "@/utils/assessmentLease";
 import { getAssessmentClientId } from "@/utils/assessmentClientId";
 import { useAssessmentSessionRuntime } from "@/utils/useAssessmentSessionRuntime";
+import { HTMLContent } from "@/utils/RenderHTML";
 
 export default function QuizTaking() {
   const { theme } = useAppTheme();
@@ -595,9 +596,15 @@ export default function QuizTaking() {
                   </View>
                 )}
               </View>
-              <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA] leading-6">
-                {item.question}
-              </Text>
+              <View className="flex-1">
+                {item.content_format_version && item.question_html ? (
+                  <HTMLContent htmlContent={item.question_html} />
+                ) : (
+                  <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA] leading-6">
+                    {item.question}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -653,15 +660,21 @@ export default function QuizTaking() {
                   </View>
 
                   {/* Option Text */}
-                  <Text
-                    className={`flex-1 text-base leading-6 ${
-                      isSelected
-                        ? "text-[#201D25] dark:text-[#F7F4FA] font-semibold"
-                        : "text-[#6C6572] dark:text-[#BEB6C5]"
-                    }`}
-                  >
-                    {item.options[key]}
-                  </Text>
+                  <View className="flex-1">
+                    {item.content_format_version && item.options_html?.[key] ? (
+                      <HTMLContent htmlContent={item.options_html[key]!} />
+                    ) : (
+                      <Text
+                        className={`text-base leading-6 ${
+                          isSelected
+                            ? "text-[#201D25] dark:text-[#F7F4FA] font-semibold"
+                            : "text-[#6C6572] dark:text-[#BEB6C5]"
+                        }`}
+                      >
+                        {item.options[key]}
+                      </Text>
+                    )}
+                  </View>
 
                   {/* Selected Icon */}
                   {isSelected && (
