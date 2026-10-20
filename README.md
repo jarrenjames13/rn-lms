@@ -1,5 +1,8 @@
-#React Native - LMS APP
+# React Native LMS App
 
-##IN PROGRESS
+## Rich-content mobile smoke test
 
-###THIS IS AN APP FOR STUDENT USE ONLY
+Run `npm run test:smoke` to verify version-1 question/choice HTML selection, literal
+legacy fallback, cookie-only same-origin `/api/media/{uuid}` image headers, and an
+Android Expo/Metro production bundle. This test does not require a device, simulator,
+signed-in account, or live API.

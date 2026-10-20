@@ -35,7 +35,7 @@ import { useAssessmentFocusGuard } from "@/utils/useAssessmentFocusGuard";
 import { isAssessmentLeaseEvicted } from "@/utils/assessmentLease";
 import { getAssessmentClientId } from "@/utils/assessmentClientId";
 import { useAssessmentSessionRuntime } from "@/utils/useAssessmentSessionRuntime";
-import { HTMLContent } from "@/utils/RenderHTML";
+import { AssessmentItemContent } from "@/components/AssessmentItemContent";
 
 export default function ExamTaking() {
   const { theme } = useAppTheme();
@@ -556,13 +556,12 @@ export default function ExamTaking() {
           </View>
 
           <View className="mt-1">
-            {item.content_format_version === 1 && item.question_html ? (
-              <HTMLContent htmlContent={item.question_html} />
-            ) : (
-              <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
-                {item.question_text}
-              </Text>
-            )}
+            <AssessmentItemContent
+              contentFormatVersion={item.content_format_version}
+              htmlContent={item.question_html}
+              plainText={item.question_text}
+              plainTextClassName="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]"
+            />
           </View>
         </View>
 
@@ -597,13 +596,12 @@ export default function ExamTaking() {
                   <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
                     {key}.
                   </Text>
-                  {item.content_format_version === 1 && item.options_html?.[key] ? (
-                    <HTMLContent htmlContent={item.options_html[key]!} />
-                  ) : (
-                    <Text className="text-base text-[#201D25] dark:text-[#F7F4FA]">
-                      {item.options[key]}
-                    </Text>
-                  )}
+                  <AssessmentItemContent
+                    contentFormatVersion={item.content_format_version}
+                    htmlContent={item.options_html?.[key]}
+                    plainText={item.options[key]}
+                    plainTextClassName="text-base text-[#201D25] dark:text-[#F7F4FA]"
+                  />
                 </View>
                 {isSelected && (
                   <MaterialIcons

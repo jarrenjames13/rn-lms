@@ -38,7 +38,7 @@ import { useAssessmentFocusGuard } from "@/utils/useAssessmentFocusGuard";
 import { isAssessmentLeaseEvicted } from "@/utils/assessmentLease";
 import { getAssessmentClientId } from "@/utils/assessmentClientId";
 import { useAssessmentSessionRuntime } from "@/utils/useAssessmentSessionRuntime";
-import { HTMLContent } from "@/utils/RenderHTML";
+import { AssessmentItemContent } from "@/components/AssessmentItemContent";
 
 export default function QuizTaking() {
   const { theme } = useAppTheme();
@@ -597,13 +597,12 @@ export default function QuizTaking() {
                 )}
               </View>
               <View className="flex-1">
-                {item.content_format_version === 1 && item.question_html ? (
-                  <HTMLContent htmlContent={item.question_html} />
-                ) : (
-                  <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA] leading-6">
-                    {item.question}
-                  </Text>
-                )}
+                <AssessmentItemContent
+                  contentFormatVersion={item.content_format_version}
+                  htmlContent={item.question_html}
+                  plainText={item.question}
+                  plainTextClassName="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA] leading-6"
+                />
               </View>
             </View>
           </View>
@@ -661,19 +660,16 @@ export default function QuizTaking() {
 
                   {/* Option Text */}
                   <View className="flex-1">
-                    {item.content_format_version === 1 && item.options_html?.[key] ? (
-                      <HTMLContent htmlContent={item.options_html[key]!} />
-                    ) : (
-                      <Text
-                        className={`text-base leading-6 ${
-                          isSelected
-                            ? "text-[#201D25] dark:text-[#F7F4FA] font-semibold"
-                            : "text-[#6C6572] dark:text-[#BEB6C5]"
-                        }`}
-                      >
-                        {item.options[key]}
-                      </Text>
-                    )}
+                    <AssessmentItemContent
+                      contentFormatVersion={item.content_format_version}
+                      htmlContent={item.options_html?.[key]}
+                      plainText={item.options[key]}
+                      plainTextClassName={`text-base leading-6 ${
+                        isSelected
+                          ? "text-[#201D25] dark:text-[#F7F4FA] font-semibold"
+                          : "text-[#6C6572] dark:text-[#BEB6C5]"
+                      }`}
+                    />
                   </View>
 
                   {/* Selected Icon */}

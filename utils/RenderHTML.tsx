@@ -7,6 +7,7 @@ import RenderHTML, {
 import React, { useCallback, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "@/utils/constants";
+import { getEmbeddedMediaHeaders } from "@/utils/examContentPolicy";
 import {
   ScrollView,
   Text,
@@ -143,24 +144,7 @@ export const HTMLContent = React.memo(function HTMLContent({
   }, []);
 
   const provideEmbeddedHeaders = useCallback((uri: string, tagName: string) => {
-    const mediaPath = /^\/api\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let mediaURL: URL;
-    let apiOrigin: string;
-    try {
-      mediaURL = new URL(uri, BASE_URL);
-      apiOrigin = new URL(BASE_URL!).origin;
-    } catch {
-      return null;
-    }
-    if (
-      tagName === "img" &&
-      mediaURL.origin === apiOrigin &&
-      mediaPath.test(mediaURL.pathname) &&
-      authCookie
-    ) {
-      return { Cookie: authCookie };
-    }
-    return null;
+    return getEmbeddedMediaHeaders(uri, tagName, BASE_URL, authCookie);
   }, [authCookie]);
 
   const onLayout = (event: LayoutChangeEvent) => {
