@@ -556,7 +556,7 @@ export default function ExamTaking() {
           </View>
 
           <View className="mt-1">
-            {item.content_format_version && item.question_html ? (
+            {item.content_format_version === 1 && item.question_html ? (
               <HTMLContent htmlContent={item.question_html} />
             ) : (
               <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
@@ -597,7 +597,7 @@ export default function ExamTaking() {
                   <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
                     {key}.
                   </Text>
-                  {item.content_format_version && item.options_html?.[key] ? (
+                  {item.content_format_version === 1 && item.options_html?.[key] ? (
                     <HTMLContent htmlContent={item.options_html[key]!} />
                   ) : (
                     <Text className="text-base text-[#201D25] dark:text-[#F7F4FA]">

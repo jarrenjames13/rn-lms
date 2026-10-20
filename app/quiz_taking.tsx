@@ -597,7 +597,7 @@ export default function QuizTaking() {
                 )}
               </View>
               <View className="flex-1">
-                {item.content_format_version && item.question_html ? (
+                {item.content_format_version === 1 && item.question_html ? (
                   <HTMLContent htmlContent={item.question_html} />
                 ) : (
                   <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA] leading-6">
@@ -661,7 +661,7 @@ export default function QuizTaking() {
 
                   {/* Option Text */}
                   <View className="flex-1">
-                    {item.content_format_version && item.options_html?.[key] ? (
+                    {item.content_format_version === 1 && item.options_html?.[key] ? (
                       <HTMLContent htmlContent={item.options_html[key]!} />
                     ) : (
                       <Text
