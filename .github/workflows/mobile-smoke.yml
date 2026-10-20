@@ -1,0 +1,35 @@
+name: Mobile rich-content smoke
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Content policy and Android/iOS bundles
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: https://api.invalid
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run rich-content smoke checks and export both platforms
+        run: npm run test:smoke
