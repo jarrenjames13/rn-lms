@@ -1,5 +1,5 @@
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync, rmSync } = require("node:fs");
+const { mkdirSync, mkdtempSync, rmSync } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
@@ -21,15 +21,19 @@ function run(command, args) {
 
 try {
   run(process.execPath, [path.join(projectRoot, "mobile-content-smoke.test.cjs")]);
-  run(process.execPath, [
-    require.resolve("expo/bin/cli"),
-    "export",
-    "--platform",
-    "android",
-    "--output-dir",
-    outputDir,
-  ]);
-  console.log("Mobile rich-content smoke checks passed.");
+  for (const platform of ["android", "ios"]) {
+    const platformOutputDir = path.join(outputDir, platform);
+    mkdirSync(platformOutputDir);
+    run(process.execPath, [
+      require.resolve("expo/bin/cli"),
+      "export",
+      "--platform",
+      platform,
+      "--output-dir",
+      platformOutputDir,
+    ]);
+  }
+  console.log("Android and iOS rich-content smoke checks passed.");
 } catch {
   process.exitCode = process.exitCode || 1;
 } finally {
