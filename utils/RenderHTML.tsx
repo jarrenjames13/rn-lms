@@ -144,11 +144,20 @@ export const HTMLContent = React.memo(function HTMLContent({
 
   const provideEmbeddedHeaders = useCallback((uri: string, tagName: string) => {
     const mediaPath = /^\/api\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let path = uri;
+    let mediaURL: URL;
+    let apiOrigin: string;
     try {
-      path = new URL(uri, BASE_URL).pathname;
-    } catch {}
-    if (tagName === "img" && mediaPath.test(path) && authCookie) {
+      mediaURL = new URL(uri, BASE_URL);
+      apiOrigin = new URL(BASE_URL!).origin;
+    } catch {
+      return null;
+    }
+    if (
+      tagName === "img" &&
+      mediaURL.origin === apiOrigin &&
+      mediaPath.test(mediaURL.pathname) &&
+      authCookie
+    ) {
       return { Cookie: authCookie };
     }
     return null;
