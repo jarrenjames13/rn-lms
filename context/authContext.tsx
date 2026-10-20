@@ -6,10 +6,10 @@ import {
 } from "@/types/api";
 
 import { BASE_URL } from "@/utils/constants";
-import { clearApiAuthorization, setLogoutCallback } from "@/utils/fetcher";
+import { apiClient, clearApiAuthorization, persistAuthCookies, setLogoutCallback } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
 import NetInfo from "@react-native-community/netinfo";
-import axios, { isAxiosError } from "axios";
+import { isAxiosError } from "axios";
 import * as SecureStore from "expo-secure-store";
 import { useExamStore } from "@/store/useExamStore";
 import { useQuizStore } from "@/store/useQuizStore";
@@ -26,8 +26,6 @@ import { AppState, AppStateStatus } from "react-native";
 
 interface AuthProps {
   authState?: {
-    access_token: string | null;
-    refresh_token: string | null;
     success: boolean | null;
     user: {
       user_id: number;
@@ -50,8 +48,6 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: any) => {
   const [authState, setAuthState] = useState<{
-    access_token: string | null;
-    refresh_token: string | null;
     success: boolean | null;
     user: {
       user_id: number;
@@ -61,8 +57,6 @@ export const AuthProvider = ({ children }: any) => {
     } | null;
     isLoading: boolean;
   }>({
-    access_token: null,
-    refresh_token: null,
     success: null,
     user: null,
     isLoading: true,
@@ -74,19 +68,15 @@ export const AuthProvider = ({ children }: any) => {
 
   const clearAuth = useCallback(async () => {
     await deactivatePushNotifications(false);
-    await SecureStore.deleteItemAsync("access_token");
-    await SecureStore.deleteItemAsync("refresh_token");
+    await SecureStore.deleteItemAsync("auth_cookie");
     await SecureStore.deleteItemAsync("user");
     await SecureStore.deleteItemAsync("active_quiz_attempt");
     await SecureStore.deleteItemAsync("active_exam_attempt");
     useQuizStore.getState().clearAttempt();
     useExamStore.getState().clearAttempt();
-    delete axios.defaults.headers.common["Authorization"];
     clearApiAuthorization();
 
     setAuthState({
-      access_token: null,
-      refresh_token: null,
       success: null,
       user: null,
       isLoading: false,
@@ -117,148 +107,36 @@ export const AuthProvider = ({ children }: any) => {
     }
   }, []);
 
-  // Helper function to refresh tokens
-  const refreshAccessToken = useCallback(
-    async (
-      currentRefreshToken: string,
-    ): Promise<{ access_token: string; refresh_token: string } | null> => {
-      try {
-        const res = await axios.post(
-          `${BASE_URL}/auth/refresh`,
-          {},
-          {
-            headers: { Authorization: `Bearer ${currentRefreshToken}` },
-          },
-        );
-
-        if (res.status === 200 && res.data.access_token) {
-          const newAccessToken = res.data.access_token;
-          const newRefreshToken = res.data.refresh_token;
-
-          // Store new tokens
-          await SecureStore.setItemAsync("access_token", newAccessToken);
-          await SecureStore.setItemAsync("refresh_token", newRefreshToken);
-
-          return {
-            access_token: newAccessToken,
-            refresh_token: newRefreshToken,
-          };
-        }
-
-        return null;
-      } catch (error) {
-        console.log("Token refresh failed:", error);
-        return null;
-      }
-    },
-    [],
-  );
-
   const verifyUser = useCallback(async () => {
     try {
-      console.log("Verifying user...");
-
-      // Check internet connection first
       const hasConnection = await checkConnection();
       if (!hasConnection) {
         setAuthState((prev) => ({ ...prev, isLoading: false }));
         return;
       }
 
-      const access_token = await SecureStore.getItemAsync("access_token");
-      const refresh_token = await SecureStore.getItemAsync("refresh_token");
-
-      if (!access_token || !refresh_token) {
+      const cookie = await SecureStore.getItemAsync("auth_cookie");
+      if (!cookie) {
         setAuthState((prev) => ({ ...prev, isLoading: false }));
         return;
       }
-      console.log("Found tokens, proceeding with verification...");
-      // Attempt to verify with current access token
-      try {
-        const res = await axios.get<VerifyUser>(`${BASE_URL}/auth/verify`, {
-          headers: { Authorization: `Bearer ${access_token}` },
-        });
-        const data = res.data;
-        if (res.status === 200 && data.user.role === "student") {
-          setAuthState({
-            access_token: access_token,
-            refresh_token,
-            user: data.user,
-            success: true,
-            isLoading: false,
-          });
 
-          axios.defaults.headers.common["Authorization"] =
-            `Bearer ${access_token}`;
-
-          if (data.user) {
-            console.log("User verified successfully:", data.user);
-            await SecureStore.setItemAsync("user", JSON.stringify(data.user));
-          }
-          return;
-        } else if (res.status === 200 && data.user.role !== "student") {
-          console.log("User role is not student, clearing auth.");
-          await clearAuth();
-          return;
-        }
-      } catch (verifyError: any) {
-        // If verification fails with 401, try to refresh the token
-        if (verifyError.response?.status === 401) {
-          console.log("Access token expired, attempting refresh...");
-
-          const refreshResult = await refreshAccessToken(refresh_token);
-
-          if (refreshResult) {
-            // Token refresh successful, verify again with new token
-            try {
-              const retryRes = await axios.get(`${BASE_URL}/auth/verify`, {
-                headers: {
-                  Authorization: `Bearer ${refreshResult.access_token}`,
-                },
-              });
-
-              if (retryRes.status === 200) {
-                const data = retryRes.data;
-
-                setAuthState({
-                  access_token: refreshResult.access_token,
-                  refresh_token: refreshResult.refresh_token,
-                  user: data.user,
-                  success: true,
-                  isLoading: false,
-                });
-
-                axios.defaults.headers.common["Authorization"] =
-                  `Bearer ${refreshResult.access_token}`;
-
-                console.log("Token refreshed and user verified successfully");
-                return;
-              }
-            } catch (retryError) {
-              console.log(
-                "Verification failed after token refresh:",
-                retryError,
-              );
-            }
-          }
-
-          // If refresh failed or retry verification failed, logout
-          console.log(
-            "Token refresh or re-verification failed, logging out...",
-          );
-          await clearAuth();
-          return;
-        }
-
-        // For other errors, logout
-        console.log("Verification failed with non-401 error:", verifyError);
+      const response = await apiClient.get<VerifyUser>(`${BASE_URL}/auth/verify`);
+      if (response.data.user.role !== "student") {
         await clearAuth();
+        return;
       }
+      await SecureStore.setItemAsync("user", JSON.stringify(response.data.user));
+      setAuthState({
+        user: response.data.user,
+        success: true,
+        isLoading: false,
+      });
     } catch (error) {
-      console.log("Verify user error:", error);
+      console.log("Verify user failed; clearing the local session.", error);
       await clearAuth();
     }
-  }, [refreshAccessToken, clearAuth, checkConnection]);
+  }, [clearAuth, checkConnection]);
 
   const handleAppStateChange = useCallback(
     async (nextAppState: AppStateStatus) => {
@@ -274,8 +152,7 @@ export const AuthProvider = ({ children }: any) => {
 
         if (
           hasConnection &&
-          authState.access_token &&
-          authState.refresh_token
+          authState.success
         ) {
           console.log("Verifying user...");
           verifyUser();
@@ -285,8 +162,7 @@ export const AuthProvider = ({ children }: any) => {
       appState.current = nextAppState;
     },
     [
-      authState.access_token,
-      authState.refresh_token,
+      authState.success,
       verifyUser,
       checkConnection,
     ],
@@ -325,7 +201,7 @@ export const AuthProvider = ({ children }: any) => {
         hasShownConnectionToast.current = false;
 
         // Re-verify user when connection is restored
-        if (authState.access_token && authState.refresh_token) {
+        if (authState.success) {
           verifyUser();
         }
       } else if (wasConnected === true && nowConnected === false) {
@@ -342,8 +218,7 @@ export const AuthProvider = ({ children }: any) => {
     return () => unsubscribe();
   }, [
     isConnected,
-    authState.access_token,
-    authState.refresh_token,
+    authState.success,
     verifyUser,
   ]);
 
@@ -409,20 +284,19 @@ export const AuthProvider = ({ children }: any) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
 
-      const res = await axios.post<LoginResponse>(
+      const res = await apiClient.post<LoginResponse>(
         `${BASE_URL}/auth/mobile-login`,
-        {
-          external_id,
-          password,
-        },
+        { external_id, password },
+        { _skipRefreshRetry: true } as any,
       );
       const data = res.data;
 
       // Only successful 200 responses reach here
       if (data.success && data.user.role === "student") {
+        if (!(await persistAuthCookies(res.headers))) {
+          throw new Error("Secure session cookies were not returned by the server.");
+        }
         setAuthState({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
           user: data.user,
           success: data.success,
           isLoading: false,
@@ -434,11 +308,6 @@ export const AuthProvider = ({ children }: any) => {
           message: data.message || "Login successful.",
         });
 
-        axios.defaults.headers.common["Authorization"] =
-          `Bearer ${data.access_token}`;
-
-        await SecureStore.setItemAsync("access_token", data.access_token);
-        await SecureStore.setItemAsync("refresh_token", data.refresh_token);
         await SecureStore.setItemAsync("user", JSON.stringify(data.user));
       } else if (data.success && data.user.role !== "student") {
         console.log("User role is not student, clearing auth.");
@@ -485,21 +354,18 @@ export const AuthProvider = ({ children }: any) => {
         await deactivatePushNotifications();
       }
 
-      const refresh_token = await SecureStore.getItemAsync("refresh_token");
+      const authCookie = await SecureStore.getItemAsync("auth_cookie");
 
-      if (!refresh_token) {
+      if (!authCookie) {
         await clearAuth();
         return;
       }
 
       // Only attempt API logout if connected
       if (hasConnection) {
-        const res = await axios.post<LogoutResponse>(
+        const res = await apiClient.post<LogoutResponse>(
           `${BASE_URL}/auth/logout`,
           {},
-          {
-            headers: { Authorization: `Bearer ${refresh_token}` },
-          },
         );
 
         const data = res.data;

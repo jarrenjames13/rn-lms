@@ -22,7 +22,7 @@ import { MAX_QUIZ_ATTEMPTS } from "@/utils/constants";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 type Assessment = {
@@ -35,7 +35,9 @@ type Assessment = {
   score?: number | null;
   meta: string;
   actionable: boolean;
+  showAction?: boolean;
   actionLabel: string;
+  sessionState?: "resumable" | "expired_pending";
   quiz?: QuizDetails;
   exam?: ExamDetails;
   activity?: SingleActivity;
@@ -128,44 +130,89 @@ export default function Assessments() {
   const assessments = useMemo<Assessment[]>(() => {
     const quizItems: Assessment[] = (quizzes?.quizzes ?? []).map((quiz) => {
       const attemptsMade = quiz.attempts_made ?? 0;
+      const sessionState = quiz.active_session?.state;
+      const minutesLeft = Math.max(
+        1,
+        Math.ceil((quiz.active_session?.remaining_seconds ?? 0) / 60),
+      );
       return {
         id: quiz.quiz_id,
         title: quiz.quiz_name,
         description: quiz.description,
         type: "Quiz",
         period: quiz.exam_period,
-        status:
-          attemptsMade >= MAX_QUIZ_ATTEMPTS
+        status: sessionState === "resumable"
+          ? "In progress"
+          : sessionState === "expired_pending"
+            ? "Time expired"
+            : attemptsMade >= MAX_QUIZ_ATTEMPTS
             ? "Attempts used"
             : attemptsMade > 0
               ? "Reattempt available"
               : "Available",
         score: quiz.score,
-        meta: `${quiz.total_items} questions · ${attemptsMade}/${MAX_QUIZ_ATTEMPTS} attempts used`,
-        actionable: attemptsMade < MAX_QUIZ_ATTEMPTS,
-        actionLabel: attemptsMade > 0 ? "Reattempt quiz" : "Start quiz",
+        meta: sessionState === "resumable"
+          ? `${quiz.total_items} questions · ${minutesLeft} minute${minutesLeft === 1 ? "" : "s"} remaining`
+          : sessionState === "expired_pending"
+            ? "Your saved answers are being finalized"
+            : `${quiz.total_items} questions · ${attemptsMade}/${MAX_QUIZ_ATTEMPTS} attempts used`,
+        actionable:
+          sessionState === "resumable" ||
+          (sessionState !== "expired_pending" && attemptsMade < MAX_QUIZ_ATTEMPTS),
+        showAction: sessionState === "expired_pending" || attemptsMade < MAX_QUIZ_ATTEMPTS,
+        actionLabel: sessionState === "resumable"
+          ? "Resume quiz"
+          : sessionState === "expired_pending"
+            ? "Finalizing result..."
+            : attemptsMade > 0
+              ? "Reattempt quiz"
+              : "Start quiz",
+        sessionState,
         quiz,
       };
     });
     const examItems: Assessment[] = (exams?.exams ?? []).map((exam) => {
       const submission = exam.category.toLowerCase() === "submission";
+      const sessionState = exam.active_session?.state;
+      const minutesLeft = Math.max(
+        1,
+        Math.ceil((exam.active_session?.remaining_seconds ?? 0) / 60),
+      );
       return {
         id: exam.exam_id,
         title: exam.exam_name,
         description: exam.description,
         type: submission ? "Submission" : "Exam",
         period: exam.exam_period,
-        status: exam.is_taken
+        status: sessionState === "resumable"
+          ? "In progress"
+          : sessionState === "expired_pending"
+            ? "Time expired"
+            : exam.is_taken
           ? exam.score === null
             ? "Awaiting review"
             : "Graded"
           : "Available",
         score: exam.score,
-        meta: submission
+        meta: sessionState === "resumable"
+          ? `${exam.total_items} questions · ${minutesLeft} minute${minutesLeft === 1 ? "" : "s"} remaining`
+          : sessionState === "expired_pending"
+            ? "Your saved answers are being finalized"
+            : submission
           ? "File submission · One attempt"
           : `${exam.total_items} questions · Timed assessment`,
-        actionable: !exam.is_taken,
-        actionLabel: submission ? "Submit work" : "Start exam",
+        actionable:
+          sessionState === "resumable" ||
+          (sessionState !== "expired_pending" && !exam.is_taken),
+        showAction: sessionState === "expired_pending" || !exam.is_taken,
+        actionLabel: sessionState === "resumable"
+          ? "Resume exam"
+          : sessionState === "expired_pending"
+            ? "Finalizing result..."
+            : submission
+              ? "Submit work"
+              : "Start exam",
+        sessionState,
         exam,
       };
     });
@@ -193,6 +240,18 @@ export default function Assessments() {
     );
     return [...quizItems, ...examItems, ...activityItems];
   }, [activityQueries, courseDetails?.modules, exams?.exams, quizzes?.quizzes]);
+
+  const hasFinalizingAssessment = assessments.some(
+    (assessment) => assessment.sessionState === "expired_pending",
+  );
+  useEffect(() => {
+    if (!hasFinalizingAssessment) return;
+    const interval = setInterval(() => {
+      void refetchQuizzes();
+      void refetchExams();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [hasFinalizingAssessment, refetchExams, refetchQuizzes]);
 
   const startQuiz = (quiz: QuizDetails) => {
     beginQuizAttempt(quiz.quiz_id, quizzes?.instance_id ?? instance_id!);
@@ -225,7 +284,8 @@ export default function Assessments() {
     if (assessment.quiz) {
       if (!quizAttemptHydrated) return;
       if (quizAttemptStatus === "idle") {
-        setAssessmentToStart(assessment);
+        if (assessment.sessionState === "resumable") startQuiz(assessment.quiz);
+        else setAssessmentToStart(assessment);
       } else if (
         activeQuizId === assessment.id &&
         activeQuizInstanceId === targetInstanceId
@@ -250,7 +310,8 @@ export default function Assessments() {
     if (assessment.type === "Exam" && assessment.exam) {
       if (!examAttemptHydrated) return;
       if (examAttemptStatus === "idle") {
-        setAssessmentToStart(assessment);
+        if (assessment.sessionState === "resumable") startExam(assessment.exam);
+        else setAssessmentToStart(assessment);
       } else if (
         activeExamId === assessment.id &&
         activeExamInstanceId === targetInstanceId
@@ -350,12 +411,12 @@ export default function Assessments() {
             Score: {assessment.score}%
           </Text>
         ) : null}
-        {assessment.actionable ? (
+        {(assessment.showAction ?? assessment.actionable) ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={assessment.actionLabel}
             onPress={() => requestAssessmentStart(assessment)}
-            disabled={!attemptHydrated}
+            disabled={!attemptHydrated || !assessment.actionable}
           >
             {({ pressed }) => (
               <View
@@ -366,7 +427,7 @@ export default function Assessments() {
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor:
-                    !attemptHydrated
+                    !attemptHydrated || !assessment.actionable
                       ? theme.tabInactive
                       : assessment.type === "Quiz" || assessment.type === "Exam"
                       ? pressed
@@ -379,7 +440,7 @@ export default function Assessments() {
                       ? theme.primaryPressed
                       : "transparent",
                   opacity:
-                    !attemptHydrated
+                    !attemptHydrated || !assessment.actionable
                       ? 0.55
                       : assessment.type === "Submission" && pressed
                         ? 0.82

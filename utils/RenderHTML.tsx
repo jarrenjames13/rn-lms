@@ -4,7 +4,9 @@ import RenderHTML, {
   type CustomBlockRenderer,
   type MixedStyleRecord,
 } from "react-native-render-html";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { BASE_URL } from "@/utils/constants";
 import {
   ScrollView,
   Text,
@@ -130,6 +132,27 @@ export const HTMLContent = React.memo(function HTMLContent({
 }) {
   const { theme } = useAppTheme();
   const [contentWidth, setContentWidth] = useState(0);
+  const [authCookie, setAuthCookie] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    SecureStore.getItemAsync("auth_cookie").then((cookie) => {
+      if (active) setAuthCookie(cookie);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const provideEmbeddedHeaders = useCallback((uri: string, tagName: string) => {
+    const mediaPath = /^\/api\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let path = uri;
+    try {
+      path = new URL(uri, BASE_URL).pathname;
+    } catch {}
+    if (tagName === "img" && mediaPath.test(path) && authCookie) {
+      return { Cookie: authCookie };
+    }
+    return null;
+  }, [authCookie]);
 
   const onLayout = (event: LayoutChangeEvent) => {
     const width = Math.floor(event.nativeEvent.layout.width);
@@ -154,6 +177,7 @@ export const HTMLContent = React.memo(function HTMLContent({
           customHTMLElementModels={HTML_MODELS}
           renderers={{ pre: preRenderer }}
           ignoredDomTags={["script", "style", "iframe", "object", "embed"]}
+          provideEmbeddedHeaders={provideEmbeddedHeaders}
           enableCSSInlineProcessing={false}
         />
       )}

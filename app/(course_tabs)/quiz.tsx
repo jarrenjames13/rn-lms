@@ -209,7 +209,12 @@ export default function Quiz() {
   const requestQuizStart = (quiz: QuizDetails) => {
     if (!attemptHydrated || instanceId === null) return;
     if (attemptStatus === "idle") {
-      setQuizToStart(quiz);
+      if (quiz.active_session?.state === "resumable") {
+        beginAttempt(quiz.quiz_id, instanceId);
+        router.replace("/quiz_taking");
+      } else {
+        setQuizToStart(quiz);
+      }
       return;
     }
 
@@ -234,6 +239,7 @@ export default function Quiz() {
     const remainingAttempts = Math.max(0, MAX_QUIZ_ATTEMPTS - attemptsMade);
     const maxAttemptsReached = attemptsMade >= MAX_QUIZ_ATTEMPTS;
     const isPassing = quiz.score !== null && quiz.score >= 75;
+    const sessionState = quiz.active_session?.state;
 
     return (
       <View
@@ -466,7 +472,39 @@ export default function Quiz() {
           )}
 
           {/* Action Buttons */}
-          {!maxAttemptsReached && (
+          {sessionState === "expired_pending" ? (
+            <View className="bg-[#F2ECF8] dark:bg-[#2A2038] px-4 py-4 rounded-xl">
+              <Text className="text-center text-[#6C6572] dark:text-[#BEB6C5] font-semibold">
+                Finalizing result...
+              </Text>
+            </View>
+          ) : sessionState === "resumable" ? (
+            <Pressable
+              onPress={() => requestQuizStart(quiz)}
+              disabled={!attemptHydrated}
+            >
+              {({ pressed }) => (
+                <View
+                  style={{
+                    minHeight: 52,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: !attemptHydrated
+                      ? theme.tabInactive
+                      : pressed
+                        ? theme.primaryPressed
+                        : theme.school,
+                    opacity: attemptHydrated ? 1 : 0.55,
+                  }}
+                >
+                  <Text style={{ color: "#FFFFFF" }} className="font-bold text-base">
+                    Resume Quiz
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          ) : !maxAttemptsReached && (
             <View>
               {attemptsMade > 0 ? (
                 // Retake Button

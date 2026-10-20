@@ -1,6 +1,7 @@
 import EventSource from 'react-native-sse';
-import * as SecureStore from 'expo-secure-store';
 import { BASE_URL } from '@/utils/constants';
+import { getAuthCookieHeaders } from '@/utils/fetcher';
+import type { AssessmentLeaseEvent } from '@/utils/assessmentLease';
 
 type Listener = (data: any) => void;
 
@@ -26,10 +27,16 @@ export const COMMENT_EVENTS = [
 
 export type CommentEventType = typeof COMMENT_EVENTS[number];
 
+export const ASSESSMENT_LEASE_EVENTS = [
+  'assessment_lease_taken_over', 'assessment_session_evicted',
+  'assessment_session_taken_over', 'lease_taken_over', 'session_taken_over',
+] as const;
+
 class SSEService {
   private es: EventSource | null = null;
   private notifListeners = new Set<Listener>();
   private commentListeners = new Map<CommentEventType, Set<Listener>>();
+  private assessmentLeaseListeners = new Set<(data: AssessmentLeaseEvent) => void>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private attempts = 0;
   private instanceId?: number;
@@ -40,8 +47,8 @@ class SSEService {
     this.moduleId = moduleId;
     if (this.es) return;
 
-    const token = await SecureStore.getItemAsync('access_token');
-    if (!token) return;
+    const headers = await getAuthCookieHeaders('GET', '/events');
+    if (!headers.Cookie) return;
 
     const params = new URLSearchParams();
     if (instanceId != null) params.set('instance_id', String(instanceId));
@@ -49,13 +56,20 @@ class SSEService {
     const qs = params.toString();
 
     this.es = new EventSource(`${BASE_URL}/events${qs ? `?${qs}` : ''}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
     });
 
     this.es.addEventListener('open', () => { this.attempts = 0; });
 
     (this.es as any).addEventListener('notification', (e: any) => {
-      try { this.notifListeners.forEach(cb => cb(JSON.parse(e.data))); } catch {}
+      try {
+        const data = JSON.parse(e.data);
+        if ((ASSESSMENT_LEASE_EVENTS as readonly string[]).includes(data.type)) {
+          this.assessmentLeaseListeners.forEach(cb => cb(data));
+          return;
+        }
+        this.notifListeners.forEach(cb => cb(data));
+      } catch {}
     });
 
     for (const type of COMMENT_EVENTS) {
@@ -63,6 +77,15 @@ class SSEService {
         try {
           const data = JSON.parse(e.data);
           this.commentListeners.get(type)?.forEach(cb => cb(data));
+        } catch {}
+      });
+    }
+
+    for (const type of ASSESSMENT_LEASE_EVENTS) {
+      (this.es as any).addEventListener(type, (e: any) => {
+        try {
+          const data = JSON.parse(e.data);
+          this.assessmentLeaseListeners.forEach(cb => cb({ ...data, type }));
         } catch {}
       });
     }
@@ -100,6 +123,11 @@ class SSEService {
     if (!this.commentListeners.has(type)) this.commentListeners.set(type, new Set());
     this.commentListeners.get(type)!.add(cb);
     return () => this.commentListeners.get(type)?.delete(cb);
+  }
+
+  onAssessmentLeaseEvent(cb: (data: AssessmentLeaseEvent) => void): () => void {
+    this.assessmentLeaseListeners.add(cb);
+    return () => this.assessmentLeaseListeners.delete(cb);
   }
 }
 

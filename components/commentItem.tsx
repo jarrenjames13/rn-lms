@@ -1,7 +1,6 @@
 import { createInfiniteRepliesOptions } from "@/api/QueryOptions/repliesOptions";
 import { Comment, Replies } from "@/types/api";
 import { useAppTheme, type Theme } from "@/theme";
-import { getAccessToken } from "@/utils/accessToken";
 import { getData } from "@/utils/fetcher";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -520,7 +519,6 @@ function ReactionCount({
 // ─── ReplyItem ────────────────────────────────────────────────────────────────
 function ReplyItem({
   reply,
-  accessToken,
   currentUserId,
   onEdit,
   onDelete,
@@ -529,7 +527,6 @@ function ReplyItem({
   onShowAllReactions,
 }: {
   reply: ReplyData;
-  accessToken: string | null;
   currentUserId?: number;
   onEdit?: (item: EditTarget) => void;
   onDelete?: (replyId: number) => void;
@@ -623,7 +620,6 @@ function ReplyItem({
 // ─── RepliesSection ───────────────────────────────────────────────────────────
 function RepliesSection({
   parentId,
-  accessToken,
   currentUserId,
   onReply,
   onDelete,
@@ -632,7 +628,6 @@ function RepliesSection({
   onShowAllReactions,
 }: {
   parentId: number;
-  accessToken: string | null;
   currentUserId?: number;
   onReply?: (target: { id: number; full_name: string }) => void;
   onDelete?: (replyId: number) => void;
@@ -671,7 +666,6 @@ function RepliesSection({
         <ReplyItem
           key={reply.id}
           reply={reply}
-          accessToken={accessToken}
           currentUserId={currentUserId}
           onReply={onReply}
           onDelete={onDelete}
@@ -718,14 +712,9 @@ export default function CommentItem({
   const { theme } = useAppTheme();
   const styles = createStyles(theme);
   const [showReplies, setShowReplies] = useState(false);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const imageUrl = useCommentImage(item.id, !!(item.file_path?.trim()));
   const isOwner = currentUserId === item.user_id;
   const [showImageModal, setShowImageModal] = useState(false);
-
-  useEffect(() => {
-    getAccessToken().then(setAccessToken);
-  }, []);
 
   return (
     <View style={styles.commentCard}>
@@ -821,7 +810,6 @@ export default function CommentItem({
       {showReplies && (
         <RepliesSection
           parentId={item.id}
-          accessToken={accessToken}
           currentUserId={currentUserId}
           onReply={onReply}
           onDelete={onDelete}

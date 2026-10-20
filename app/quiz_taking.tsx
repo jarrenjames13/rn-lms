@@ -8,6 +8,9 @@ import {
 import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
 import createQuizQuestionsOptions from "@/api/QueryOptions/quizQuestionsOptions";
 import QuizSubmissionModal from "@/components/QuizSubmissionModal";
+import AssessmentFocusWarningModal from "@/components/AssessmentFocusWarningModal";
+import AssessmentTakeoverModal from "@/components/AssessmentTakeoverModal";
+import { takeoverAssessmentSession } from "@/api/QueryFunctions/assessmentSessionLease";
 import ScreenLoading from "@/components/ScreenLoading";
 import { useQuizStore } from "@/store/useQuizStore";
 import { flushAssessmentStorage } from "@/store/assessmentStorage";
@@ -23,7 +26,6 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
-  AppStateStatus,
   Pressable,
   Text,
   Vibration,
@@ -32,6 +34,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { SubmissionReason } from "@/types/assessmentAttempt";
 import { useAssessmentScreenCapture } from "@/utils/useAssessmentScreenCapture";
+import { useAssessmentFocusGuard } from "@/utils/useAssessmentFocusGuard";
+import { isAssessmentLeaseEvicted } from "@/utils/assessmentLease";
+import { getAssessmentClientId } from "@/utils/assessmentClientId";
+import { useAssessmentSessionRuntime } from "@/utils/useAssessmentSessionRuntime";
+import { HTMLContent } from "@/utils/RenderHTML";
 
 export default function QuizTaking() {
   const { theme } = useAppTheme();
@@ -40,8 +47,12 @@ export default function QuizTaking() {
   const [sessionRetry, setSessionRetry] = useState(0);
   const [recoveryRetry, setRecoveryRetry] = useState(0);
   const [navigationAllowed, setNavigationAllowed] = useState(false);
+  const [takeoverRequest, setTakeoverRequest] = useState<{
+    sessionId: number;
+    generation: number;
+  } | null>(null);
+  const [takeoverPending, setTakeoverPending] = useState(false);
 
-  const appState = useRef(AppState.currentState);
   const startInFlightRef = useRef(false);
   const submissionInFlightRef = useRef(false);
   const recoveryInFlightRef = useRef(false);
@@ -63,6 +74,8 @@ export default function QuizTaking() {
     selectedAnswers,
     setSelectedAnswers,
     setSession,
+    recordFocusLoss,
+    setAnswerRevision,
     markSubmitting,
     markSubmitted,
     markActive,
@@ -71,12 +84,6 @@ export default function QuizTaking() {
   } = useQuizStore();
 
   const listRef = useRef<any>(null);
-  const statusRef = useRef(status);
-
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
-
   useEffect(() => {
     if (
       !hasHydrated ||
@@ -89,21 +96,46 @@ export default function QuizTaking() {
     let cancelled = false;
     startInFlightRef.current = true;
     setSessionError(null);
-    startAssessmentSession({
-      assessment_id: quiz_id,
-      instance_id,
-      category: "quiz",
-    })
-      .then(({ session_token: nextToken, deadline_at }) => {
+    getAssessmentClientId()
+      .then((clientId) => startAssessmentSession({
+        assessment_id: quiz_id,
+        instance_id,
+        category: "quiz",
+        client_id: clientId,
+      }))
+      .then((session) => {
         if (!cancelled) {
-          const deadline = new Date(deadline_at).getTime();
-          setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
-          setSession(nextToken, deadline);
+          const deadline = new Date(session.deadline_at).getTime();
+          const remaining = session.remaining_seconds ?? 0;
+          setSecondsLeft(Math.max(0, Math.ceil(remaining)));
+          setSession(session.session_token, deadline, {
+            session_id: session.session_id,
+            lease_generation: session.lease_generation,
+            lease_token: session.lease_token,
+            resumed: session.resumed,
+          });
         }
       })
       .catch((error: any) => {
         if (!cancelled) {
-          setSessionError(error?.response?.data?.detail ?? error?.message ?? "Unable to start quiz session.");
+          const detail = error?.response?.data?.detail;
+          if (
+            error?.response?.status === 409 &&
+            detail?.code === "TAKEOVER_REQUIRED" &&
+            Number.isFinite(Number(detail.session_id)) &&
+            Number.isFinite(Number(detail.lease_generation))
+          ) {
+            setTakeoverRequest({
+              sessionId: Number(detail.session_id),
+              generation: Number(detail.lease_generation),
+            });
+          } else {
+            setSessionError(
+              typeof detail === "string"
+                ? detail
+                : error?.message ?? "Unable to start quiz session.",
+            );
+          }
         }
       })
       .finally(() => {
@@ -129,8 +161,35 @@ export default function QuizTaking() {
     onError: () => undefined,
   });
 
+  const { queueAutosave, reportFocusLoss, setAnswerVersions } = useAssessmentSessionRuntime({
+    getAttempt: useQuizStore.getState,
+    setAnswerRevision,
+    setRemainingSeconds: setSecondsLeft,
+    leaseKey:
+      status === "active"
+        ? `${useQuizStore.getState().session_id}:${useQuizStore.getState().lease_generation}:${session_token}`
+        : "",
+  });
+  const restoredQuestionStateRef = useRef("");
+
+  useEffect(() => {
+    if (!questionsData || !session_token) return;
+    const restoreKey = `${session_token}:${questionsData.questions.length}`;
+    if (restoredQuestionStateRef.current === restoreKey) return;
+    restoredQuestionStateRef.current = restoreKey;
+    const currentAnswers = useQuizStore.getState().selectedAnswers;
+    setSelectedAnswers({
+      ...(questionsData.saved_answers ?? {}),
+      ...currentAnswers,
+    });
+    setAnswerVersions(questionsData.answer_versions ?? {});
+  }, [questionsData, session_token, setAnswerVersions, setSelectedAnswers]);
+
   const recoverExistingResult = useCallback(async () => {
+    const attempt = useQuizStore.getState();
+    if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
     const recovered = await fetchQuizResult(quiz_id, instance_id, session_token);
+    if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
     markSubmitted(recovered);
   }, [instance_id, markSubmitted, quiz_id, session_token]);
 
@@ -138,12 +197,14 @@ export default function QuizTaking() {
     async (reason: SubmissionReason, recovering = false) => {
       const attempt = useQuizStore.getState();
       if (!attempt.session_token || submissionInFlightRef.current) return;
+      if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
       if (!recovering && attempt.status !== "active") return;
 
       submissionInFlightRef.current = true;
       markSubmitting(reason);
       try {
         await flushAssessmentStorage();
+        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
         const submittedResult = await submitAnswers({
           quiz_id: attempt.quiz_id,
           instance_id: attempt.instance_id,
@@ -151,8 +212,10 @@ export default function QuizTaking() {
           submission_reason: reason,
           session_token: attempt.session_token,
         });
+        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
         markSubmitted(submittedResult);
       } catch (error) {
+        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
         if (getApiErrorStatus(error) === 409 && /already submitted/i.test((error as Error).message)) {
           try {
             await recoverExistingResult();
@@ -199,12 +262,58 @@ export default function QuizTaking() {
     [submitAttempt],
   );
 
+  const { warningVisible, contentObscured, returnToAnswering } =
+    useAssessmentFocusGuard({
+      active: status === "active" && !!session_token,
+      ignoreFocusLossRef: dialogOpenRef,
+      recordFocusLoss,
+      reportFocusLoss,
+      onSecondEpisode: () => performSubmission("tab_switch"),
+    });
+
   usePreventRemove(status !== "idle" && !navigationAllowed, () => {
     const attempt = useQuizStore.getState();
     if (attempt.status === "active" && attempt.session_token) {
       performSubmission("navigation_attempt");
     }
   });
+
+  const confirmTakeover = useCallback(async () => {
+    if (!takeoverRequest || takeoverPending) return;
+    setTakeoverPending(true);
+    try {
+      const clientId = await getAssessmentClientId();
+      const session = await takeoverAssessmentSession(takeoverRequest.sessionId, {
+        client_id: clientId,
+        expected_generation: takeoverRequest.generation,
+      });
+      const deadline = new Date(session.deadline_at).getTime();
+      setSecondsLeft(Math.max(0, Math.ceil(session.remaining_seconds)));
+      setSession(session.session_token, deadline, {
+        session_id: session.session_id,
+        lease_generation: session.lease_generation,
+        resumed: true,
+      });
+      setTakeoverRequest(null);
+    } catch (error: any) {
+      if (!isAssessmentLeaseEvicted(useQuizStore.getState().session_token)) {
+        setSessionError(
+          error?.response?.data?.detail?.code ??
+            error?.message ??
+            "Unable to take over this quiz session.",
+        );
+        setTakeoverRequest(null);
+      }
+    } finally {
+      setTakeoverPending(false);
+    }
+  }, [setSession, takeoverPending, takeoverRequest]);
+
+  const cancelTakeover = useCallback(() => {
+    setTakeoverRequest(null);
+    setNavigationAllowed(true);
+    clearAttempt();
+  }, [clearAttempt]);
 
   const recoverSubmission = useCallback(async () => {
     if (!session_token || recoveryInFlightRef.current || submissionInFlightRef.current) return;
@@ -233,53 +342,35 @@ export default function QuizTaking() {
   }, [hasHydrated, recoverSubmission, recoveryRetry, status]);
 
   useEffect(() => {
-    if (
-      status === "active" &&
-      session_token &&
-      (AppState.currentState === "background" || AppState.currentState === "inactive")
-    ) {
-      performSubmission("tab_switch");
-    }
-  }, [performSubmission, session_token, status]);
-
-  useEffect(() => {
     if (!deadlineAt || status !== "active") return;
-    const updateTimer = () => {
-      const remaining = Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000));
+    const interval = setInterval(() => {
       setSecondsLeft((previous) => {
+        const remaining = Math.max(0, previous - 1);
         if (previous > 600 && remaining <= 600) Vibration.vibrate(500);
         return remaining;
       });
-      if (remaining === 0) performSubmission("time_expired");
-    };
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
+    }, 1000);
     return () => clearInterval(interval);
-  }, [deadlineAt, performSubmission, status]);
+  }, [deadlineAt, status]);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      (nextAppState: AppStateStatus) => {
-        const leftApp = nextAppState === "background";
-        const becameInactive = appState.current === "active" && nextAppState === "inactive";
-        if (
-          statusRef.current === "active" &&
-          (leftApp || (becameInactive && !dialogOpenRef.current))
-        ) {
-          performSubmission("tab_switch");
-        } else if (
-          nextAppState === "active" &&
-          (statusRef.current === "submitting" || statusRef.current === "recovery_error")
-        ) {
-          void recoverSubmission();
-        }
-        appState.current = nextAppState;
-      },
-    );
+    if (status === "active" && secondsLeft === 0) {
+      performSubmission("time_expired");
+    }
+  }, [performSubmission, secondsLeft, status]);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (next) => {
+      const attemptStatus = useQuizStore.getState().status;
+      if (
+        next === "active" &&
+        (attemptStatus === "submitting" || attemptStatus === "recovery_error")
+      ) {
+        void recoverSubmission();
+      }
+    });
     return () => subscription.remove();
-  }, [performSubmission, recoverSubmission]);
+  }, [recoverSubmission]);
 
   const handleModalClose = () => {
     queryClient.removeQueries({ queryKey: ["quiz_questions", quiz_id, instance_id, session_token] });
@@ -300,6 +391,19 @@ export default function QuizTaking() {
 
   if (navigationAllowed) {
     return <ScreenLoading message="Returning to assessments..." />;
+  }
+
+  if (takeoverRequest) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#F7F7FA] dark:bg-[#111014]">
+        <AssessmentTakeoverModal
+          visible
+          pending={takeoverPending}
+          onCancel={cancelTakeover}
+          onConfirm={() => void confirmTakeover()}
+        />
+      </SafeAreaView>
+    );
   }
 
   if (status === "idle" || quiz_id <= 0 || instance_id <= 0) {
@@ -492,9 +596,15 @@ export default function QuizTaking() {
                   </View>
                 )}
               </View>
-              <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA] leading-6">
-                {item.question}
-              </Text>
+              <View className="flex-1">
+                {item.content_format_version === 1 && item.question_html ? (
+                  <HTMLContent htmlContent={item.question_html} />
+                ) : (
+                  <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA] leading-6">
+                    {item.question}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -511,11 +621,13 @@ export default function QuizTaking() {
                     ? "border-[#B42335] bg-[#FCECEF] dark:border-[#F06A78] dark:bg-[#3A2025]"
                     : "border-[#E6E1E8] bg-[#FFFFFF] dark:border-[#37313C] dark:bg-[#1A181E]"
                 }`}
-                onPress={() => {
-                  setSelectedAnswers({
+                 onPress={() => {
+                  const answers = {
                     ...selectedAnswers,
                     [item.item_id]: key,
-                  });
+                  };
+                  setSelectedAnswers(answers);
+                  queueAutosave(item.session_question_id, key);
                 }}
               >
                 <View className="flex-row items-center p-4">
@@ -548,15 +660,21 @@ export default function QuizTaking() {
                   </View>
 
                   {/* Option Text */}
-                  <Text
-                    className={`flex-1 text-base leading-6 ${
-                      isSelected
-                        ? "text-[#201D25] dark:text-[#F7F4FA] font-semibold"
-                        : "text-[#6C6572] dark:text-[#BEB6C5]"
-                    }`}
-                  >
-                    {item.options[key]}
-                  </Text>
+                  <View className="flex-1">
+                    {item.content_format_version === 1 && item.options_html?.[key] ? (
+                      <HTMLContent htmlContent={item.options_html[key]!} />
+                    ) : (
+                      <Text
+                        className={`text-base leading-6 ${
+                          isSelected
+                            ? "text-[#201D25] dark:text-[#F7F4FA] font-semibold"
+                            : "text-[#6C6572] dark:text-[#BEB6C5]"
+                        }`}
+                      >
+                        {item.options[key]}
+                      </Text>
+                    )}
+                  </View>
 
                   {/* Selected Icon */}
                   {isSelected && (
@@ -650,15 +768,22 @@ export default function QuizTaking() {
       </View>
 
       {/* Questions List */}
-      <LegendList
-        ref={listRef}
-        data={questionsData?.questions || []}
-        renderItem={renderQuestion}
-        keyExtractor={(item) => item.item_id.toString()}
-        contentContainerClassName="p-6"
-        extraData={{ selectedAnswers }}
-        recycleItems
-      />
+      <View className="flex-1">
+        <LegendList
+          ref={listRef}
+          data={questionsData?.questions || []}
+          renderItem={renderQuestion}
+          keyExtractor={(item) =>
+            (item.session_question_id ?? item.item_id).toString()
+          }
+          contentContainerClassName="p-6"
+          extraData={{ selectedAnswers }}
+          recycleItems
+        />
+        {contentObscured ? (
+          <View className="absolute inset-0 bg-[#111014]" />
+        ) : null}
+      </View>
 
       {/* Submit Button Footer */}
       <View className="bg-[#FFFFFF] dark:bg-[#1A181E] border-t border-[#E6E1E8] dark:border-[#37313C] px-6 py-4">
@@ -724,6 +849,12 @@ export default function QuizTaking() {
           </Text>
         )}
       </View>
+
+      <AssessmentFocusWarningModal
+        visible={warningVisible}
+        assessmentLabel="quiz"
+        onReturn={returnToAnswering}
+      />
 
     </SafeAreaView>
   );

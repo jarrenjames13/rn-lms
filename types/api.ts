@@ -12,8 +12,8 @@ interface LoginResponseSuccess {
     full_name: string;
     role: string;
   };
-  access_token: string;
-  refresh_token: string;
+  access_token?: string;
+  refresh_token?: string;
 }
 
 interface LoginResponseError {
@@ -248,8 +248,18 @@ export interface StudentQuizzes {
     last_attempted_at: string | null;
     score: number | null;
     completed_at: string | null;
+    active_session?: ActiveAssessmentSession | null;
   }[];
   instance_id: number;
+}
+
+export interface ActiveAssessmentSession {
+  session_id: number;
+  started_at: string;
+  deadline_at: string;
+  remaining_seconds: number;
+  lease_generation: number;
+  state: "resumable" | "expired_pending";
 }
 
 export interface StudentExams {
@@ -264,7 +274,8 @@ export interface StudentExams {
     is_taken: boolean;
     score: number | null;
     completed_at: string | null;
-    status: string;
+    status?: string | null;
+    active_session?: ActiveAssessmentSession | null;
   }[];
   instance_id: number;
 }
@@ -280,7 +291,8 @@ export interface ExamDetails {
   is_taken: boolean;
   score: number | null;
   completed_at: string | null;
-  status: string;
+  status?: string | null;
+  active_session?: ActiveAssessmentSession | null;
 }
 
 export interface QuizDetails {
@@ -294,6 +306,7 @@ export interface QuizDetails {
   last_attempted_at: string | null;
   score: number | null;
   completed_at: string | null;
+  active_session?: ActiveAssessmentSession | null;
 }
 
 // Strict option keys
@@ -309,23 +322,35 @@ export interface Options {
 export interface Question {
   question_number: number;
   item_id: number;
+  session_question_id?: number;
   question: string;
   options: Options;
+  question_html?: string | null;
+  options_html?: Partial<Options> | null;
+  content_format_version?: number;
 }
 
 export interface QuestionsResponse {
   questions: Question[];
+  saved_answers?: Record<number, OptionKey>;
+  answer_versions?: Record<number, number>;
 }
 
 export interface ExamQuestion {
   question_number: number;
   item_id: number;
+  session_question_id?: number;
   question_text: string;
   options: Options;
+  question_html?: string | null;
+  options_html?: Partial<Options> | null;
+  content_format_version?: number;
 }
 
 export interface ExamQuestionsResponse {
   questions: ExamQuestion[];
+  saved_answers?: Record<number, OptionKey>;
+  answer_versions?: Record<number, number>;
 }
 
 export interface ActivityGrade {
