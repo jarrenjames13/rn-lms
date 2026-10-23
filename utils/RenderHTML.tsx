@@ -9,6 +9,8 @@ import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "@/utils/constants";
 import { getEmbeddedMediaHeaders } from "@/utils/examContentPolicy";
 import {
+  Alert,
+  Linking,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -42,6 +44,22 @@ function getRawDomText(node: unknown): string {
   if (domNode.name === "br") return "\n";
   if (typeof domNode.data === "string") return domNode.data;
   return domNode.children?.map(getRawDomText).join("") ?? "";
+}
+
+function isApprovedActivityEmbed(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname.toLowerCase() === "ce47.github.io" &&
+      !url.username &&
+      !url.password &&
+      (!url.port || url.port === "443")
+    );
+  } catch {
+    return false;
+  }
 }
 
 function CodeBlock({ rawText, theme }: CodeBlockProps) {
@@ -159,6 +177,30 @@ export const HTMLContent = React.memo(function HTMLContent({
     />
   );
 
+  const iframeRenderer: CustomBlockRenderer = ({ tnode }) => {
+    const uri = tnode.attributes.src;
+    if (!isApprovedActivityEmbed(uri)) return null;
+    const title = tnode.attributes.title || "embedded activity";
+    const openActivity = () => {
+      void Linking.openURL(uri).catch(() => {
+        Alert.alert("Unable to open activity", "Please try again later.");
+      });
+    };
+    return (
+      <TouchableOpacity
+        accessibilityRole="link"
+        onPress={openActivity}
+        activeOpacity={0.75}
+        className="my-2 rounded px-3 py-2"
+        style={{ backgroundColor: theme.surfaceMuted }}
+      >
+        <Text style={{ color: theme.primary, textDecorationLine: "underline" }}>
+          Open {title}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View className="w-full" onLayout={onLayout}>
       {contentWidth > 0 && (
@@ -168,8 +210,8 @@ export const HTMLContent = React.memo(function HTMLContent({
           baseStyle={{ color: theme.text, fontSize: 16, lineHeight: 24 }}
           tagsStyles={createTagStyles(theme)}
           customHTMLElementModels={HTML_MODELS}
-          renderers={{ pre: preRenderer }}
-          ignoredDomTags={["script", "style", "iframe", "object", "embed"]}
+          renderers={{ pre: preRenderer, iframe: iframeRenderer }}
+          ignoredDomTags={["script", "style", "object", "embed"]}
           provideEmbeddedHeaders={provideEmbeddedHeaders}
           enableCSSInlineProcessing={false}
         />
