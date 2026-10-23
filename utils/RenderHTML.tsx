@@ -7,7 +7,10 @@ import RenderHTML, {
 import React, { useCallback, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "@/utils/constants";
-import { getEmbeddedMediaHeaders } from "@/utils/examContentPolicy";
+import {
+  getEmbeddedMediaHeaders,
+  isApprovedActivityEmbed,
+} from "@/utils/examContentPolicy";
 import {
   Alert,
   Linking,
@@ -44,22 +47,6 @@ function getRawDomText(node: unknown): string {
   if (domNode.name === "br") return "\n";
   if (typeof domNode.data === "string") return domNode.data;
   return domNode.children?.map(getRawDomText).join("") ?? "";
-}
-
-function isApprovedActivityEmbed(value: unknown): value is string {
-  if (typeof value !== "string") return false;
-  try {
-    const url = new URL(value);
-    return (
-      url.protocol === "https:" &&
-      url.hostname.toLowerCase() === "ce47.github.io" &&
-      !url.username &&
-      !url.password &&
-      (!url.port || url.port === "443")
-    );
-  } catch {
-    return false;
-  }
 }
 
 function CodeBlock({ rawText, theme }: CodeBlockProps) {

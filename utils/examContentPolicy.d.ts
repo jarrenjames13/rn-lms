@@ -8,6 +8,8 @@ export function selectExamContent(
   plainText: string,
 ): ExamContentSource;
 
+export function isApprovedActivityEmbed(value: unknown): value is string;
+
 export function getEmbeddedMediaHeaders(
   uri: string,
   tagName: string,

@@ -1,5 +1,21 @@
 const MEDIA_PATH = /^\/api\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function isApprovedActivityEmbed(value) {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname.toLowerCase() === "ce47.github.io" &&
+      !url.username &&
+      !url.password &&
+      (!url.port || url.port === "443")
+    );
+  } catch {
+    return false;
+  }
+}
+
 function selectExamContent(formatVersion, richHtml, plainText) {
   if (formatVersion === 1 && typeof richHtml === "string" && richHtml.length > 0) {
     return { kind: "rich", value: richHtml };
@@ -22,4 +38,4 @@ function getEmbeddedMediaHeaders(uri, tagName, apiBaseUrl, authCookie) {
   }
 }
 
-module.exports = { getEmbeddedMediaHeaders, selectExamContent };
+module.exports = { getEmbeddedMediaHeaders, isApprovedActivityEmbed, selectExamContent };

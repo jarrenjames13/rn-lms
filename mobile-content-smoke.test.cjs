@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   getEmbeddedMediaHeaders,
+  isApprovedActivityEmbed,
   selectExamContent,
 } = require("./utils/examContentPolicy.js");
 
@@ -10,6 +11,16 @@ const ASSET_ID = "12345678-1234-4234-8234-123456789abc";
 const COOKIE = "access_token_cookie=secret-session-cookie";
 
 test("mobile rich assessment smoke path", async (t) => {
+  await t.test("only approved HTTPS activity embeds are presented as open links", () => {
+    assert.equal(isApprovedActivityEmbed("https://ce47.github.io/activities/demo"), true);
+    assert.equal(isApprovedActivityEmbed("https://CE47.GITHUB.IO/activities/demo"), true);
+    assert.equal(isApprovedActivityEmbed("http://ce47.github.io/activities/demo"), false);
+    assert.equal(isApprovedActivityEmbed("https://other.example/activities/demo"), false);
+    assert.equal(isApprovedActivityEmbed("https://user@ce47.github.io/activities/demo"), false);
+    assert.equal(isApprovedActivityEmbed("https://ce47.github.io:444/activities/demo"), false);
+    assert.equal(isApprovedActivityEmbed("not a URL"), false);
+  });
+
   await t.test("selects version-1 HTML for question and choice content", () => {
     const question = selectExamContent(
       1,
