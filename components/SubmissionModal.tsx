@@ -1,6 +1,6 @@
 import type { SubmitExamFilesParams } from "@/api/QueryFunctions/postSubmissionFile";
 import { useSubmissionFile } from "@/api/QueryOptions/submissionFileMutation";
-import { ExamDetails } from "@/types/api";
+import { StudentAssessmentDetails } from "@/types/api";
 import { useAppTheme } from "@/theme";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 interface SubmissionModalProps {
   visible: boolean;
   onClose: () => void;
-  exam: ExamDetails;
+  exam: StudentAssessmentDetails;
   instanceId: number;
 }
 

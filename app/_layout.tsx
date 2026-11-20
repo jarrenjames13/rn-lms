@@ -123,13 +123,13 @@ const RootLayoutNav = React.memo(function RootLayoutNav() {
         const evictExam = matches(exam);
         if (!evictQuiz && !evictExam) return;
         if (evictQuiz) {
-          evictAssessmentLease(quiz.session_token, quiz.lease_token);
+          evictAssessmentLease(quiz.session_token);
           void queryClient.cancelQueries({ queryKey: ["quiz_questions"] });
           queryClient.removeQueries({ queryKey: ["quiz_questions"] });
           quiz.clearAttempt();
         }
         if (evictExam) {
-          evictAssessmentLease(exam.session_token, exam.lease_token);
+          evictAssessmentLease(exam.session_token);
           void queryClient.cancelQueries({ queryKey: ["exam_questions"] });
           queryClient.removeQueries({ queryKey: ["exam_questions"] });
           exam.clearAttempt();
@@ -153,7 +153,7 @@ const RootLayoutNav = React.memo(function RootLayoutNav() {
       !examAttemptHydrated
     ) return;
 
-    const recoveryStatuses = ["submitting", "submitted", "recovery_error"];
+    const recoveryStatuses = ["submitting", "finalization_pending", "submitted", "recovery_error"];
     if (recoveryStatuses.includes(examAttemptStatus) && pathname !== "/exam_taking") {
       router.replace("/exam_taking");
     } else if (recoveryStatuses.includes(quizAttemptStatus) && pathname !== "/quiz_taking") {

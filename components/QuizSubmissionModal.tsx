@@ -33,6 +33,7 @@ export default function QuizSubmissionModal({
     if (percentage >= 75) return theme.surfaceAccent;
     return theme.surfaceAccent;
   };
+  const hasScore = typeof resultData?.score === "number";
   const reasonText = {
     manual: "Manually submitted",
     time_expired: "Submitted automatically because time expired",
@@ -76,16 +77,16 @@ export default function QuizSubmissionModal({
               {/* Score Display */}
               <View
                 className="p-6 rounded-xl mb-6"
-                style={{ backgroundColor: getScoreBgColor(resultData.score) }}
+                style={{ backgroundColor: hasScore ? getScoreBgColor(resultData.score!) : theme.surfaceMuted }}
               >
                 <Text className="text-center mb-2" style={{ color: theme.textMuted }}>
-                  Your Score
+                  {hasScore ? "Your Score" : "Score"}
                 </Text>
                 <Text
                   className="text-center text-5xl font-bold"
-                  style={{ color: getScoreColor(resultData.score) }}
+                  style={{ color: hasScore ? getScoreColor(resultData.score!) : theme.textMuted }}
                 >
-                  {Math.round(resultData.score)}%
+                  {hasScore ? `${Math.round(resultData.score!)}%` : "Pending"}
                 </Text>
                 <Text className="text-center mt-2" style={{ color: theme.textMuted }}>
                   {resultData.correct_answers} out of{" "}
@@ -94,7 +95,7 @@ export default function QuizSubmissionModal({
               </View>
 
               {/* Statistics */}
-              <View className="space-y-3 mb-6">
+              {resultData.correct_answers != null ? <View className="space-y-3 mb-6">
                 <View className="flex-row justify-between items-center py-2 border-b" style={{ borderColor: theme.border }}>
                   <Text style={{ color: theme.textMuted }}>Correct Answers</Text>
                   <Text className="font-semibold" style={{ color: theme.success }}>
@@ -113,7 +114,7 @@ export default function QuizSubmissionModal({
                     {resultData.total_questions}
                   </Text>
                 </View>
-              </View>
+              </View> : null}
 
               {/* Action Button */}
               <Pressable

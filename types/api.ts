@@ -56,20 +56,36 @@ export interface Enrollment {
 }
 
 export interface StatsData {
-  overall_progress: number;
+  overall_progress: number | null;
   components: {
-    sections: number;
-    activities: number;
+    sections: number | null;
+    activities: number | null;
     quizzes: number;
     exams: number;
   };
   counts: {
-    sections: number;
-    activities: number;
-    quizzes: number;
-    exams: number;
+    sections: number | string;
+    activities: number | string;
+    quizzes: number | string;
+    exams: number | string;
   };
   enrolled_courses: number;
+  courses: OverallLearningCourse[];
+  instance_scope_available: boolean;
+  non_scoped_progress: number | null;
+}
+
+export interface OverallLearningCourse {
+  course_id: number;
+  instance_id: number;
+  all_sections_completed: boolean | null;
+  all_assessments_completed: boolean;
+  completed_sections: number | null;
+  total_sections: number | null;
+  pending_sections: number | null;
+  completed_assessments: number;
+  total_assessments: number;
+  pending_assessments: number;
 }
 
 export type CourseAllDetails = {
@@ -121,29 +137,35 @@ export interface CourseQuickStats {
 }
 
 export interface CourseProgress {
-  overall_progress: number;
+  overall_progress: number | null;
   components: {
     sections: {
-      completed: number;
+      completed: number | null;
       total: number;
-      percentage: number;
+      percentage: number | null;
+      available: boolean;
     };
     activities: {
-      completed: number;
+      completed: number | null;
       total: number;
-      percentage: number;
+      percentage: number | null;
+      available: boolean;
     };
     quizzes: {
-      completed: number;
+      completed: number | null;
       total: number;
-      percentage: number;
+      percentage: number | null;
+      available: boolean;
     };
     exams: {
-      completed: number;
+      completed: number | null;
       total: number;
-      percentage: number;
+      percentage: number | null;
+      available: boolean;
     };
   };
+  instance_scope_available: boolean;
+  non_scoped_progress: number | null;
 }
 
 export interface Comment {
@@ -241,7 +263,7 @@ export interface StudentQuizzes {
     quiz_id: number;
     quiz_name: string;
     exam_period: string;
-    description: string;
+    description: string | null;
     total_items: number;
     is_taken: boolean;
     attempts_made: number;
@@ -249,6 +271,7 @@ export interface StudentQuizzes {
     score: number | null;
     completed_at: string | null;
     active_session?: ActiveAssessmentSession | null;
+    locked?: boolean;
   }[];
   instance_id: number;
 }
@@ -260,46 +283,58 @@ export interface ActiveAssessmentSession {
   remaining_seconds: number;
   lease_generation: number;
   state: "resumable" | "expired_pending";
+  camera_required?: boolean;
+  capture_state?: string;
 }
 
 export interface StudentExams {
-  exams: {
-    exam_id: number;
-    exam_name: string;
-    exam_period: string;
-    description: string;
-    total_items: number;
-    category: string;
-    submission_instruction: string;
-    is_taken: boolean;
-    score: number | null;
-    completed_at: string | null;
-    status?: string | null;
-    active_session?: ActiveAssessmentSession | null;
-  }[];
+  exams: ExamDetails[];
   instance_id: number;
 }
 
-export interface ExamDetails {
+export interface StudentAssessmentDetails {
   exam_id: number;
   exam_name: string;
   exam_period: string;
-  description: string;
-  total_items: number;
+  description: string | null;
+  total_items: number | null;
   category: string;
-  submission_instruction: string;
+  submission_instruction: string | null;
+  feedback: string | null;
   is_taken: boolean;
   score: number | null;
   completed_at: string | null;
   status?: string | null;
+  review_status?: string | null;
+  grade_status?: string | null;
+  capture_state?: string;
   active_session?: ActiveAssessmentSession | null;
+  ip_allowed?: boolean;
+  locked?: boolean;
+}
+
+export interface ExamDetails extends StudentAssessmentDetails {
+  max_attempts: number;
+  attempts_made: number;
+  remaining_attempts: number;
+  can_attempt: boolean;
+  camera_required?: boolean;
+  review_status?: string | null;
+  grade_status?: string | null;
+}
+
+export type StudentSubmission = StudentAssessmentDetails;
+
+export interface StudentSubmissions {
+  exams: StudentSubmission[];
+  instance_id: number;
 }
 
 export interface QuizDetails {
   quiz_id: number;
   quiz_name: string;
   exam_period: string;
-  description: string;
+  description: string | null;
   total_items: number;
   is_taken: boolean;
   attempts_made: number;
@@ -307,6 +342,14 @@ export interface QuizDetails {
   score: number | null;
   completed_at: string | null;
   active_session?: ActiveAssessmentSession | null;
+  locked?: boolean;
+}
+
+export interface ExamRetryStatus {
+  session_id: number;
+  state: "ACTIVE" | "FINALIZING" | "COMPLETED";
+  can_retry: boolean;
+  code?: string;
 }
 
 // Strict option keys
@@ -384,11 +427,12 @@ export interface ExamGrade {
 }
 
 export interface GradeSummary {
-  count: number;
-  graded_count: number;
-  average: number;
-  highest: number;
-  lowest: number;
+  count: number | null;
+  graded_count: number | null;
+  average: number | null;
+  highest: number | null;
+  lowest: number | null;
+  available: boolean;
 }
 
 export interface GradesSummary {
@@ -419,6 +463,7 @@ export interface ComprehensiveGradesResponse {
   submission_grades: SubmissionGrade[];
   summary: GradesSummary;
   overall_grade: number;
+  instance_scope_available: boolean;
 }
 
 export interface Replies {

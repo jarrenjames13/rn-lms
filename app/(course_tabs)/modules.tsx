@@ -97,8 +97,8 @@ export default function Modules() {
     data: courseDetails,
     isLoading: loadingModules,
   } = useQuery({
-    ...createCourseDetailsOptions(course_id!),
-    enabled: !!course_id,
+    ...createCourseDetailsOptions(course_id ?? 0, instance_id ?? 0),
+    enabled: !!course_id && !!instance_id,
   });
 
   const moduleData: Module[] | null = courseDetails?.modules ?? null;
@@ -121,8 +121,8 @@ export default function Modules() {
   const activitiesQueries = useQueries({
     queries: (moduleData || []).map((module) =>
       ({
-        ...createActivitiesOptions(module.module_id),
-        enabled: loadModuleDetails,
+        ...createActivitiesOptions(module.module_id, instance_id ?? 0),
+        enabled: loadModuleDetails && !!instance_id,
       }),
     ),
   });
@@ -131,8 +131,8 @@ export default function Modules() {
   const progressQueries = useQueries({
     queries: (moduleData || []).map((module) =>
       ({
-        ...createModuleProgressOptions(module.module_id),
-        enabled: loadModuleDetails,
+        ...createModuleProgressOptions(module.module_id, instance_id ?? 0),
+        enabled: loadModuleDetails && !!instance_id,
       }),
     ),
   });
@@ -192,12 +192,14 @@ export default function Modules() {
     loadModuleDetails,
   ]);
 
-  const toggleSection = (sectionId: number) => {
+  const toggleSection = (sectionId: number, moduleId: number) => {
     const isOpening = openSectionId !== sectionId;
     setOpenSectionId(isOpening ? sectionId : null);
 
     if (isOpening && sectionRefs.current[sectionId] && !isPending) {
-      mutate({ section_id: sectionId });
+      if (instance_id != null) {
+        mutate({ section_id: sectionId, module_id: moduleId, instance_id });
+      }
       setTimeout(() => {
         const nativeScrollRef = listRef.current?.getNativeScrollRef() as
           | React.ElementRef<typeof View>
@@ -452,7 +454,7 @@ export default function Modules() {
               }}
             >
               <Pressable
-                onPress={() => toggleSection(section.section_id)}
+                onPress={() => toggleSection(section.section_id, module.module_id)}
                 className={`rounded-xl p-4 border ${isOpen ? "bg-[#FCECEF] dark:bg-[#3A2025] border-[#E6E1E8] dark:border-[#37313C]" : "bg-[#FFFFFF] dark:bg-[#1A181E] border-[#E6E1E8] dark:border-[#37313C]"}`}
               >
                 <View className="flex-row justify-between items-center">
@@ -679,6 +681,7 @@ export default function Modules() {
       <ActivitySubmissionModal
         visible={isModalVisible}
         activity={selectedActivity}
+        instanceId={instance_id ?? 0}
         onClose={handleCloseModal}
       />
 

@@ -3,9 +3,11 @@ import {
   heartbeatAssessmentSession,
   reportAssessmentSecurityEvent,
 } from "@/api/QueryFunctions/assessmentSessionLease";
+import type { CaptureState } from "@/types/assessmentAttempt";
 import type { OptionKey } from "@/types/api";
 import { useCallback, useEffect, useRef } from "react";
 import { AppState } from "react-native";
+import { getAssessmentHttpError } from "./assessmentHttpError";
 import {
   createAssessmentOperationId,
   getAssessmentClientId,
@@ -16,14 +18,20 @@ type LeaseState = {
   session_id?: string | number;
   session_token: string;
   lease_generation?: number;
+  client_id?: string;
 };
 
 type RuntimeOptions = {
   getAttempt: () => LeaseState;
   setAnswerRevision: (revision: number) => void;
   setRemainingSeconds: (seconds: number) => void;
+  setCaptureState: (state: CaptureState) => void;
+  onSessionTerminal?: (code: string) => void;
   leaseKey: string;
 };
+
+const leaseIdentity = (attempt: LeaseState) =>
+  `${attempt.session_id}:${attempt.lease_generation}:${attempt.session_token}`;
 
 const getLease = async (getAttempt: () => LeaseState) => {
   const attempt = getAttempt();
@@ -34,11 +42,14 @@ const getLease = async (getAttempt: () => LeaseState) => {
     !attempt.session_token ||
     attempt.lease_generation == null
   ) return null;
+  const clientId = attempt.client_id ?? await getAssessmentClientId();
+  const current = getAttempt();
+  if (leaseIdentity(current) !== leaseIdentity(attempt)) return null;
   return {
     sessionId,
     session_token: attempt.session_token,
     lease_generation: attempt.lease_generation,
-    client_id: await getAssessmentClientId(),
+    client_id: clientId,
   };
 };
 
@@ -46,6 +57,8 @@ export const useAssessmentSessionRuntime = ({
   getAttempt,
   setAnswerRevision,
   setRemainingSeconds,
+  setCaptureState,
+  onSessionTerminal,
   leaseKey,
 }: RuntimeOptions) => {
   const versionsRef = useRef(new Map<number, number>());
@@ -55,9 +68,19 @@ export const useAssessmentSessionRuntime = ({
     const lease = await getLease(getAttempt);
     if (!lease || AppState.currentState !== "active") return;
     const { sessionId, ...payload } = lease;
-    const response = await heartbeatAssessmentSession(sessionId, payload);
-    setRemainingSeconds(Math.max(0, response.remaining_seconds));
-  }, [getAttempt, setRemainingSeconds]);
+    try {
+      const response = await heartbeatAssessmentSession(sessionId, payload);
+      if (leaseIdentity(getAttempt()) !== `${sessionId}:${payload.lease_generation}:${payload.session_token}`) return;
+      setRemainingSeconds(Math.max(0, response.remaining_seconds));
+      setCaptureState(response.capture_state);
+    } catch (error) {
+      const { code } = getAssessmentHttpError(error);
+      if (code === "ASSESSMENT_SESSION_TERMINAL" || code === "ASSESSMENT_DEADLINE_EXPIRED") {
+        onSessionTerminal?.(code);
+      }
+      throw error;
+    }
+  }, [getAttempt, onSessionTerminal, setCaptureState, setRemainingSeconds]);
 
   useEffect(() => {
     const attempt = getAttempt();
@@ -87,10 +110,12 @@ export const useAssessmentSessionRuntime = ({
   const queueAutosave = useCallback(
     (sessionQuestionId: number | undefined, selectedAnswer: OptionKey) => {
       if (sessionQuestionId == null) return;
+      const queuedLeaseIdentity = leaseIdentity(getAttempt());
       const operationId = createAssessmentOperationId("answer");
       const saveAnswer = async () => {
         const lease = await getLease(getAttempt);
         if (!lease) return;
+        if (leaseIdentity(getAttempt()) !== queuedLeaseIdentity) return;
         const { sessionId, ...payload } = lease;
         const save = (version: number) =>
           autosaveAssessmentAnswer(sessionId, {
@@ -112,34 +137,49 @@ export const useAssessmentSessionRuntime = ({
           ) throw error;
           response = await save(Number(detail.current_version));
         }
+        if (leaseIdentity(getAttempt()) !== queuedLeaseIdentity) return;
         versionsRef.current.set(sessionQuestionId, response.version);
         setAnswerRevision(response.answer_revision);
       };
       const previous = savesRef.current.get(sessionQuestionId) ?? Promise.resolve();
       const next = previous.catch(() => undefined).then(saveAnswer);
       savesRef.current.set(sessionQuestionId, next);
-      void next.finally(() => {
+      const clearCurrentSave = () => {
         if (savesRef.current.get(sessionQuestionId) === next) {
           savesRef.current.delete(sessionQuestionId);
         }
-      });
+      };
+      void next.then(clearCurrentSave, clearCurrentSave);
     },
     [getAttempt, setAnswerRevision],
   );
 
-  const reportFocusLoss = useCallback(async (localCount: number) => {
+  const reportSecurityEvent = useCallback(async (
+    eventType: "fullscreen_exit" | "focus_loss" | "tab_switch" | "navigation_attempt",
+    eventPayload: Record<string, unknown> = {},
+  ) => {
     await Promise.allSettled([...savesRef.current.values()]);
     const lease = await getLease(getAttempt);
     if (!lease) throw new Error("Assessment lease is not available.");
-    const { sessionId, ...payload } = lease;
-    const response = await reportAssessmentSecurityEvent(sessionId, {
-      ...payload,
-      event_type: "focus_loss",
-      idempotency_key: createAssessmentOperationId("focus"),
-      payload: { local_count: localCount },
+    const { sessionId, ...leasePayload } = lease;
+    return reportAssessmentSecurityEvent(sessionId, {
+      ...leasePayload,
+      event_type: eventType,
+      idempotency_key: createAssessmentOperationId(eventType),
+      payload: eventPayload,
     });
-    return response.must_submit;
   }, [getAttempt]);
+
+  const reportFocusLoss = useCallback(
+    (localCount: number) => reportSecurityEvent("focus_loss", { local_count: localCount }),
+    [reportSecurityEvent],
+  );
+
+  const flushPendingSaves = useCallback(async () => {
+    while (savesRef.current.size > 0) {
+      await Promise.allSettled([...savesRef.current.values()]);
+    }
+  }, []);
 
   const setAnswerVersions = useCallback((versions: Record<number, number>) => {
     Object.entries(versions).forEach(([questionId, version]) => {
@@ -147,5 +187,12 @@ export const useAssessmentSessionRuntime = ({
     });
   }, []);
 
-  return { queueAutosave, reportFocusLoss, setAnswerVersions };
+  return {
+    queueAutosave,
+    flushPendingSaves,
+    reportFocusLoss,
+    reportSecurityEvent,
+    setAnswerVersions,
+    sendHeartbeat,
+  };
 };

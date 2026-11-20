@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Alert } from "react-native";
-import type { AssessmentResult } from "@/types/assessmentAttempt";
 import { postExamAnswers } from "../QueryFunctions/postExamAnswers";
+import type { ExamResult } from "../QueryFunctions/fetchAssessmentResult";
 
-export type ExamSubmitResponse = AssessmentResult;
+export type ExamSubmitResponse = ExamResult;
 // export default function createExamAnswersOptions(queryClient: QueryClient) {
 //   return {
 //     mutationFn: postExamAnswers,
@@ -22,10 +22,13 @@ export const useExamAnswers = (options?: any) => {
   return useMutation({
     mutationFn: postExamAnswers,
 
-    onSuccess: async (data: ExamSubmitResponse) => {
+    onSuccess: async (data: ExamSubmitResponse, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list_exams"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["list_exams", variables.instance_id],
+        }),
         queryClient.invalidateQueries({ queryKey: ["course_progress"] }),
+        queryClient.invalidateQueries({ queryKey: ["comprehensive_grades"] }),
       ]);
 
       if (options?.onSuccess) {

@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
+import type { SecurityEventResponse } from "@/api/QueryFunctions/assessmentSessionLease";
 
 type FocusGuardOptions = {
   active: boolean;
   ignoreFocusLossRef: React.RefObject<boolean>;
   recordFocusLoss: () => number;
-  reportFocusLoss: (count: number) => Promise<boolean>;
-  onSecondEpisode: () => void;
+  reportFocusLoss: (count: number) => Promise<SecurityEventResponse>;
+  focusThreshold?: number;
+  onThresholdReached: () => void;
+  onReportError?: (error: unknown) => void;
 };
 
 export const useAssessmentFocusGuard = ({
@@ -14,19 +17,21 @@ export const useAssessmentFocusGuard = ({
   ignoreFocusLossRef,
   recordFocusLoss,
   reportFocusLoss,
-  onSecondEpisode,
+  focusThreshold = 2,
+  onThresholdReached,
+  onReportError,
 }: FocusGuardOptions) => {
   const appStateRef = useRef(AppState.currentState);
   const episodeOpenRef = useRef(false);
   const warnOnReturnRef = useRef(false);
   const activeRef = useRef(active);
-  const onSecondEpisodeRef = useRef(onSecondEpisode);
+  const onThresholdReachedRef = useRef(onThresholdReached);
   const reportFocusLossRef = useRef(reportFocusLoss);
   const [warningVisible, setWarningVisible] = useState(false);
   const [contentObscured, setContentObscured] = useState(false);
 
   activeRef.current = active;
-  onSecondEpisodeRef.current = onSecondEpisode;
+  onThresholdReachedRef.current = onThresholdReached;
   reportFocusLossRef.current = reportFocusLoss;
 
   useEffect(() => {
@@ -46,19 +51,25 @@ export const useAssessmentFocusGuard = ({
         episodeOpenRef.current = true;
         setContentObscured(true);
         const count = recordFocusLoss();
-        warnOnReturnRef.current = count === 1;
+        warnOnReturnRef.current = count < focusThreshold;
         let submissionTriggered = false;
         const submitOnce = () => {
           if (submissionTriggered) return;
           submissionTriggered = true;
-          onSecondEpisodeRef.current();
+          onThresholdReachedRef.current();
         };
         void reportFocusLossRef.current(count)
-          .then((mustSubmit) => {
-            if (mustSubmit) submitOnce();
+          .then((response) => {
+            const threshold = response.threshold || focusThreshold;
+            warnOnReturnRef.current = response.warning_count < threshold;
+            if (response.must_submit) submitOnce();
+            else if (appStateRef.current === "active" && !episodeOpenRef.current) {
+              setWarningVisible(warnOnReturnRef.current);
+              setContentObscured(false);
+            }
           })
-          .catch(() => {
-            if (count >= 2) submitOnce();
+          .catch((error) => {
+            onReportError?.(error);
           });
       }
 
@@ -79,7 +90,7 @@ export const useAssessmentFocusGuard = ({
       appStateRef.current = next;
     });
     return () => subscription.remove();
-  }, [ignoreFocusLossRef, recordFocusLoss]);
+  }, [focusThreshold, ignoreFocusLossRef, onReportError, recordFocusLoss]);
 
   useEffect(() => {
     if (!active) {

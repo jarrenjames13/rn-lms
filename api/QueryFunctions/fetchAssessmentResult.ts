@@ -8,28 +8,49 @@ type ResultApiResponse = {
   submission_reason: SubmissionReason;
   attempts_made?: number;
   remaining_attempts?: number;
+  review_status?: string;
+  grade_status?: string;
+  message?: string | null;
+  capture_state?: string;
 };
 
-const fetchResult = async (url: string, sessionToken: string): Promise<AssessmentResult> => {
+export type ExamResult = AssessmentResult & {
+  review_status?: string;
+  grade_status?: string;
+  message?: string | null;
+  capture_state?: string;
+};
+
+const fetchResult = async (url: string, sessionToken: string): Promise<ResultApiResponse> => {
   const response = await getData<ResultApiResponse>(url, {}, {
     "X-Assessment-Session": sessionToken,
   });
-  return {
-    success: true,
-    score: response.data.score,
-    correct_answers: response.data.correct_answers,
-    total_questions: response.data.total_questions,
-    submission_reason: response.data.submission_reason,
-    attempts_made: response.data.attempts_made,
-    remaining_attempts: response.data.remaining_attempts,
-  };
+  return response.data;
 };
 
-export const fetchQuizResult = (quizId: number, instanceId: number, sessionToken: string) =>
-  fetchResult(`/modules/quiz-result/${quizId}/${instanceId}`, sessionToken);
+export const fetchQuizResult = async (
+  quizId: number,
+  instanceId: number,
+  sessionToken: string,
+): Promise<AssessmentResult> => {
+  const result = await fetchResult(
+    `/assessments/results/quizzes/${quizId}/${instanceId}`,
+    sessionToken,
+  );
+  return { success: true, ...result };
+};
 
-export const fetchExamResult = (examId: number, instanceId: number, sessionToken: string) =>
-  fetchResult(`/modules/exam-result/${examId}/${instanceId}`, sessionToken);
+export const fetchExamResult = async (
+  examId: number,
+  instanceId: number,
+  sessionToken: string,
+): Promise<ExamResult> => {
+  const result = await fetchResult(
+    `/assessments/results/exams/${examId}/${instanceId}`,
+    sessionToken,
+  );
+  return { success: true, ...result };
+};
 
 export const getApiErrorStatus = (error: unknown) =>
   (error as { status?: number; response?: { status?: number } })?.status ??

@@ -1,4 +1,5 @@
 import { postData, putData } from "@/utils/fetcher";
+import type { AssessmentSecurityPolicy, CaptureState } from "@/types/assessmentAttempt";
 
 type LeaseRequest = {
   session_token: string;
@@ -13,6 +14,8 @@ export type TakeoverResponse = {
   lease_expires_at: string;
   deadline_at: string;
   remaining_seconds: number;
+  unload_credential: string;
+  security_policy: AssessmentSecurityPolicy;
 };
 
 export type HeartbeatResponse = {
@@ -20,6 +23,8 @@ export type HeartbeatResponse = {
   lease_expires_at?: string | null;
   deadline_at: string;
   remaining_seconds: number;
+  capture_required: boolean;
+  capture_state: CaptureState;
 };
 
 export type AutosaveAnswerResponse = {
@@ -38,6 +43,12 @@ export type SecurityEventResponse = {
   must_submit: boolean;
   idempotent?: boolean;
 };
+
+export type AssessmentSecurityEventType =
+  | "fullscreen_exit"
+  | "focus_loss"
+  | "tab_switch"
+  | "navigation_attempt";
 
 export const takeoverAssessmentSession = async (
   sessionId: number,
@@ -62,8 +73,24 @@ export const autosaveAssessmentAnswer = async (
 export const reportAssessmentSecurityEvent = async (
   sessionId: number,
   payload: LeaseRequest & {
-    event_type: "fullscreen_exit" | "focus_loss" | "tab_switch";
+    event_type: AssessmentSecurityEventType;
     idempotency_key: string;
     payload?: Record<string, unknown>;
   },
 ) => (await postData<SecurityEventResponse>(`/assessment-sessions/${sessionId}/security-events`, payload)).data;
+
+export const uploadAssessmentIdentityCapture = async (
+  sessionId: number,
+  payload: LeaseRequest & { image: { uri: string; name: string; type: string } },
+  signal?: AbortSignal,
+) => {
+  const form = new FormData();
+  form.append("session_token", payload.session_token);
+  form.append("client_id", payload.client_id);
+  form.append("lease_generation", String(payload.lease_generation));
+  form.append("image", payload.image as any);
+  return (await postData(`/assessment-sessions/${sessionId}/identity-capture`, form, {
+    "Content-Type": "multipart/form-data",
+    "X-Assessment-Session": payload.session_token,
+  }, signal)).data;
+};

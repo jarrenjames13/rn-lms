@@ -6,7 +6,7 @@ import { useCourseStore } from "@/store/useCourseStore";
 import { useAppTheme } from "@/theme";
 import { Enrollment } from "@/types/api";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -93,7 +93,10 @@ export default function Index() {
     isLoading: isEnrollmentsLoading,
     error: enrollmentsError,
     refetch,
-  } = useQuery({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     ...createEnrollmentsOptions(userId!),
     enabled: !!userId,
   });
@@ -103,7 +106,7 @@ export default function Index() {
   });
   const unreadNotificationCount = notificationData?.unread_count ?? 0;
 
-  const enrollments: Enrollment[] = data ?? [];
+  const enrollments: Enrollment[] = data?.pages.flatMap((page) => page.enrollments) ?? [];
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -111,7 +114,7 @@ export default function Index() {
     setRefreshing(false);
   }, [refetch]);
 
-  if (enrollmentsError) {
+  if (enrollmentsError && enrollments.length === 0) {
     return <AppScreen><StateView icon="cloud-offline-outline" title="Courses unavailable" message="Your enrollments could not be loaded. Please try again." actionLabel="Try again" onAction={() => void refetch()} /></AppScreen>;
   }
 
@@ -438,6 +441,44 @@ export default function Index() {
                   <EmptyState message="No active courses at the moment. Check back soon for new enrollments!" />
                 </View>
               )}
+
+              {hasNextPage || isFetchingNextPage || (enrollmentsError && enrollments.length > 0) ? (
+                <View className="mt-6 items-center">
+                  {enrollmentsError && enrollments.length > 0 ? (
+                    <>
+                      <Text className="text-sm text-[#6C6572] dark:text-[#BEB6C5] text-center mb-3">
+                        More courses could not be loaded. Your courses above are still available.
+                      </Text>
+                      <Pressable
+                        onPress={() => void fetchNextPage()}
+                        className="rounded-xl px-5 py-3"
+                        style={{ backgroundColor: theme.surfaceMuted }}
+                      >
+                        <Text className="font-semibold" style={{ color: theme.primary }}>
+                          Retry loading courses
+                        </Text>
+                      </Pressable>
+                    </>
+                  ) : isFetchingNextPage ? (
+                    <View className="flex-row items-center py-3">
+                      <ActivityIndicator size="small" color={theme.primary} />
+                      <Text className="ml-2 text-sm" style={{ color: theme.textMuted }}>
+                        Loading more courses…
+                      </Text>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => void fetchNextPage()}
+                      className="rounded-xl px-5 py-3"
+                      style={{ backgroundColor: theme.surfaceMuted }}
+                    >
+                      <Text className="font-semibold" style={{ color: theme.primary }}>
+                        Load more courses
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              ) : null}
 
               {/* Completed Courses Section */}
               {(completedEnrollments.length > 0 ||

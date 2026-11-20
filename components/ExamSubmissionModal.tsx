@@ -35,6 +35,14 @@ export default function ExamSubmissionModal({
     if (percentage >= 60) return theme.surfaceAccent;
     return theme.surfaceAccent;
   };
+  const hasScore = typeof resultData?.score === "number";
+  const reviewMessage = resultData?.message ?? (
+    resultData?.grade_status === "provisional"
+      ? "Your exam result is provisional while the identity image is reviewed."
+      : resultData?.grade_status === "failed"
+        ? "The exam result was failed because the identity check did not pass."
+        : null
+  );
 
   if (!visible) return null;
 
@@ -79,27 +87,37 @@ export default function ExamSubmissionModal({
               </View>
 
               {/* Score Display */}
+              {reviewMessage ? (
+                <View className="rounded-xl px-4 py-3 mb-4" style={{ backgroundColor: resultData.grade_status === "failed" ? theme.surfaceAccent : theme.surfaceMuted }}>
+                  <Text className="text-sm font-semibold text-center" style={{ color: resultData.grade_status === "failed" ? theme.danger : theme.warning }}>
+                    {resultData.grade_status === "provisional" ? "Provisional result" : resultData.grade_status === "failed" ? "Identity review failed" : resultData.review_status ?? "Exam status"}
+                  </Text>
+                  <Text className="text-sm text-center mt-1" style={{ color: theme.text }}>{reviewMessage}</Text>
+                </View>
+              ) : null}
+
               <View
                 className="p-6 rounded-xl mb-6"
-                style={{ backgroundColor: getScoreBgColor(resultData.score) }}
+                style={{ backgroundColor: hasScore ? getScoreBgColor(resultData.score!) : theme.surfaceMuted }}
               >
                 <Text className="text-center mb-2" style={{ color: theme.textMuted }}>
-                  Your Score
+                  {hasScore ? "Your Score" : resultData.grade_status === "provisional" ? "Provisional score" : "Score"}
                 </Text>
                 <Text
                   className="text-center text-5xl font-bold"
-                  style={{ color: getScoreColor(resultData.score) }}
+                  style={{ color: hasScore ? getScoreColor(resultData.score!) : theme.textMuted }}
                 >
-                  {Math.round(resultData.score)}%
+                  {hasScore ? `${Math.round(resultData.score!)}%` : "Pending"}
                 </Text>
-                <Text className="text-center mt-2" style={{ color: theme.textMuted }}>
-                  {resultData.correct_answers} out of{" "}
-                  {resultData.total_questions} correct
-                </Text>
+                {hasScore && resultData.correct_answers != null ? (
+                  <Text className="text-center mt-2" style={{ color: theme.textMuted }}>
+                    {resultData.correct_answers} out of {resultData.total_questions} correct
+                  </Text>
+                ) : null}
               </View>
 
               {/* Statistics */}
-              <View className="space-y-3 mb-6">
+              {resultData.correct_answers != null ? <View className="space-y-3 mb-6">
                 <View className="flex-row justify-between items-center py-2 border-b" style={{ borderColor: theme.border }}>
                   <Text style={{ color: theme.textMuted }}>Correct Answers</Text>
                   <Text className="font-semibold" style={{ color: theme.success }}>
@@ -118,7 +136,7 @@ export default function ExamSubmissionModal({
                     {resultData.total_questions}
                   </Text>
                 </View>
-              </View>
+              </View> : null}
 
               {/* Action Button */}
               <Pressable

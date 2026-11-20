@@ -4,8 +4,10 @@ import {
   getApiErrorStatus,
 } from "@/api/QueryFunctions/fetchAssessmentResult";
 import { startAssessmentSession } from "@/api/QueryFunctions/startAssessmentSession";
+import { fetchExamRetryStatus } from "@/api/QueryFunctions/fetchExamRetryStatus";
 import createExamQuestionsOptions from "@/api/QueryOptions/examQuestionsOptions";
 import ExamSubmissionModal from "@/components/ExamSubmissionModal";
+import { ExamIdentityCapture } from "@/components/ExamIdentityCapture";
 import AssessmentFocusWarningModal from "@/components/AssessmentFocusWarningModal";
 import AssessmentTakeoverModal from "@/components/AssessmentTakeoverModal";
 import { takeoverAssessmentSession } from "@/api/QueryFunctions/assessmentSessionLease";
@@ -35,7 +37,8 @@ import { useAssessmentFocusGuard } from "@/utils/useAssessmentFocusGuard";
 import { isAssessmentLeaseEvicted } from "@/utils/assessmentLease";
 import { getAssessmentClientId } from "@/utils/assessmentClientId";
 import { useAssessmentSessionRuntime } from "@/utils/useAssessmentSessionRuntime";
-import { HTMLContent } from "@/utils/RenderHTML";
+import { AssessmentItemContent } from "@/components/AssessmentItemContent";
+import { getAssessmentHttpError } from "@/utils/assessmentHttpError";
 
 export default function ExamTaking() {
   const { theme } = useAppTheme();
@@ -49,19 +52,35 @@ export default function ExamTaking() {
     generation: number;
   } | null>(null);
   const [takeoverPending, setTakeoverPending] = useState(false);
+  const [appForegrounded, setAppForegrounded] = useState(AppState.currentState === "active");
+  const [captureRetryWaiting, setCaptureRetryWaiting] = useState(false);
 
   const startInFlightRef = useRef(false);
   const submissionInFlightRef = useRef(false);
   const recoveryInFlightRef = useRef(false);
+  const securityEventInFlightRef = useRef(false);
   const dialogOpenRef = useRef(false);
   const router = useRouter();
   const queryClient = useQueryClient();
   useAssessmentScreenCapture("exam-taking");
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (next) => {
+      setAppForegrounded(next === "active");
+      if (next !== "active") setCaptureRetryWaiting(false);
+    });
+    return () => subscription.remove();
+  }, []);
+
   const {
     exam_id,
     instance_id,
     session_token,
+    client_id,
+    lease_generation,
+    session_id,
+    capture_state: captureState,
+    security_policy: securityPolicy,
     deadline_at: deadlineAt,
     status,
     submission_reason: submissionReason,
@@ -71,8 +90,11 @@ export default function ExamTaking() {
     selectedAnswers,
     setSelectedAnswers,
     setSession,
+    prepareLeaseRecovery,
     recordFocusLoss,
     setAnswerRevision,
+    setCaptureState,
+    markFinalizationPending,
     markSubmitting,
     markSubmitted,
     markActive,
@@ -80,7 +102,31 @@ export default function ExamTaking() {
     clearAttempt,
   } = useExamStore();
 
+  useEffect(() => {
+    setCaptureRetryWaiting(false);
+  }, [session_id, lease_generation]);
+
   const listRef = useRef<any>(null);
+  useEffect(() => {
+    if (!hasHydrated || status !== "active") return;
+    const leaseReady =
+      !!session_token &&
+      !!client_id &&
+      Number.isInteger(Number(session_id)) &&
+      Number(session_id) > 0 &&
+      Number.isInteger(Number(lease_generation)) &&
+      Number(lease_generation) > 0;
+    if (!leaseReady) prepareLeaseRecovery();
+  }, [
+    client_id,
+    hasHydrated,
+    lease_generation,
+    prepareLeaseRecovery,
+    session_id,
+    session_token,
+    status,
+  ]);
+
   useEffect(() => {
     if (
       !hasHydrated ||
@@ -99,8 +145,8 @@ export default function ExamTaking() {
         instance_id,
         category: "exam",
         client_id: clientId,
-      }))
-      .then((session) => {
+      }).then((session) => ({ clientId, session })))
+      .then(({ clientId, session }) => {
         if (!cancelled) {
           const deadline = new Date(session.deadline_at).getTime();
           const remaining = session.remaining_seconds ?? 0;
@@ -108,7 +154,11 @@ export default function ExamTaking() {
           setSession(session.session_token, deadline, {
             session_id: session.session_id,
             lease_generation: session.lease_generation,
-            lease_token: session.lease_token,
+            client_id: clientId,
+            unload_credential: session.unload_credential,
+            security_policy: session.security_policy,
+            camera_required: session.camera_required,
+            capture_state: session.capture_state,
             resumed: session.resumed,
           });
         }
@@ -127,11 +177,7 @@ export default function ExamTaking() {
               generation: Number(detail.lease_generation),
             });
           } else {
-            setSessionError(
-              typeof detail === "string"
-                ? detail
-                : error?.message ?? "Unable to start exam session.",
-            );
+            setSessionError(getAssessmentHttpError(error, "Unable to start exam session.").message);
           }
         }
       })
@@ -151,18 +197,27 @@ export default function ExamTaking() {
     error,
     refetch: refetchQuestions,
   } = useQuery({
-    ...createExamQuestionsOptions(exam_id, instance_id, session_token),
-    enabled: status === "active" && exam_id > 0 && instance_id > 0 && !!session_token,
+    ...createExamQuestionsOptions(
+      exam_id,
+      instance_id,
+      session_token,
+      client_id ?? "",
+      lease_generation ?? 0,
+    ),
+    enabled: status === "active" && exam_id > 0 && instance_id > 0 &&
+      !!session_token && !!client_id && lease_generation != null,
   });
 
   const { mutateAsync: submitAnswers, isPending: isSubmitting } = useExamAnswers({
     onError: () => undefined,
   });
 
-  const { queueAutosave, reportFocusLoss, setAnswerVersions } = useAssessmentSessionRuntime({
+  const { queueAutosave, flushPendingSaves, reportFocusLoss, reportSecurityEvent, setAnswerVersions, sendHeartbeat } = useAssessmentSessionRuntime({
     getAttempt: useExamStore.getState,
     setAnswerRevision,
     setRemainingSeconds: setSecondsLeft,
+    setCaptureState,
+    onSessionTerminal: markFinalizationPending,
     leaseKey:
       status === "active"
         ? `${useExamStore.getState().session_id}:${useExamStore.getState().lease_generation}:${session_token}`
@@ -185,35 +240,74 @@ export default function ExamTaking() {
 
   const recoverExistingResult = useCallback(async () => {
     const attempt = useExamStore.getState();
-    if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+    if (isAssessmentLeaseEvicted(attempt.session_token)) return;
     const recovered = await fetchExamResult(exam_id, instance_id, session_token);
-    if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+    if (isAssessmentLeaseEvicted(attempt.session_token)) return;
     markSubmitted(recovered);
   }, [exam_id, instance_id, markSubmitted, session_token]);
 
   const submitAttempt = useCallback(
     async (reason: SubmissionReason, recovering = false) => {
-      const attempt = useExamStore.getState();
-      if (!attempt.session_token || submissionInFlightRef.current) return;
-      if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
-      if (!recovering && attempt.status !== "active") return;
+      const initialAttempt = useExamStore.getState();
+      if (!initialAttempt.session_token || submissionInFlightRef.current) return;
+      if (isAssessmentLeaseEvicted(initialAttempt.session_token)) return;
+      if (!recovering && initialAttempt.status !== "active") return;
 
       submissionInFlightRef.current = true;
-      markSubmitting(reason);
       try {
+        await flushPendingSaves();
+        const readyAttempt = useExamStore.getState();
+        const sameLease =
+          readyAttempt.session_token === initialAttempt.session_token &&
+          String(readyAttempt.session_id) === String(initialAttempt.session_id) &&
+          readyAttempt.client_id === initialAttempt.client_id &&
+          readyAttempt.lease_generation === initialAttempt.lease_generation;
+        if (!sameLease || isAssessmentLeaseEvicted(initialAttempt.session_token)) return;
+        if (!recovering && readyAttempt.status !== "active") return;
+        if (readyAttempt.session_id == null || readyAttempt.lease_generation == null) {
+          throw new Error("The active exam session is missing its lease metadata.");
+        }
+        markSubmitting(reason);
         await flushAssessmentStorage();
-        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+        const attempt = useExamStore.getState();
+        if (
+          attempt.session_token !== initialAttempt.session_token ||
+          String(attempt.session_id) !== String(initialAttempt.session_id) ||
+          attempt.client_id !== initialAttempt.client_id ||
+          attempt.lease_generation !== initialAttempt.lease_generation ||
+          isAssessmentLeaseEvicted(initialAttempt.session_token)
+        ) return;
         const submittedResult = await submitAnswers({
           exam_id: attempt.exam_id,
           instance_id: attempt.instance_id,
           answers: attempt.selectedAnswers,
           submission_reason: reason,
           session_token: attempt.session_token,
+          session_id: Number(attempt.session_id),
+          client_id: attempt.client_id ?? await getAssessmentClientId(),
+          lease_generation: Number(attempt.lease_generation),
         });
-        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+        const latestAttempt = useExamStore.getState();
+        if (
+          latestAttempt.session_token !== attempt.session_token ||
+          latestAttempt.session_id !== attempt.session_id ||
+          latestAttempt.lease_generation !== attempt.lease_generation ||
+          isAssessmentLeaseEvicted(attempt.session_token)
+        ) return;
         markSubmitted(submittedResult);
       } catch (error) {
-        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+        if (isAssessmentLeaseEvicted(initialAttempt.session_token)) return;
+        const apiError = getAssessmentHttpError(error, "Unable to submit exam.");
+        if (apiError.code === "IDENTITY_CAPTURE_REQUIRED") {
+          setCaptureState("due");
+          markActive();
+          Alert.alert("Identity capture required", "Upload the scheduled identity image before submitting the exam.");
+          return;
+        }
+        if (apiError.code === "ASSESSMENT_SESSION_TERMINAL" || apiError.code === "ASSESSMENT_DEADLINE_EXPIRED" || apiError.code === "ASSESSMENT_FINALIZING") {
+          markFinalizationPending();
+          return;
+        }
         if (getApiErrorStatus(error) === 409 && /already submitted/i.test((error as Error).message)) {
           try {
             await recoverExistingResult();
@@ -224,7 +318,7 @@ export default function ExamTaking() {
           }
         }
 
-        const message = (error as Error).message || "Unable to submit exam.";
+        const message = apiError.message;
         if (reason === "manual" && !recovering) {
           try {
             await recoverExistingResult();
@@ -245,11 +339,14 @@ export default function ExamTaking() {
     },
     [
       markActive,
+      markFinalizationPending,
       markRecoveryError,
       markSubmitted,
       markSubmitting,
+      flushPendingSaves,
       recoverExistingResult,
       submitAnswers,
+      setCaptureState,
     ],
   );
 
@@ -266,13 +363,39 @@ export default function ExamTaking() {
       ignoreFocusLossRef: dialogOpenRef,
       recordFocusLoss,
       reportFocusLoss,
-      onSecondEpisode: () => performSubmission("tab_switch"),
+      focusThreshold: securityPolicy?.focus_threshold,
+      onThresholdReached: () => {
+        markFinalizationPending();
+        void recoverSubmission();
+      },
+      onReportError: (error) => {
+        Alert.alert(
+          "Unable to verify exam security status",
+          getAssessmentHttpError(error, "Reconnect and return to the exam.").message,
+        );
+      },
     });
 
   usePreventRemove(status !== "idle" && !navigationAllowed, () => {
     const attempt = useExamStore.getState();
-    if (attempt.status === "active" && attempt.session_token) {
-      performSubmission("navigation_attempt");
+    if (attempt.status === "active" && attempt.session_token && !securityEventInFlightRef.current) {
+      securityEventInFlightRef.current = true;
+      void reportSecurityEvent("navigation_attempt")
+        .then((event) => {
+          if (event.must_submit) {
+            markFinalizationPending();
+            void recoverSubmission();
+          }
+        })
+        .catch((error) => {
+          Alert.alert(
+            "Unable to verify navigation attempt",
+            getAssessmentHttpError(error, "Reconnect before leaving the exam.").message,
+          );
+        })
+        .finally(() => {
+          securityEventInFlightRef.current = false;
+        });
     }
   });
 
@@ -290,6 +413,9 @@ export default function ExamTaking() {
       setSession(session.session_token, deadline, {
         session_id: session.session_id,
         lease_generation: session.lease_generation,
+        client_id: clientId,
+        unload_credential: session.unload_credential,
+        security_policy: session.security_policy,
         resumed: true,
       });
       setTakeoverRequest(null);
@@ -317,22 +443,51 @@ export default function ExamTaking() {
     if (!session_token || recoveryInFlightRef.current || submissionInFlightRef.current) return;
     recoveryInFlightRef.current = true;
     try {
-      await recoverExistingResult();
-    } catch (error) {
-      if (getApiErrorStatus(error) === 404) {
-        await submitAttempt(submissionReason ?? "navigation_attempt", true);
-      } else {
-        markRecoveryError((error as Error).message || "Unable to recover exam result.");
+      const attempt = useExamStore.getState();
+      if (!attempt.client_id || attempt.session_id == null || attempt.lease_generation == null) {
+        throw new Error("The exam session cannot be recovered because its lease metadata is missing.");
       }
+      for (let attemptNumber = 0; attemptNumber < 5; attemptNumber += 1) {
+        if (isAssessmentLeaseEvicted(attempt.session_token)) return;
+        try {
+          const recovered = await fetchExamResult(attempt.exam_id, attempt.instance_id, attempt.session_token);
+          if (isAssessmentLeaseEvicted(attempt.session_token)) return;
+          markSubmitted(recovered);
+          return;
+        } catch (error) {
+          const detail = getAssessmentHttpError(error);
+          if (detail.status !== 404 && detail.code !== "ASSESSMENT_FINALIZING") throw error;
+        }
+
+        const retryStatus = await fetchExamRetryStatus(
+          attempt.exam_id,
+          attempt.instance_id,
+          attempt.session_token,
+          attempt.client_id,
+          attempt.lease_generation,
+        );
+        if (retryStatus.state === "ACTIVE" && retryStatus.can_retry) {
+          await submitAttempt(submissionReason ?? "navigation_attempt", true);
+          return;
+        }
+        if (retryStatus.code === "ASSESSMENT_LEASE_TAKEN_OVER") {
+          markRecoveryError("This exam attempt is active on another device.");
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+      }
+      markRecoveryError("The server is still finalizing this exam. Try again shortly.");
+    } catch (error) {
+      markRecoveryError(getAssessmentHttpError(error, "Unable to recover exam result.").message);
     } finally {
       recoveryInFlightRef.current = false;
     }
-  }, [markRecoveryError, recoverExistingResult, session_token, submissionReason, submitAttempt]);
+  }, [markRecoveryError, markSubmitted, session_token, submissionReason, submitAttempt]);
 
   useEffect(() => {
     if (
       hasHydrated &&
-      (status === "submitting" || status === "recovery_error") &&
+      (status === "submitting" || status === "finalization_pending" || status === "recovery_error") &&
       AppState.currentState === "active"
     ) {
       void recoverSubmission();
@@ -375,7 +530,7 @@ export default function ExamTaking() {
       const attemptStatus = useExamStore.getState().status;
       if (
         next === "active" &&
-        (attemptStatus === "submitting" || attemptStatus === "recovery_error")
+        (attemptStatus === "submitting" || attemptStatus === "finalization_pending" || attemptStatus === "recovery_error")
       ) {
         void recoverSubmission();
       }
@@ -419,6 +574,10 @@ export default function ExamTaking() {
 
   if (status === "submitting") {
     return <ScreenLoading message="Submitting your exam and preparing the result..." />;
+  }
+
+  if (status === "finalization_pending") {
+    return <ScreenLoading message="The server is finalizing your exam result..." />;
   }
 
   if (status === "recovery_error") {
@@ -486,7 +645,7 @@ export default function ExamTaking() {
   const isLowTime = secondsLeft <= 600;
 
   const handleSubmitExam = () => {
-    if (status !== "active" || answeredCount !== totalQuestions) return;
+    if (status !== "active" || captureState === "due" || answeredCount !== totalQuestions) return;
     dialogOpenRef.current = true;
     Alert.alert(
       "Submit Exam",
@@ -556,13 +715,12 @@ export default function ExamTaking() {
           </View>
 
           <View className="mt-1">
-            {item.content_format_version === 1 && item.question_html ? (
-              <HTMLContent htmlContent={item.question_html} />
-            ) : (
-              <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
-                {item.question_text}
-              </Text>
-            )}
+            <AssessmentItemContent
+              contentFormatVersion={item.content_format_version}
+              htmlContent={item.question_html}
+              plainText={item.question_text}
+              plainTextClassName="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]"
+            />
           </View>
         </View>
 
@@ -573,6 +731,7 @@ export default function ExamTaking() {
             return (
               <Pressable
                 key={key}
+                disabled={status !== "active" || captureState === "due"}
                 onPress={() => {
                   setSelectedAnswers({
                     ...selectedAnswers,
@@ -597,13 +756,12 @@ export default function ExamTaking() {
                   <Text className="text-base font-semibold text-[#201D25] dark:text-[#F7F4FA]">
                     {key}.
                   </Text>
-                  {item.content_format_version === 1 && item.options_html?.[key] ? (
-                    <HTMLContent htmlContent={item.options_html[key]!} />
-                  ) : (
-                    <Text className="text-base text-[#201D25] dark:text-[#F7F4FA]">
-                      {item.options[key]}
-                    </Text>
-                  )}
+                  <AssessmentItemContent
+                    contentFormatVersion={item.content_format_version}
+                    htmlContent={item.options_html?.[key]}
+                    plainText={item.options[key]}
+                    plainTextClassName="text-base text-[#201D25] dark:text-[#F7F4FA]"
+                  />
                 </View>
                 {isSelected && (
                   <MaterialIcons
@@ -638,7 +796,7 @@ export default function ExamTaking() {
               className="w-12 h-12 rounded-xl items-center justify-center mr-3"
             >
               <Ionicons
-                name={isLowTime ? "warning" : "timer"}
+            name={isLowTime ? "warning" : "timer"}
                 size={24}
                 color={isLowTime ? theme.surfaceAccent : "white"}
               />
@@ -695,7 +853,7 @@ export default function ExamTaking() {
       <View className="bg-[#FFFFFF] dark:bg-[#1A181E] border-t border-[#E6E1E8] dark:border-[#37313C] px-6 py-4">
         <Pressable
           onPress={handleSubmitExam}
-          disabled={status !== "active" || isSubmitting || answeredCount !== totalQuestions}
+          disabled={status !== "active" || isSubmitting || captureState === "due" || answeredCount !== totalQuestions}
         >
           {({ pressed }) => (
             <View
@@ -713,6 +871,35 @@ export default function ExamTaking() {
           )}
         </Pressable>
       </View>
+
+      {appForegrounded && status === "active" && (captureState === "due" || captureRetryWaiting) && session_id != null && client_id && lease_generation != null ? (
+        <View className="absolute inset-0 z-50 justify-center bg-black/75 px-5" accessibilityViewIsModal>
+          <ExamIdentityCapture
+            mode="capture"
+            capture_due={captureState === "due"}
+            session_id={Number(session_id)}
+            session_token={session_token}
+            client_id={client_id}
+            lease_generation={lease_generation}
+            onReconcileCapture={async () => {
+              await sendHeartbeat();
+              return useExamStore.getState().capture_state ?? "due";
+            }}
+            onStateChange={(capture) => {
+              dialogOpenRef.current = capture.phase === "permission_required";
+              if (capture.phase === "error" && capture.error?.code === "IDENTITY_CAPTURE_NOT_DUE") {
+                setCaptureRetryWaiting(true);
+              } else if (capture.phase === "uploaded" || capture.error?.code === "IDENTITY_CAPTURE_MISSED") {
+                setCaptureRetryWaiting(false);
+              }
+            }}
+            onUploaded={() => {
+              setCaptureRetryWaiting(false);
+              setCaptureState("uploaded");
+            }}
+          />
+        </View>
+      ) : null}
 
       <AssessmentFocusWarningModal
         visible={warningVisible}

@@ -21,10 +21,13 @@ export const useQuizAnswers = (options?: any) => {
   return useMutation({
     mutationFn: postQuizAnswers,
 
-    onSuccess: async (data: QuizSubmitResponse) => {
+    onSuccess: async (data: QuizSubmitResponse, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list_quizzes"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["list_quizzes", variables.instance_id],
+        }),
         queryClient.invalidateQueries({ queryKey: ["course_progress"] }),
+        queryClient.invalidateQueries({ queryKey: ["comprehensive_grades"] }),
       ]);
 
       if (options?.onSuccess) {

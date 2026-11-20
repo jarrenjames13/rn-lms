@@ -7,6 +7,9 @@ export type QuizSubmitPayload = {
   answers: Record<number, string>;
   submission_reason: SubmissionReason;
   session_token: string;
+  session_id: number;
+  client_id: string;
+  lease_generation: number;
 };
 
 type QuizSubmitApiResponse = {
@@ -21,23 +24,18 @@ type QuizSubmitApiResponse = {
 };
 
 export const postQuizAnswers = async (payload: QuizSubmitPayload): Promise<AssessmentResult> => {
-  try {
-    const response = await postData<QuizSubmitApiResponse>("/modules/student-quiz-submit", payload);
-    return {
-      success: response.data.success,
-      score: response.data.latest_score,
-      correct_answers: response.data.latest_correct_answers,
-      total_questions: response.data.total_questions,
-      submission_reason: response.data.submission_reason,
-      attempts_made: response.data.attempts_made,
-      remaining_attempts: response.data.remaining_attempts,
-      best_score: response.data.best_score,
-    };
-  } catch (error: any) {
-    const submissionError = new Error(
-      error?.response?.data?.detail || error.message || "Error submitting quiz answers",
-    ) as Error & { status?: number };
-    submissionError.status = error?.response?.status;
-    throw submissionError;
-  }
+  const response = await postData<QuizSubmitApiResponse>(
+    "/assessments/results/quizzes/submit",
+    payload,
+  );
+  return {
+    success: response.data.success,
+    score: response.data.latest_score,
+    correct_answers: response.data.latest_correct_answers,
+    total_questions: response.data.total_questions,
+    submission_reason: response.data.submission_reason,
+    attempts_made: response.data.attempts_made,
+    remaining_attempts: response.data.remaining_attempts,
+    best_score: response.data.best_score,
+  };
 };

@@ -43,8 +43,8 @@ export default function Overview() {
     error: detailsError,
     refetch: refetchSummary,
   } = useQuery({
-    ...createCourseSummaryOptions(course_id ?? 0),
-    enabled: course_id != null,
+    ...createCourseSummaryOptions(course_id ?? 0, instance_id ?? 0),
+    enabled: course_id != null && instance_id != null,
   });
 
   useFocusEffect(
@@ -110,20 +110,22 @@ export default function Overview() {
   const progress: CourseProgress = courseProgress ?? {
     overall_progress: 0,
     components: {
-      sections: { completed: 0, total: 0, percentage: 0 },
-      activities: { completed: 0, total: 0, percentage: 0 },
-      quizzes: { completed: 0, total: 0, percentage: 0 },
-      exams: { completed: 0, total: 0, percentage: 0 },
+      sections: { completed: 0, total: 0, percentage: 0, available: true },
+      activities: { completed: 0, total: 0, percentage: 0, available: true },
+      quizzes: { completed: 0, total: 0, percentage: 0, available: true },
+      exams: { completed: 0, total: 0, percentage: 0, available: true },
     },
+    instance_scope_available: true,
+    non_scoped_progress: null,
   };
 
   // Progress Ring Component
-  const ProgressRing = ({ percentage }: { percentage: number }) => (
+  const ProgressRing = ({ percentage }: { percentage: number | null }) => (
     <View className="relative items-center justify-center">
       <View className="w-32 h-32 rounded-full bg-[#F2ECF8] dark:bg-[#2A2038] items-center justify-center">
         <View className="w-28 h-28 rounded-full bg-[#FFFFFF] dark:bg-[#1A181E] items-center justify-center">
           <Text className="text-3xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
-            {percentage}%
+            {percentage == null ? "—" : `${percentage}%`}
           </Text>
           <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">Complete</Text>
         </View>
@@ -131,10 +133,10 @@ export default function Overview() {
       <View
         className="absolute w-32 h-32 rounded-full border-8"
         style={{
-          borderTopColor: percentage > 0 ? theme.school : theme.border,
-          borderRightColor: percentage > 25 ? theme.school : theme.border,
-          borderBottomColor: percentage > 50 ? theme.school : theme.border,
-          borderLeftColor: percentage > 75 ? theme.school : theme.border,
+          borderTopColor: percentage != null && percentage > 0 ? theme.school : theme.border,
+          borderRightColor: percentage != null && percentage > 25 ? theme.school : theme.border,
+          borderBottomColor: percentage != null && percentage > 50 ? theme.school : theme.border,
+          borderLeftColor: percentage != null && percentage > 75 ? theme.school : theme.border,
         }}
       />
     </View>
@@ -174,9 +176,9 @@ export default function Overview() {
   }: {
     icon: string;
     label: string;
-    completed: number;
+    completed: number | null;
     total: number;
-    percentage: number;
+    percentage: number | null;
   }) => (
     <View className="mb-4">
       <View className="flex-row items-center justify-between mb-2">
@@ -187,18 +189,18 @@ export default function Overview() {
           <Text className="text-sm font-medium text-[#201D25] dark:text-[#F7F4FA]">{label}</Text>
         </View>
         <Text className="text-sm font-semibold text-[#201D25] dark:text-[#F7F4FA]">
-          {completed}/{total}
+          {completed == null ? "Unavailable" : `${completed}/${total}`}
         </Text>
       </View>
       <View className="flex-row items-center">
         <View className="flex-1 h-2 bg-[#F2ECF8] dark:bg-[#2A2038] rounded-full overflow-hidden mr-3">
           <View
             className="h-full rounded-full"
-            style={{ width: `${percentage}%`, backgroundColor: theme.school }}
+            style={{ width: `${percentage ?? 0}%`, backgroundColor: theme.school }}
           />
         </View>
         <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] w-12 text-right">
-          {percentage}%
+          {percentage == null ? "—" : `${percentage}%`}
         </Text>
       </View>
     </View>
@@ -328,9 +330,14 @@ export default function Overview() {
 
               <View className="items-center mb-6">
                 <ProgressRing
-                  percentage={Math.round(progress.overall_progress)}
+                  percentage={progress.overall_progress == null ? null : Math.round(progress.overall_progress)}
                 />
               </View>
+              {!progress.instance_scope_available ? (
+                <Text className="text-sm text-center text-[#6C6572] dark:text-[#BEB6C5] mb-4">
+                  Progress is unavailable for this course instance right now.
+                </Text>
+              ) : null}
 
               <View>
                 <ProgressItem
@@ -338,34 +345,28 @@ export default function Overview() {
                   label="Sections"
                   completed={progress.components.sections.completed}
                   total={progress.components.sections.total}
-                  percentage={Math.round(
-                    progress.components.sections.percentage,
-                  )}
+                  percentage={progress.components.sections.percentage == null ? null : Math.round(progress.components.sections.percentage)}
                 />
                 <ProgressItem
                   icon="assignment"
                   label="Activities"
                   completed={progress.components.activities.completed}
                   total={progress.components.activities.total}
-                  percentage={Math.round(
-                    progress.components.activities.percentage,
-                  )}
+                  percentage={progress.components.activities.percentage == null ? null : Math.round(progress.components.activities.percentage)}
                 />
                 <ProgressItem
                   icon="quiz"
                   label="Quizzes"
                   completed={progress.components.quizzes.completed}
                   total={progress.components.quizzes.total}
-                  percentage={Math.round(
-                    progress.components.quizzes.percentage,
-                  )}
+                  percentage={progress.components.quizzes.percentage == null ? null : Math.round(progress.components.quizzes.percentage)}
                 />
                 <ProgressItem
                   icon="school"
                   label="Exams"
                   completed={progress.components.exams.completed}
                   total={progress.components.exams.total}
-                  percentage={Math.round(progress.components.exams.percentage)}
+                  percentage={progress.components.exams.percentage == null ? null : Math.round(progress.components.exams.percentage)}
                 />
               </View>
             </View>

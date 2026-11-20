@@ -34,7 +34,7 @@ export default function AssessmentFocusWarningModal({
             Focus loss detected
           </Text>
           <Text className="mt-2 text-base leading-6" style={{ color: theme.textMuted }}>
-            Leaving this {assessmentLabel} again will submit your current answers automatically.
+            The server recorded this focus loss. Further events may submit your {assessmentLabel} according to its security policy.
           </Text>
           <Pressable
             accessibilityRole="button"

@@ -182,7 +182,7 @@ export default function Stats() {
                       Overall Completion
                     </Text>
                     <Text className="text-4xl font-bold text-[#201D25] dark:text-[#F7F4FA]">
-                      {stats.overall_progress}%
+                      {stats.overall_progress == null ? "Unavailable" : `${stats.overall_progress}%`}
                     </Text>
                   </View>
                   <View className="w-16 h-16 bg-[#FFFFFF] dark:bg-[#1A181E] rounded-full items-center justify-center shadow-md">
@@ -204,12 +204,16 @@ export default function Stats() {
                 <View className="w-full h-3 bg-[#FFFFFF]/60 dark:bg-[#1A181E]/60 rounded-full overflow-hidden shadow-inner">
                   <View
                     className="h-full bg-[#B42335] dark:bg-[#F06A78] rounded-full shadow-sm"
-                    style={{ width: `${stats.overall_progress}%` }}
+                    style={{ width: `${stats.overall_progress ?? 0}%` }}
                   />
                 </View>
 
                 <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-3 text-center">
-                  {stats.overall_progress === 100
+                  {!stats.instance_scope_available
+                    ? "Progress is unavailable for the current course scope."
+                    : stats.overall_progress == null
+                    ? "Progress data is currently unavailable."
+                    : stats.overall_progress === 100
                     ? "🎉 Amazing! You've completed everything!"
                     : `Keep going! ${100 - stats.overall_progress}% remaining`}
                 </Text>

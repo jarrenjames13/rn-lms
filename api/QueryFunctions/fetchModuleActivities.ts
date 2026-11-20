@@ -1,11 +1,11 @@
 import { getData } from "@/utils/fetcher";
 import { ActivityWithGrade } from "./../../types/api";
 
-export const fetchActivities = async (moduleId: number) => {
+export const fetchActivities = async (moduleId: number, instanceId: number) => {
   try {
     const response = await getData<ActivityWithGrade>(
-      `/modules/student-activities-with-grades/${moduleId}`,
-      {}
+      `/activity-submissions/student-activities-with-grades/${moduleId}`,
+      { instance_id: instanceId },
     );
     const data: ActivityWithGrade = response.data;
 

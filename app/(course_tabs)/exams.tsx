@@ -1,4 +1,5 @@
 import createListExamsOptions from "@/api/QueryOptions/listExamsOption";
+import createListSubmissionsOptions from "@/api/QueryOptions/listSubmissionsOptions";
 import AssessmentStartModal from "@/components/AssessmentStartModal";
 import { useCourseStore } from "@/store/useCourseStore";
 import { useExamStore } from "@/store/useExamStore";
@@ -6,7 +7,7 @@ import { useAppTheme } from "@/theme";
 
 import SubmissionModal from "@/components/SubmissionModal";
 import Skeleton from "@/components/skeletons/Skeleton";
-import { ExamDetails } from "@/types/api";
+import { ExamDetails, StudentAssessmentDetails } from "@/types/api";
 import {
   Entypo,
   Feather,
@@ -15,8 +16,9 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import NetInfo from "@react-native-community/netinfo";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -116,7 +118,7 @@ export default function Exams() {
   const { instance_id } = useCourseStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedExamForSubmission, setSelectedExamForSubmission] =
-    useState<ExamDetails | null>(null);
+    useState<StudentAssessmentDetails | null>(null);
   const [examToStart, setExamToStart] = useState<ExamDetails | null>(null);
 
   const {
@@ -130,7 +132,39 @@ export default function Exams() {
     enabled: !!instance_id,
   });
 
-  const exams = examsData?.exams || [];
+  const {
+    data: submissionsData,
+    isLoading: loadingSubmissions,
+    isError: submissionsError,
+    refetch: refetchSubmissions,
+  } = useQuery({
+    ...createListSubmissionsOptions(instance_id ?? 0),
+    enabled: !!instance_id,
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+      void refetchSubmissions();
+    }, [refetch, refetchSubmissions]),
+  );
+
+  const connectedRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected === true && connectedRef.current === false) {
+        void refetch();
+        void refetchSubmissions();
+      }
+      connectedRef.current = state.isConnected ?? null;
+    });
+    return unsubscribe;
+  }, [refetch, refetchSubmissions]);
+
+  const exams: StudentAssessmentDetails[] = [
+    ...(examsData?.exams ?? []),
+    ...(submissionsData?.exams ?? []),
+  ];
   const instanceId = examsData?.instance_id || null;
 
   // Group exams by exam_period
@@ -143,20 +177,20 @@ export default function Exams() {
       acc[period].push(exam);
       return acc;
     },
-    {} as Record<string, ExamDetails[]>,
+    {} as Record<string, StudentAssessmentDetails[]>,
   );
 
   // Pull to refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await refetch();
+      await Promise.all([refetch(), refetchSubmissions()]);
     } catch (error) {
       console.log("Refresh error:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [refetch]);
+  }, [refetch, refetchSubmissions]);
 
   // Define the correct order for exam periods
   const periodOrder: Record<string, number> = {
@@ -204,7 +238,7 @@ export default function Exams() {
     }
   };
 
-  const handlePress = async (exam: ExamDetails) => {
+  const handlePress = async (exam: StudentAssessmentDetails) => {
     // Check if this is a submission-type exam
     if (exam.category.toLowerCase() === "submission") {
       // Ensure we have an instanceId before opening modal
@@ -216,7 +250,7 @@ export default function Exams() {
       return;
     }
 
-    setExamToStart(exam);
+    if ("can_attempt" in exam) setExamToStart(exam as ExamDetails);
   };
 
   const beginExam = () => {
@@ -231,13 +265,13 @@ export default function Exams() {
 
   const requestExamStart = (exam: ExamDetails) => {
     if (!attemptHydrated || instanceId === null) return;
+    if (exam.active_session?.state === "expired_pending") return;
+    if (
+      exam.active_session?.state !== "resumable" &&
+      (exam.ip_allowed === false || exam.locked || !exam.can_attempt)
+    ) return;
     if (attemptStatus === "idle") {
-      if (exam.active_session?.state === "resumable") {
-        beginAttempt(exam.exam_id, instanceId);
-        router.replace("/exam_taking");
-      } else {
-        setExamToStart(exam);
-      }
+      setExamToStart(exam);
       return;
     }
 
@@ -257,15 +291,23 @@ export default function Exams() {
   };
 
   // Render a single exam card
-  const renderExamCard = (exam: ExamDetails) => {
+  const renderExamCard = (exam: StudentAssessmentDetails) => {
+    const timedExam = "can_attempt" in exam ? exam as ExamDetails : null;
     const isPassing = exam.score !== null && exam.score >= 75;
     const isSubmissionType = exam.category.toLowerCase() === "submission";
-    const isGraded = exam.score !== null; // If score exists, it's been graded
+    const isGraded = exam.score !== null && exam.grade_status !== "provisional";
     const sessionState = exam.active_session?.state;
+    const canResume = !isSubmissionType && sessionState === "resumable";
+    const networkDenied = !isSubmissionType && exam.ip_allowed === false && !canResume;
+    const accessLocked = !isSubmissionType && exam.locked === true && !canResume;
+    const noAttemptsLeft = !!timedExam && !timedExam.can_attempt && !canResume;
+    const canStart = isSubmissionType
+      ? !exam.is_taken
+      : !!timedExam && sessionState !== "expired_pending" && (canResume || (!networkDenied && !accessLocked && !noAttemptsLeft));
 
     return (
       <View
-        key={exam.exam_id}
+        key={`${exam.category}-${exam.exam_id}`}
         className="bg-[#FFFFFF] dark:bg-[#1A181E] rounded-2xl shadow-sm overflow-hidden mb-4 border border-[#E6E1E8] dark:border-[#37313C]"
       >
         {/* Header with Status */}
@@ -291,7 +333,11 @@ export default function Exams() {
 
             {/* Status Badge */}
             <View>
-              {exam.is_taken ? (
+              {sessionState === "expired_pending" ? (
+                <View style={{ backgroundColor: theme.surfaceMuted }} className="px-3 py-2 rounded-xl">
+                  <Text style={{ color: theme.textMuted }} className="text-xs font-bold">FINALIZING</Text>
+                </View>
+              ) : exam.is_taken ? (
                 <View
                   style={{
                     backgroundColor: isPassing ? theme.surfaceMuted : theme.surfaceAccent,
@@ -308,11 +354,15 @@ export default function Exams() {
                       style={{ color: isPassing ? theme.success : theme.danger }}
                       className="text-xs font-bold ml-1"
                     >
-                      {isSubmissionType
-                        ? isGraded
-                          ? "GRADED"
-                          : "SUBMITTED"
-                        : "COMPLETED"}
+                      {exam.grade_status === "provisional"
+                        ? "PROVISIONAL"
+                        : exam.grade_status === "failed"
+                          ? "FAILED"
+                          : isSubmissionType
+                            ? isGraded
+                              ? "GRADED"
+                              : "SUBMITTED"
+                            : "COMPLETED"}
                     </Text>
                   </View>
                   {isGraded && (
@@ -339,14 +389,24 @@ export default function Exams() {
                       style={{ color: theme.primary }}
                       className="text-xs font-bold ml-1"
                     >
-                      AVAILABLE
+                      {canResume ? "IN PROGRESS" : networkDenied ? "NETWORK REQUIRED" : accessLocked ? "LOCKED" : noAttemptsLeft ? "NO ATTEMPTS" : "AVAILABLE"}
                     </Text>
                   </View>
                   <Text
                     style={{ color: theme.primary }}
                     className="text-[10px] font-medium mt-0.5 text-center"
                   >
-                    {isSubmissionType ? "Not submitted" : "Not taken"}
+                    {sessionState === "resumable"
+                      ? "Attempt in progress"
+                      : networkDenied
+                        ? "Offsite access not granted"
+                        : accessLocked
+                          ? "Outside availability window"
+                          : noAttemptsLeft
+                            ? "Attempt budget used"
+                            : isSubmissionType
+                              ? "Not submitted"
+                              : "Not taken"}
                   </Text>
                 </View>
               )}
@@ -388,6 +448,31 @@ export default function Exams() {
               </View>
             </View>
           )}
+
+          {networkDenied ? (
+            <View className="rounded-xl p-4 mb-4 border" style={{ backgroundColor: theme.surfaceAccent, borderColor: theme.warning }}>
+              <Text className="text-sm font-bold" style={{ color: theme.danger }}>Campus network required</Text>
+              <Text className="text-sm leading-5 mt-1" style={{ color: theme.text }}>
+                This exam is unavailable from the current network. Ask your instructor or administrator to grant offsite access, then refresh this list.
+              </Text>
+            </View>
+          ) : accessLocked ? (
+            <View className="rounded-xl p-4 mb-4" style={{ backgroundColor: theme.surfaceMuted }}>
+              <Text className="text-sm font-semibold" style={{ color: theme.textMuted }}>This exam is outside its available course window.</Text>
+            </View>
+          ) : noAttemptsLeft ? (
+            <View className="rounded-xl p-4 mb-4" style={{ backgroundColor: theme.surfaceMuted }}>
+              <Text className="text-sm font-semibold" style={{ color: theme.textMuted }}>No exam attempts remain.</Text>
+            </View>
+          ) : null}
+
+          {exam.is_taken && exam.status ? (
+            <View className="rounded-xl p-4 mb-4" style={{ backgroundColor: exam.grade_status === "failed" ? theme.surfaceAccent : theme.surfaceMuted }}>
+              <Text className="text-sm font-semibold" style={{ color: exam.grade_status === "failed" ? theme.danger : theme.text }}>
+                {exam.status}
+              </Text>
+            </View>
+          ) : null}
 
           {/* Important Notice for Available Exams */}
           {sessionState === "expired_pending" ? (
@@ -523,10 +608,10 @@ export default function Exams() {
             )}
 
           {/* Action Button (if not taken) */}
-          {!exam.is_taken && (
+          {!exam.is_taken && canStart && (
             <View>
               <Pressable
-                onPress={() => isSubmissionType ? handlePress(exam) : requestExamStart(exam)}
+                onPress={() => isSubmissionType ? handlePress(exam) : timedExam && requestExamStart(timedExam)}
                 disabled={!isSubmissionType && !attemptHydrated}
               >
                 {({ pressed }) => (
@@ -647,7 +732,7 @@ export default function Exams() {
     });
   };
 
-  if (isError) {
+  if (isError || submissionsError) {
     return (
       <SafeAreaView className="flex-1 bg-[#F7F7FA] dark:bg-[#111014]">
         <View className="flex-1 justify-center items-center px-6">
@@ -656,7 +741,7 @@ export default function Exams() {
             Error Loading Exams
           </Text>
           <Text className="text-base text-[#6C6572] dark:text-[#BEB6C5] text-center mt-2">
-            {error?.message || "Unknown error occurred"}
+            {error?.message || "Unable to load exams or submissions."}
           </Text>
           <Pressable
             onPress={() => refetch()}
@@ -772,7 +857,7 @@ export default function Exams() {
           </View>
 
           {/* Exams List */}
-          {isLoading ? (
+          {isLoading || loadingSubmissions ? (
             <>
               <ExamPeriodSkeleton />
               <ExamPeriodSkeleton />
@@ -799,6 +884,14 @@ export default function Exams() {
         visible={!!examToStart}
         type="exam"
         title={examToStart?.exam_name ?? "Exam"}
+        cameraRequired={examToStart?.camera_required === true && (
+          examToStart.active_session?.state !== "resumable" ||
+          examToStart.active_session.capture_state === "scheduled" ||
+          examToStart.active_session.capture_state === "due"
+        )}
+        attemptsRemaining={examToStart?.remaining_attempts}
+        isResume={examToStart?.active_session?.state === "resumable"}
+        remainingSeconds={examToStart?.active_session?.remaining_seconds}
         onCancel={() => setExamToStart(null)}
         onBegin={beginExam}
       />

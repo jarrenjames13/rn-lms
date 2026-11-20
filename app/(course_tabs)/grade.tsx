@@ -42,6 +42,10 @@ const getScoreTextColor = (score: number) => {
   return "text-[#B42335] dark:text-[#F06A78]";
 };
 
+const formatCount = (value: number | null | undefined) => value == null ? "—" : String(value);
+const formatPercent = (value: number | null | undefined, digits = 1) =>
+  value == null ? "—" : `${value.toFixed(digits)}%`;
+
 const formatDate = (dateStr: string | null) => {
   if (!dateStr) return null;
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -298,7 +302,10 @@ const ListSkeleton = ({
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
   const { theme } = useAppTheme();
-  const { letter, color } = getLetterGrade(data.overall_grade, theme);
+  const overallGrade = data.instance_scope_available ? data.overall_grade : null;
+  const { letter, color } = overallGrade == null
+    ? { letter: "—", color: theme.textMuted }
+    : getLetterGrade(overallGrade, theme);
 
   const categories = [
     {
@@ -356,13 +363,13 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
               className="text-7xl font-black text-[#201D25] dark:text-[#F7F4FA] leading-none"
               style={{ letterSpacing: -3 }}
             >
-              {data.overall_grade.toFixed(1)}
+              {overallGrade == null ? "—" : overallGrade.toFixed(1)}
             </Text>
             <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-1">
-              Based on all graded assessments
+              {data.instance_scope_available ? "Based on all graded assessments" : "Unavailable for this course instance"}
             </Text>
             <View className="mt-3">
-              <ProgressBar value={data.overall_grade} colorClass="bg-[#B42335] dark:bg-[#F06A78]" />
+              <ProgressBar value={overallGrade ?? 0} colorClass="bg-[#B42335] dark:bg-[#F06A78]" />
             </View>
           </View>
           <View
@@ -388,9 +395,9 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
               className={`flex-1 items-center py-3 ${idx < 3 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
             >
               <Text
-                className={`text-base font-bold ${getScoreTextColor(item.val)}`}
+                className={`text-base font-bold ${item.val == null ? "text-[#6C6572] dark:text-[#BEB6C5]" : getScoreTextColor(item.val)}`}
               >
-                {item.val.toFixed(0)}%
+                {formatPercent(item.val, 0)}
               </Text>
               <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">{item.label}</Text>
             </View>
@@ -421,17 +428,19 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
                   {cat.label}
                 </Text>
                 <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5]">
-                  {cat.label === "Activities"
-                    ? `${cat.summary.graded_count}/${cat.summary.count} graded`
-                    : `${cat.summary.count} ${cat.label.toLowerCase()} completed`}
+                  {!cat.summary.available
+                    ? "Unavailable for this course instance"
+                    : cat.label === "Activities"
+                      ? `${formatCount(cat.summary.graded_count)}/${formatCount(cat.summary.count)} graded`
+                      : `${formatCount(cat.summary.count)} ${cat.label.toLowerCase()} completed`}
                 </Text>
               </View>
-              <Text className={`text-2xl font-black ${cat.scoreClass}`}>
-                {cat.summary.average.toFixed(1)}%
+              <Text className={`text-2xl font-black ${cat.summary.average == null ? "text-[#6C6572] dark:text-[#BEB6C5]" : cat.scoreClass}`}>
+                {formatPercent(cat.summary.average)}
               </Text>
             </View>
             <ProgressBar
-              value={cat.summary.average}
+              value={cat.summary.average ?? 0}
               colorClass={cat.barClass}
             />
 
@@ -447,7 +456,7 @@ function OverviewTab({ data }: { data: ComprehensiveGradesResponse }) {
                   className={`flex-1 items-center ${idx < 2 ? "border-r border-[#E6E1E8] dark:border-[#37313C]" : ""}`}
                 >
                   <Text className="text-base font-bold text-[#201D25] dark:text-[#F7F4FA]">
-                    {stat.val.toFixed(0)}%
+                    {formatPercent(stat.val, 0)}
                   </Text>
                   <Text className="text-xs text-[#6C6572] dark:text-[#BEB6C5] mt-0.5">
                     {stat.label}
@@ -471,17 +480,17 @@ function ActivitiesTab({ data }: { data: ComprehensiveGradesResponse }) {
         stats={[
           {
             label: "Graded",
-            val: `${data.summary.activities.graded_count}/${data.summary.activities.count}`,
+            val: `${formatCount(data.summary.activities.graded_count)}/${formatCount(data.summary.activities.count)}`,
             cls: "text-[#201D25] dark:text-[#F7F4FA]",
           },
           {
             label: "Average",
-            val: `${data.summary.activities.average.toFixed(1)}%`,
+            val: formatPercent(data.summary.activities.average),
             cls: "text-[#6842A0] dark:text-[#A98ADC]",
           },
           {
             label: "Best",
-            val: `${data.summary.activities.highest}%`,
+            val: formatPercent(data.summary.activities.highest),
             cls: "text-[#167A50] dark:text-[#58C99A]",
           },
         ]}
@@ -746,17 +755,17 @@ function QuizzesTab({ data }: { data: ComprehensiveGradesResponse }) {
         stats={[
           {
             label: "Total",
-            val: `${data.summary.quizzes.count}`,
+            val: formatCount(data.summary.quizzes.count),
             cls: "text-[#201D25] dark:text-[#F7F4FA]",
           },
           {
             label: "Average",
-            val: `${data.summary.quizzes.average.toFixed(1)}%`,
+            val: formatPercent(data.summary.quizzes.average),
             cls: "text-[#6842A0] dark:text-[#A98ADC]",
           },
           {
             label: "Highest",
-            val: `${data.summary.quizzes.highest}%`,
+            val: formatPercent(data.summary.quizzes.highest),
             cls: "text-[#167A50] dark:text-[#58C99A]",
           },
         ]}
@@ -785,17 +794,17 @@ function ExamsTab({ data }: { data: ComprehensiveGradesResponse }) {
         stats={[
           {
             label: "Total",
-            val: `${data.summary.exams.count}`,
+            val: formatCount(data.summary.exams.count),
             cls: "text-[#201D25] dark:text-[#F7F4FA]",
           },
           {
             label: "Average",
-            val: `${data.summary.exams.average.toFixed(1)}%`,
+            val: formatPercent(data.summary.exams.average),
             cls: "text-[#B42335] dark:text-[#F06A78]",
           },
           {
             label: "Highest",
-            val: `${data.summary.exams.highest}%`,
+            val: formatPercent(data.summary.exams.highest),
             cls: "text-[#167A50] dark:text-[#58C99A]",
           },
         ]}
@@ -889,17 +898,17 @@ function SubmissionsTab({ data }: { data: ComprehensiveGradesResponse }) {
         stats={[
           {
             label: "Graded",
-            val: `${data.summary.submissions.graded_count ?? 0}/${data.summary.submissions.count}`,
+            val: `${formatCount(data.summary.submissions.graded_count)}/${formatCount(data.summary.submissions.count)}`,
             cls: "text-[#201D25] dark:text-[#F7F4FA]",
           },
           {
             label: "Average",
-            val: `${data.summary.submissions.average.toFixed(1)}%`,
+            val: formatPercent(data.summary.submissions.average),
             cls: "text-[#A75D00] dark:text-[#F2B35C]",
           },
           {
             label: "Highest",
-            val: `${data.summary.submissions.highest}%`,
+            val: formatPercent(data.summary.submissions.highest),
             cls: "text-[#167A50] dark:text-[#58C99A]",
           },
         ]}
@@ -922,10 +931,10 @@ function SubmissionsTab({ data }: { data: ComprehensiveGradesResponse }) {
 export default function ComprehensiveGradesScreen() {
   const { theme } = useAppTheme();
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
-  const { course_id } = useCourseStore();
+  const { course_id, instance_id } = useCourseStore();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
-    ...createComprehensiveGradesOptions(course_id!),
-    enabled: !!course_id,
+    ...createComprehensiveGradesOptions(course_id ?? 0, instance_id ?? 0),
+    enabled: !!course_id && !!instance_id,
   });
 
   if (isError) {

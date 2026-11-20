@@ -1,5 +1,6 @@
 import { postData } from "@/utils/fetcher";
 import type { AssessmentResult, SubmissionReason } from "@/types/assessmentAttempt";
+import type { ExamResult } from "./fetchAssessmentResult";
 
 export type ExamSubmitPayload = {
   exam_id: number;
@@ -7,22 +8,22 @@ export type ExamSubmitPayload = {
   answers: Record<number, string>;
   submission_reason: SubmissionReason;
   session_token: string;
+  session_id: number;
+  client_id: string;
+  lease_generation: number;
 };
 
-type ExamSubmitApiResponse = AssessmentResult;
+type ExamSubmitApiResponse = AssessmentResult & {
+  review_status: string;
+  grade_status: string;
+  message: string | null;
+  capture_state: string;
+};
 
-export const postExamAnswers = async (payload: ExamSubmitPayload): Promise<AssessmentResult> => {
-  try {
-    const response = await postData<ExamSubmitApiResponse>(
-      "/modules/submit-exam-results-unique",
-      payload,
-    );
-    return response.data;
-  } catch (error: any) {
-    const submissionError = new Error(
-      error?.response?.data?.detail || error.message || "Error submitting exam answers",
-    ) as Error & { status?: number };
-    submissionError.status = error?.response?.status;
-    throw submissionError;
-  }
+export const postExamAnswers = async (payload: ExamSubmitPayload): Promise<ExamResult> => {
+  const response = await postData<ExamSubmitApiResponse>(
+    "/assessments/results/exams/submit",
+    payload,
+  );
+  return response.data;
 };

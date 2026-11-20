@@ -5,10 +5,26 @@ export default function createQuizQuestionsOptions(
   quizId: number,
   instanceId: number,
   sessionToken: string,
+  clientId: string,
+  leaseGeneration: number,
 ) {
   return queryOptions({
-    queryKey: ["quiz_questions", quizId, instanceId, sessionToken],
-    queryFn: () => fetchQuizQuestions(quizId, instanceId, sessionToken),
+    queryKey: [
+      "quiz_questions",
+      quizId,
+      instanceId,
+      sessionToken,
+      clientId,
+      leaseGeneration,
+    ],
+    queryFn: () =>
+      fetchQuizQuestions(
+        quizId,
+        instanceId,
+        sessionToken,
+        clientId,
+        leaseGeneration,
+      ),
     staleTime: 0,
     gcTime: 0,
   });

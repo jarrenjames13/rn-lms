@@ -1,6 +1,6 @@
 import { create } from "axios";
 import * as SecureStore from "expo-secure-store";
-import { BASE_URL } from "../utils/constants";
+import { apiUrl, BASE_URL } from "../utils/constants";
 import { publishAssessmentLeaseTakenOver } from "./assessmentLease";
 
 // Create axios instance
@@ -115,7 +115,7 @@ export async function getAuthCookieHeaders(
 const refreshToken = async (): Promise<void> => {
   try {
     const response = await apiClient.post(
-      `${BASE_URL}/auth/refresh`,
+      apiUrl("auth/refresh"),
       {},
       { _skipRefreshRetry: true } as any,
     );
@@ -146,6 +146,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    if (!originalRequest) return Promise.reject(error);
 
     let requestData = originalRequest?.data;
     if (typeof requestData === "string") {
@@ -164,8 +165,11 @@ apiClient.interceptors.response.use(
     // Handle a single unauthorized retry.
     if (
       error.response?.status === 401 &&
-      !originalRequest._retry && !originalRequest._skipRefreshRetry
+      !originalRequest._retry &&
+      !originalRequest._skipRefreshRetry
     ) {
+      // Mark before queuing so a replayed request cannot start another refresh.
+      originalRequest._retry = true;
       if (isRefreshing) {
         // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
@@ -177,7 +181,6 @@ apiClient.interceptors.response.use(
           });
       }
 
-      originalRequest._retry = true;
       isRefreshing = true;
 
       try {
@@ -218,9 +221,10 @@ const request = async <T = any>(
   data?: any,
   params: Record<string, string | number | boolean> = {},
   headers: Record<string, string> = {},
+  signal?: AbortSignal,
 ) => {
   const fullUrl = buildUrlWithParams(url, params);
-  return apiClient.request<T>({ method, url: fullUrl, data, headers });
+  return apiClient.request<T>({ method, url: fullUrl, data, headers, signal });
 };
 
 export const clearApiAuthorization = () => {
@@ -239,7 +243,8 @@ export const postData = <T = any>(
   url: string,
   data: any,
   headers: Record<string, string> = {},
-) => request<T>("post", url, data, {}, headers);
+  signal?: AbortSignal,
+) => request<T>("post", url, data, {}, headers, signal);
 
 export const patchData = <T = any>(
   url: string,

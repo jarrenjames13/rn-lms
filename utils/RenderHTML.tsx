@@ -8,6 +8,12 @@ import React, { useCallback, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { BASE_URL } from "@/utils/constants";
 import {
+  getEmbeddedMediaHeaders,
+  isApprovedActivityEmbed,
+} from "@/utils/examContentPolicy";
+import {
+  Alert,
+  Linking,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -143,15 +149,7 @@ export const HTMLContent = React.memo(function HTMLContent({
   }, []);
 
   const provideEmbeddedHeaders = useCallback((uri: string, tagName: string) => {
-    const mediaPath = /^\/api\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    let path = uri;
-    try {
-      path = new URL(uri, BASE_URL).pathname;
-    } catch {}
-    if (tagName === "img" && mediaPath.test(path) && authCookie) {
-      return { Cookie: authCookie };
-    }
-    return null;
+    return getEmbeddedMediaHeaders(uri, tagName, BASE_URL, authCookie);
   }, [authCookie]);
 
   const onLayout = (event: LayoutChangeEvent) => {
@@ -166,6 +164,30 @@ export const HTMLContent = React.memo(function HTMLContent({
     />
   );
 
+  const iframeRenderer: CustomBlockRenderer = ({ tnode }) => {
+    const uri = tnode.attributes.src;
+    if (!isApprovedActivityEmbed(uri)) return null;
+    const title = tnode.attributes.title || "embedded activity";
+    const openActivity = () => {
+      void Linking.openURL(uri).catch(() => {
+        Alert.alert("Unable to open activity", "Please try again later.");
+      });
+    };
+    return (
+      <TouchableOpacity
+        accessibilityRole="link"
+        onPress={openActivity}
+        activeOpacity={0.75}
+        className="my-2 rounded px-3 py-2"
+        style={{ backgroundColor: theme.surfaceMuted }}
+      >
+        <Text style={{ color: theme.primary, textDecorationLine: "underline" }}>
+          Open {title}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View className="w-full" onLayout={onLayout}>
       {contentWidth > 0 && (
@@ -175,8 +197,8 @@ export const HTMLContent = React.memo(function HTMLContent({
           baseStyle={{ color: theme.text, fontSize: 16, lineHeight: 24 }}
           tagsStyles={createTagStyles(theme)}
           customHTMLElementModels={HTML_MODELS}
-          renderers={{ pre: preRenderer }}
-          ignoredDomTags={["script", "style", "iframe", "object", "embed"]}
+          renderers={{ pre: preRenderer, iframe: iframeRenderer }}
+          ignoredDomTags={["script", "style", "object", "embed"]}
           provideEmbeddedHeaders={provideEmbeddedHeaders}
           enableCSSInlineProcessing={false}
         />
