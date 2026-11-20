@@ -14,8 +14,9 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import NetInfo from "@react-native-community/netinfo";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -120,6 +121,23 @@ export default function Quiz() {
     refetchOnWindowFocus: false,
   });
 
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
+
+  const connectedRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected === true && connectedRef.current === false) {
+        void refetch();
+      }
+      connectedRef.current = state.isConnected ?? null;
+    });
+    return unsubscribe;
+  }, [refetch]);
+
   const instanceId = quizzesData?.instance_id || null;
 
   // Group quizzes by exam_period
@@ -208,13 +226,10 @@ export default function Quiz() {
 
   const requestQuizStart = (quiz: QuizDetails) => {
     if (!attemptHydrated || instanceId === null) return;
+    if (quiz.active_session?.state === "expired_pending") return;
+    if (quiz.active_session?.state !== "resumable" && quiz.locked) return;
     if (attemptStatus === "idle") {
-      if (quiz.active_session?.state === "resumable") {
-        beginAttempt(quiz.quiz_id, instanceId);
-        router.replace("/quiz_taking");
-      } else {
-        setQuizToStart(quiz);
-      }
+      setQuizToStart(quiz);
       return;
     }
 
@@ -240,6 +255,7 @@ export default function Quiz() {
     const maxAttemptsReached = attemptsMade >= MAX_QUIZ_ATTEMPTS;
     const isPassing = quiz.score !== null && quiz.score >= 75;
     const sessionState = quiz.active_session?.state;
+    const accessLocked = quiz.locked === true && sessionState !== "resumable";
 
     return (
       <View
@@ -260,7 +276,19 @@ export default function Quiz() {
 
             {/* Status Badge */}
             <View>
-              {maxAttemptsReached ? (
+              {sessionState === "resumable" ? (
+                <View style={{ backgroundColor: theme.surfaceMuted }} className="px-3 py-2 rounded-xl">
+                  <Text style={{ color: theme.primary }} className="text-xs font-bold">IN PROGRESS</Text>
+                </View>
+              ) : sessionState === "expired_pending" ? (
+                <View style={{ backgroundColor: theme.surfaceMuted }} className="px-3 py-2 rounded-xl">
+                  <Text style={{ color: theme.textMuted }} className="text-xs font-bold">FINALIZING</Text>
+                </View>
+              ) : accessLocked ? (
+                <View style={{ backgroundColor: theme.surfaceMuted }} className="px-3 py-2 rounded-xl">
+                  <Text style={{ color: theme.textMuted }} className="text-xs font-bold">LOCKED</Text>
+                </View>
+              ) : maxAttemptsReached ? (
                 <View
                   style={{
                     backgroundColor: isPassing ? theme.surfaceMuted : theme.surfaceAccent,
@@ -340,6 +368,13 @@ export default function Quiz() {
 
         {/* Main Content */}
         <View className="p-5">
+          {accessLocked ? (
+            <View className="rounded-xl p-4 mb-4" style={{ backgroundColor: theme.surfaceMuted }}>
+              <Text className="text-sm font-semibold" style={{ color: theme.textMuted }}>
+                This quiz is outside its available course window.
+              </Text>
+            </View>
+          ) : null}
           {/* Quiz Info Grid */}
           <View className="flex-row flex-wrap gap-3 mb-4">
             {/* Total Items */}
@@ -504,7 +539,7 @@ export default function Quiz() {
                 </View>
               )}
             </Pressable>
-          ) : !maxAttemptsReached && (
+          ) : !accessLocked && !maxAttemptsReached && (
             <View>
               {attemptsMade > 0 ? (
                 // Retake Button
@@ -777,6 +812,8 @@ export default function Quiz() {
         type="quiz"
         title={quizToStart?.quiz_name ?? "Quiz"}
         isReattempt={(quizToStart?.attempts_made ?? 0) > 0}
+        isResume={quizToStart?.active_session?.state === "resumable"}
+        remainingSeconds={quizToStart?.active_session?.remaining_seconds}
         onCancel={() => setQuizToStart(null)}
         onBegin={beginQuiz}
       />

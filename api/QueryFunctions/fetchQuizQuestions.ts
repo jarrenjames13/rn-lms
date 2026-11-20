@@ -5,20 +5,17 @@ export const fetchQuizQuestions = async (
   quizId: number,
   instanceId: number,
   sessionToken: string,
+  clientId: string,
+  leaseGeneration: number,
 ) => {
-  try {
-    const res = await getData<QuestionsResponse>(
-      `/modules/student-quiz-questions/${quizId}/${instanceId}`,
-      {},
-      { "X-Assessment-Session": sessionToken },
-    );
-    const data: QuestionsResponse = res.data;
-    return data;
-  } catch (error: any) {
-    throw new Error(
-      error?.response?.data?.detail ||
-        error.message ||
-        "Error fetching quiz questions"
-    );
-  }
+  const response = await getData<QuestionsResponse>(
+    `/assessments/sessions/quizzes/${quizId}/${instanceId}/questions`,
+    {},
+    {
+      "X-Assessment-Session": sessionToken,
+      "X-Assessment-Client-ID": clientId,
+      "X-Assessment-Lease-Generation": String(leaseGeneration),
+    },
+  );
+  return response.data;
 };

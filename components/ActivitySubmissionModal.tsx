@@ -23,21 +23,42 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 interface ActivitySubmissionModalProps {
   visible: boolean;
   activity: SingleActivity | null;
+  instanceId: number;
   onClose: () => void;
 }
 
 interface SubmitActivityPayload {
   activity_id: number;
+  instance_id: number;
   submission_content: string;
 }
+
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  const requestError = error as {
+    message?: string;
+    response?: { data?: { detail?: unknown } };
+  };
+  const detail = requestError?.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object" && "message" in detail) {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return requestError?.message || fallback;
+};
 
 export default function ActivitySubmissionModal({
   visible,
   activity,
+  instanceId,
   onClose,
 }: ActivitySubmissionModalProps) {
+  const activityId = activity?.activity_id;
   const [answer, setAnswer] = useState("");
   const [loadingExistingAnswer, setLoadingExistingAnswer] = useState(false);
+  const [existingAnswerError, setExistingAnswerError] = useState<string | null>(
+    null,
+  );
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const insets = useSafeAreaInsets();
@@ -69,26 +90,42 @@ export default function ActivitySubmissionModal({
   }, []);
   const queryClient = useQueryClient();
 
-  // Reset answer when modal opens/closes or activity changes
+  // Load the student's existing work for the selected course instance.
   useEffect(() => {
+    setAnswer("");
+    setExistingAnswerError(null);
     if (!visible) {
-      setAnswer("");
+      setLoadingExistingAnswer(false);
       return;
     }
 
-    if (!activity) return;
+    if (activityId == null || instanceId <= 0) {
+      setLoadingExistingAnswer(false);
+      return;
+    }
     let cancelled = false;
     setLoadingExistingAnswer(true);
     getData<{ submission?: { submission_content?: string } }>(
-      `/modules/activity-submissions/check/${activity.activity_id}`,
+      `/activity-submissions/check/${activityId}`,
+      { instance_id: instanceId },
     )
       .then((response) => {
         if (!cancelled && response.status === 200) {
           setAnswer(response.data?.submission?.submission_content ?? "");
         }
       })
-      .catch(() => {
-        // A missing submission is expected for first-time activity work.
+      .catch((error: any) => {
+        if (cancelled) return;
+        if (error?.response?.status === 404) {
+          setAnswer("");
+          return;
+        }
+        setExistingAnswerError(
+          getApiErrorMessage(
+            error,
+            "Could not load your previous work. Try again.",
+          ),
+        );
       })
       .finally(() => {
         if (!cancelled) setLoadingExistingAnswer(false);
@@ -97,30 +134,47 @@ export default function ActivitySubmissionModal({
     return () => {
       cancelled = true;
     };
-  }, [activity, visible]);
+  }, [activityId, instanceId, visible]);
 
   // Submit mutation
   const submitMutation = useMutation({
     mutationFn: async (payload: SubmitActivityPayload) => {
       try {
         const response = await postData(
-          "modules/activity-submissions/submit",
+          "/activity-submissions/submit",
           payload,
         );
-        if (response.status === 200) {
-          return response.data;
-        } else {
-          throw new Error("Failed to submit activity");
-        }
+        return response.data;
       } catch (error) {
-        throw error;
+        throw new Error(
+          getApiErrorMessage(error, "Failed to submit activity. Try again."),
+        );
       }
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, payload) => {
+      const matchesInstance = (query: { queryKey: readonly unknown[] }) =>
+        query.queryKey[2] === payload.instance_id;
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["module_activities"] }),
-        queryClient.invalidateQueries({ queryKey: ["module_progress"] }),
-        queryClient.invalidateQueries({ queryKey: ["course_progress"] }),
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === "module_activities" &&
+            matchesInstance(query),
+        }),
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === "module_progress" &&
+            matchesInstance(query),
+        }),
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === "course_progress" &&
+            query.queryKey[2] === payload.instance_id,
+        }),
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === "comprehensive_grades" &&
+            matchesInstance(query),
+        }),
       ]);
 
       setAnswer("");
@@ -140,6 +194,7 @@ export default function ActivitySubmissionModal({
 
     submitMutation.mutate({
       activity_id: activity.activity_id,
+      instance_id: instanceId,
       submission_content: answer.trim(),
     });
   };
@@ -225,6 +280,14 @@ export default function ActivitySubmissionModal({
                   <HTMLContent htmlContent={activity.instructions} />
                 </View>
 
+                {existingAnswerError ? (
+                  <View className="border rounded-lg p-3 mb-4" style={{ backgroundColor: theme.surfaceAccent, borderColor: theme.danger }}>
+                    <Text className="text-sm" style={{ color: theme.danger }}>
+                      {existingAnswerError}
+                    </Text>
+                  </View>
+                ) : null}
+
                 {/* Answer Input */}
                 <View className="mb-4">
                   <Text className="text-sm font-semibold mb-2" style={{ color: theme.text }}>
@@ -248,7 +311,9 @@ export default function ActivitySubmissionModal({
                         )
                       }
                       editable={
-                        !submitMutation.isPending && !loadingExistingAnswer
+                        !submitMutation.isPending &&
+                        !loadingExistingAnswer &&
+                        !existingAnswerError
                       }
                     />
                   </View>
@@ -300,12 +365,16 @@ export default function ActivitySubmissionModal({
                 disabled={
                   !answer.trim() ||
                   submitMutation.isPending ||
-                  loadingExistingAnswer
+                  loadingExistingAnswer ||
+                  existingAnswerError !== null
                 }
                 className="flex-1 rounded-lg py-3 items-center flex-row justify-center"
                 style={{
                   backgroundColor:
-                    !answer.trim() || submitMutation.isPending || loadingExistingAnswer
+                    !answer.trim() ||
+                    submitMutation.isPending ||
+                    loadingExistingAnswer ||
+                    existingAnswerError !== null
                       ? theme.tabInactive
                       : theme.primary,
                 }}

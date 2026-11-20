@@ -1,5 +1,5 @@
 import EventSource from 'react-native-sse';
-import { BASE_URL } from '@/utils/constants';
+import { apiUrl } from '@/utils/constants';
 import { getAuthCookieHeaders } from '@/utils/fetcher';
 import type { AssessmentLeaseEvent } from '@/utils/assessmentLease';
 
@@ -55,7 +55,7 @@ class SSEService {
     if (moduleId != null) params.set('module_id', String(moduleId));
     const qs = params.toString();
 
-    this.es = new EventSource(`${BASE_URL}/events${qs ? `?${qs}` : ''}`, {
+    this.es = new EventSource(`${apiUrl("events")}${qs ? `?${qs}` : ''}`, {
       headers,
     });
 

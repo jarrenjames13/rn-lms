@@ -7,7 +7,7 @@ import { useAuth } from "@/context/authContext";
 import { useExamStore } from "@/store/useExamStore";
 import { useQuizStore } from "@/store/useQuizStore";
 import { useAppTheme } from "@/theme";
-import { BASE_URL } from "@/utils/constants";
+import { apiUrl, BASE_URL } from "@/utils/constants";
 import { AppButton } from "./ui";
 
 type NativeRelease = {
@@ -50,7 +50,7 @@ export function NativeUpdateProvider({ children }: React.PropsWithChildren) {
   const [isChecking, setIsChecking] = useState(false);
   const lastCheckedAt = useRef(0);
 
-  const assessmentActive = ["starting", "active", "submitting", "recovery_error"].includes(quizStatus) || ["starting", "active", "submitting", "recovery_error"].includes(examStatus);
+  const assessmentActive = ["starting", "active", "submitting", "finalization_pending", "recovery_error"].includes(quizStatus) || ["starting", "active", "submitting", "finalization_pending", "recovery_error"].includes(examStatus);
 
   const checkForUpdate = useCallback(async (force = true) => {
     if (Platform.OS !== "android" || !BASE_URL) return;
@@ -62,7 +62,7 @@ export function NativeUpdateProvider({ children }: React.PropsWithChildren) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5_000);
     try {
-      const url = new URL("/mobile-releases/public/check", BASE_URL);
+      const url = new URL(apiUrl("mobile-releases/public/check"));
       url.searchParams.set("package_name", Application.applicationId ?? "");
       url.searchParams.set("channel", channel);
       url.searchParams.set("version_code", String(versionCode));

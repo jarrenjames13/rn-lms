@@ -23,19 +23,26 @@ type QuizStore = {
   selectedAnswers: Record<number, OptionKey>;
   session_id?: string | number;
   lease_generation?: number;
-  lease_token?: string;
+  client_id?: string;
+  unload_credential?: string;
+  security_policy?: AssessmentSessionMetadata["security_policy"];
+  camera_required?: boolean;
+  capture_state?: AssessmentSessionMetadata["capture_state"];
   focus_loss_count?: number;
   fullscreen_exit_count?: number;
   answer_revision?: number;
   resumed?: boolean;
   setSelectedAnswers: (answers: Record<number, OptionKey>) => void;
   beginAttempt: (quiz_id: number, instance_id: number) => void;
+  prepareLeaseRecovery: () => void;
   setSession: (session_token: string, deadline_at: number, metadata?: AssessmentSessionMetadata) => void;
   recordFocusLoss: () => number;
   setAnswerRevision: (revision: number) => void;
+  setCaptureState: (state: NonNullable<AssessmentSessionMetadata["capture_state"]>) => void;
   markSubmitting: (reason: SubmissionReason) => void;
   markSubmitted: (result: AssessmentResult) => void;
   markActive: () => void;
+  markFinalizationPending: () => void;
   markRecoveryError: (message: string) => void;
   setHasHydrated: (hasHydrated: boolean) => void;
   clearAttempt: () => void;
@@ -53,7 +60,11 @@ const emptyAttempt = {
   selectedAnswers: {},
   session_id: undefined,
   lease_generation: undefined,
-  lease_token: undefined,
+  client_id: undefined,
+  unload_credential: undefined,
+  security_policy: undefined,
+  camera_required: false,
+  capture_state: "not_required" as const,
   focus_loss_count: 0,
   fullscreen_exit_count: 0,
   answer_revision: 0,
@@ -72,15 +83,22 @@ export const useQuizStore = create<QuizStore>()(
         })),
       beginAttempt: (quiz_id, instance_id) =>
         set({ ...emptyAttempt, quiz_id, instance_id, status: "starting" }),
+      prepareLeaseRecovery: () =>
+        set({ status: "starting", recovery_error: null }),
       setSession: (session_token, deadline_at, metadata = {}) => {
-        admitAssessmentLease(session_token, metadata.lease_token);
-        set({
+        admitAssessmentLease(session_token);
+        set((state) => ({
           session_token,
           deadline_at,
           ...metadata,
+          capture_state:
+            String(state.session_id) === String(metadata.session_id) &&
+            state.capture_state === "uploaded"
+              ? "uploaded"
+              : metadata.capture_state ?? state.capture_state,
           status: "active",
           recovery_error: null,
-        });
+        }));
       },
       recordFocusLoss: () => {
         let count = 0;
@@ -94,11 +112,18 @@ export const useQuizStore = create<QuizStore>()(
         set((state) => ({
           answer_revision: Math.max(state.answer_revision ?? 0, revision),
         })),
+      setCaptureState: (capture_state) =>
+        set((state) =>
+          state.capture_state === "uploaded" && capture_state !== "uploaded"
+            ? {}
+            : { capture_state },
+        ),
       markSubmitting: (submission_reason) =>
         set({ status: "submitting", submission_reason, recovery_error: null }),
       markSubmitted: (result) =>
         set({ status: "submitted", result, submission_reason: result.submission_reason, recovery_error: null }),
       markActive: () => set({ status: "active", recovery_error: null }),
+      markFinalizationPending: () => set({ status: "finalization_pending", recovery_error: null }),
       markRecoveryError: (recovery_error) => set({ status: "recovery_error", recovery_error }),
       setHasHydrated: (hasHydrated) => set({ hasHydrated }),
       clearAttempt: () => set(emptyAttempt),

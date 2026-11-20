@@ -5,7 +5,7 @@ import * as SecureStore from "expo-secure-store";
 export const fetchStats = async () => {
   try {
     const response = await getData<StatsData>(
-      "/modules/student-overall-learning-progress",
+      "/student-progress/overall",
       {}
     );
     const data = response.data;

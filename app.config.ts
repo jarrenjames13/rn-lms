@@ -7,7 +7,7 @@ const googleServicesFile =
 const config: ExpoConfig = {
   name: isPreview ? "Aurora LMS Preview" : "Aurora LMS",
   slug: "rn-lms",
-  version: "1.0.0",
+  version: "1.0.1",
   runtimeVersion: { policy: "appVersion" },
   updates: {
     url: "https://u.expo.dev/4a820703-32cc-44ca-bad1-14fca2d51919",
@@ -39,6 +39,16 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    [
+      "expo-camera",
+      {
+        cameraPermission:
+          "Allow $(PRODUCT_NAME) to use the camera to verify your identity during exams.",
+        microphonePermission: false,
+        recordAudioAndroid: false,
+        barcodeScannerEnabled: false,
+      },
+    ],
     [
       "expo-splash-screen",
       {

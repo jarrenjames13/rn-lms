@@ -1,5 +1,5 @@
 import { useAuth } from "@/context/authContext";
-import { BASE_URL } from "@/utils/constants";
+import { apiUrl } from "@/utils/constants";
 import { showToast } from "@/utils/toast/toast";
 import { useAppTheme } from "@/theme";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const HEALTH_CHECK_URL = `${BASE_URL}/health`;
+const HEALTH_CHECK_URL = apiUrl("health");
 const HEALTH_CHECK_TIMEOUT_MS = 10_000;
 
 type AppStatus = "checking" | "maintenance" | "no_network" | "ready";

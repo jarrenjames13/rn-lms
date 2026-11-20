@@ -1,6 +1,7 @@
 import createActivitiesOptions from "@/api/QueryOptions/actvitiesOptions";
 import createCourseDetailsOptions from "@/api/QueryOptions/courseDetailsOptions";
 import createListExamsOptions from "@/api/QueryOptions/listExamsOption";
+import createListSubmissionsOptions from "@/api/QueryOptions/listSubmissionsOptions";
 import createListQuizzesOptions from "@/api/QueryOptions/listQuizzesOptions";
 import ActivitySubmissionModal from "@/components/ActivitySubmissionModal";
 import AssessmentStartModal from "@/components/AssessmentStartModal";
@@ -17,22 +18,25 @@ import {
   Module,
   QuizDetails,
   SingleActivity,
+  StudentAssessmentDetails,
 } from "@/types/api";
 import { MAX_QUIZ_ATTEMPTS } from "@/utils/constants";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import NetInfo from "@react-native-community/netinfo";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 
 type Assessment = {
   id: number;
   title: string;
-  description?: string;
+  description?: string | null;
   type: "Quiz" | "Exam" | "Submission";
   period?: string;
   status: string;
   score?: number | null;
+  gradeStatus?: string | null;
   meta: string;
   actionable: boolean;
   showAction?: boolean;
@@ -40,6 +44,7 @@ type Assessment = {
   sessionState?: "resumable" | "expired_pending";
   quiz?: QuizDetails;
   exam?: ExamDetails;
+  submission?: StudentAssessmentDetails;
   activity?: SingleActivity;
 };
 
@@ -63,7 +68,8 @@ export default function Assessments() {
     exam_id: activeExamId,
     instance_id: activeExamInstanceId,
   } = useExamStore();
-  const [selectedExam, setSelectedExam] = useState<ExamDetails | null>(null);
+  const [selectedExam, setSelectedExam] = useState<StudentAssessmentDetails | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedActivity, setSelectedActivity] =
     useState<SingleActivity | null>(null);
   const [assessmentToStart, setAssessmentToStart] = useState<Assessment | null>(
@@ -104,6 +110,15 @@ export default function Assessments() {
     enabled: !!instance_id,
   });
   const {
+    data: submissions,
+    isLoading: loadingSubmissions,
+    isError: submissionsError,
+    refetch: refetchSubmissions,
+  } = useQuery({
+    ...createListSubmissionsOptions(instance_id ?? 0),
+    enabled: !!instance_id,
+  });
+  const {
     data: exams,
     isLoading: loadingExams,
     isError: examsError,
@@ -118,14 +133,45 @@ export default function Assessments() {
     isError: courseError,
     refetch: refetchCourse,
   } = useQuery({
-    ...createCourseDetailsOptions(course_id!),
-    enabled: !!course_id,
+    ...createCourseDetailsOptions(course_id ?? 0, instance_id ?? 0),
+    enabled: !!course_id && !!instance_id,
   });
   const activityQueries = useQueries({
     queries: (courseDetails?.modules ?? []).map((module: Module) =>
-      createActivitiesOptions(module.module_id),
+      createActivitiesOptions(module.module_id, instance_id ?? 0),
     ),
   });
+
+  const refreshAssessmentData = useCallback(async () => {
+    await Promise.all([refetchQuizzes(), refetchExams(), refetchSubmissions()]);
+  }, [refetchExams, refetchQuizzes, refetchSubmissions]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshAssessmentData();
+      void refetchCourse();
+    }, [refreshAssessmentData, refetchCourse]),
+  );
+
+  const connectedRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected === true && connectedRef.current === false) {
+        void refreshAssessmentData();
+      }
+      connectedRef.current = state.isConnected ?? null;
+    });
+    return unsubscribe;
+  }, [refreshAssessmentData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshAssessmentData(), refetchCourse()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshAssessmentData, refetchCourse]);
 
   const assessments = useMemo<Assessment[]>(() => {
     const quizItems: Assessment[] = (quizzes?.quizzes ?? []).map((quiz) => {
@@ -145,21 +191,26 @@ export default function Assessments() {
           ? "In progress"
           : sessionState === "expired_pending"
             ? "Time expired"
-            : attemptsMade >= MAX_QUIZ_ATTEMPTS
+            : quiz.locked
+              ? "Outside course window"
+              : attemptsMade >= MAX_QUIZ_ATTEMPTS
             ? "Attempts used"
             : attemptsMade > 0
               ? "Reattempt available"
               : "Available",
         score: quiz.score,
+        gradeStatus: null,
         meta: sessionState === "resumable"
           ? `${quiz.total_items} questions · ${minutesLeft} minute${minutesLeft === 1 ? "" : "s"} remaining`
           : sessionState === "expired_pending"
             ? "Your saved answers are being finalized"
-            : `${quiz.total_items} questions · ${attemptsMade}/${MAX_QUIZ_ATTEMPTS} attempts used`,
+            : quiz.locked
+              ? "This assessment is outside its available course window."
+              : `${quiz.total_items} questions · ${attemptsMade}/${MAX_QUIZ_ATTEMPTS} attempts used`,
         actionable:
           sessionState === "resumable" ||
-          (sessionState !== "expired_pending" && attemptsMade < MAX_QUIZ_ATTEMPTS),
-        showAction: sessionState === "expired_pending" || attemptsMade < MAX_QUIZ_ATTEMPTS,
+          (sessionState !== "expired_pending" && !quiz.locked && attemptsMade < MAX_QUIZ_ATTEMPTS),
+        showAction: sessionState === "resumable" || (sessionState !== "expired_pending" && !quiz.locked && attemptsMade < MAX_QUIZ_ATTEMPTS),
         actionLabel: sessionState === "resumable"
           ? "Resume quiz"
           : sessionState === "expired_pending"
@@ -172,7 +223,6 @@ export default function Assessments() {
       };
     });
     const examItems: Assessment[] = (exams?.exams ?? []).map((exam) => {
-      const submission = exam.category.toLowerCase() === "submission";
       const sessionState = exam.active_session?.state;
       const minutesLeft = Math.max(
         1,
@@ -182,40 +232,67 @@ export default function Assessments() {
         id: exam.exam_id,
         title: exam.exam_name,
         description: exam.description,
-        type: submission ? "Submission" : "Exam",
+        type: "Exam",
         period: exam.exam_period,
         status: sessionState === "resumable"
           ? "In progress"
           : sessionState === "expired_pending"
             ? "Time expired"
-            : exam.is_taken
-          ? exam.score === null
-            ? "Awaiting review"
-            : "Graded"
-          : "Available",
+            : exam.ip_allowed === false
+              ? "Campus network required"
+              : exam.locked
+                ? "Outside exam window"
+                : !exam.can_attempt && !exam.is_taken
+                  ? "No attempts remain"
+                  : exam.is_taken
+                    ? exam.grade_status === "provisional"
+                      ? "Provisional review"
+                      : exam.grade_status === "failed"
+                        ? "Failed review"
+                        : exam.score === null
+                          ? "Awaiting review"
+                          : "Graded"
+                    : "Available",
         score: exam.score,
+        gradeStatus: exam.grade_status,
         meta: sessionState === "resumable"
           ? `${exam.total_items} questions · ${minutesLeft} minute${minutesLeft === 1 ? "" : "s"} remaining`
           : sessionState === "expired_pending"
             ? "Your saved answers are being finalized"
-            : submission
-          ? "File submission · One attempt"
-          : `${exam.total_items} questions · Timed assessment`,
+            : exam.ip_allowed === false
+              ? "Ask your instructor or administrator for an offsite grant, then refresh this list."
+              : exam.locked
+                ? "This assessment is outside its available course window."
+                : !exam.can_attempt && !exam.is_taken
+                  ? "No attempts remain for this exam."
+                  : exam.status ?? `${exam.total_items ?? 0} questions · Timed assessment`,
         actionable:
           sessionState === "resumable" ||
-          (sessionState !== "expired_pending" && !exam.is_taken),
-        showAction: sessionState === "expired_pending" || !exam.is_taken,
+          (sessionState !== "expired_pending" && !exam.is_taken && exam.ip_allowed !== false && !exam.locked && exam.can_attempt),
+        showAction: sessionState === "resumable" || (sessionState !== "expired_pending" && !exam.is_taken && exam.ip_allowed !== false && !exam.locked && exam.can_attempt),
         actionLabel: sessionState === "resumable"
           ? "Resume exam"
           : sessionState === "expired_pending"
             ? "Finalizing result..."
-            : submission
-              ? "Submit work"
-              : "Start exam",
+            : "Start exam",
         sessionState,
         exam,
       };
     });
+    const submissionItems: Assessment[] = (submissions?.exams ?? []).map((submission) => ({
+      id: submission.exam_id,
+      title: submission.exam_name,
+      description: submission.description ?? undefined,
+      type: "Submission",
+      period: submission.exam_period,
+      status: submission.is_taken ? "Submitted" : submission.locked ? "Outside submission window" : "Available",
+        score: submission.score,
+        gradeStatus: submission.grade_status,
+      meta: submission.is_taken ? "Submitted work" : "File submission · Ask your instructor if the course window is closed",
+      actionable: !submission.is_taken && !submission.locked,
+      actionLabel: "Submit work",
+      submission,
+    }));
     const activityItems: Assessment[] = activityQueries.flatMap(
       (query, index) =>
         ((query.data as ActivityWithGrade | undefined)?.activities ?? []).map(
@@ -231,6 +308,7 @@ export default function Assessments() {
                 ? "Submitted"
                 : "Available",
             score: activity.grade,
+            gradeStatus: null,
             meta: `${activity.activity_type} · Text or file submission`,
             actionable: !activity.has_submission,
             actionLabel: "Submit work",
@@ -238,8 +316,8 @@ export default function Assessments() {
           }),
         ),
     );
-    return [...quizItems, ...examItems, ...activityItems];
-  }, [activityQueries, courseDetails?.modules, exams?.exams, quizzes?.quizzes]);
+    return [...quizItems, ...examItems, ...submissionItems, ...activityItems];
+  }, [activityQueries, courseDetails?.modules, exams?.exams, quizzes?.quizzes, submissions?.exams]);
 
   const hasFinalizingAssessment = assessments.some(
     (assessment) => assessment.sessionState === "expired_pending",
@@ -283,9 +361,9 @@ export default function Assessments() {
 
     if (assessment.quiz) {
       if (!quizAttemptHydrated) return;
+      if (assessment.sessionState !== "resumable" && assessment.quiz.locked) return;
       if (quizAttemptStatus === "idle") {
-        if (assessment.sessionState === "resumable") startQuiz(assessment.quiz);
-        else setAssessmentToStart(assessment);
+        setAssessmentToStart(assessment);
       } else if (
         activeQuizId === assessment.id &&
         activeQuizInstanceId === targetInstanceId
@@ -308,10 +386,13 @@ export default function Assessments() {
     }
 
     if (assessment.type === "Exam" && assessment.exam) {
+      if (
+        assessment.sessionState !== "resumable" &&
+        (assessment.exam.ip_allowed === false || assessment.exam.locked || !assessment.exam.can_attempt)
+      ) return;
       if (!examAttemptHydrated) return;
       if (examAttemptStatus === "idle") {
-        if (assessment.sessionState === "resumable") startExam(assessment.exam);
-        else setAssessmentToStart(assessment);
+        setAssessmentToStart(assessment);
       } else if (
         activeExamId === assessment.id &&
         activeExamInstanceId === targetInstanceId
@@ -333,11 +414,11 @@ export default function Assessments() {
       return;
     }
 
-    if (assessment.exam) setSelectedExam(assessment.exam);
+    if (assessment.submission) setSelectedExam(assessment.submission);
     else if (assessment.activity) setSelectedActivity(assessment.activity);
   };
 
-  const loading = loadingQuizzes || loadingExams || loadingCourse;
+  const loading = loadingQuizzes || loadingExams || loadingSubmissions || loadingCourse;
   const assessmentGroups = useMemo(
     () =>
       (["Quiz", "Exam", "Submission"] as AssessmentType[]).map((type) => ({
@@ -406,7 +487,7 @@ export default function Assessments() {
             </Text>
           </View>
         </View>
-        {assessment.score !== null && assessment.score !== undefined ? (
+        {assessment.score !== null && assessment.score !== undefined && assessment.gradeStatus !== "provisional" ? (
           <Text className="text-sm font-semibold text-[#6842A0] dark:text-[#A98ADC] mt-4">
             Score: {assessment.score}%
           </Text>
@@ -465,6 +546,9 @@ export default function Assessments() {
       <ScrollView
         contentContainerStyle={{ padding: 20 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.school} />
+        }
       >
         <AppHeader
           eyebrow="COURSE WORK"
@@ -474,7 +558,7 @@ export default function Assessments() {
 
         {loading ? (
           <ScreenLoading message="Loading your assessments..." />
-        ) : quizzesError || examsError || courseError ? (
+        ) : quizzesError || examsError || submissionsError || courseError ? (
           <StateView
             icon="cloud-offline-outline"
             title="Assessments unavailable"
@@ -483,6 +567,7 @@ export default function Assessments() {
             onAction={() => {
               void refetchQuizzes();
               void refetchExams();
+              void refetchSubmissions();
               void refetchCourse();
             }}
           />
@@ -547,6 +632,7 @@ export default function Assessments() {
         <ActivitySubmissionModal
           visible
           activity={selectedActivity}
+        instanceId={instance_id ?? 0}
           onClose={() => setSelectedActivity(null)}
         />
       ) : null}
@@ -554,6 +640,14 @@ export default function Assessments() {
         visible={!!assessmentToStart}
         type={assessmentToStart?.type === "Exam" ? "exam" : "quiz"}
         title={assessmentToStart?.title ?? "Assessment"}
+        cameraRequired={assessmentToStart?.exam?.camera_required === true && (
+          assessmentToStart.sessionState !== "resumable" ||
+          assessmentToStart.exam.active_session?.capture_state === "scheduled" ||
+          assessmentToStart.exam.active_session?.capture_state === "due"
+        )}
+        attemptsRemaining={assessmentToStart?.exam?.remaining_attempts}
+        isResume={assessmentToStart?.sessionState === "resumable"}
+        remainingSeconds={assessmentToStart?.exam?.active_session?.remaining_seconds}
         isReattempt={(assessmentToStart?.quiz?.attempts_made ?? 0) > 0}
         onCancel={() => setAssessmentToStart(null)}
         onBegin={beginAssessment}

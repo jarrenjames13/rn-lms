@@ -1,14 +1,19 @@
 import { useAppTheme } from "@/theme";
 import { useAsyncAction } from "@/utils/useAsyncAction";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
+import { ExamIdentityCapture } from "@/components/ExamIdentityCapture";
 
 type AssessmentStartModalProps = {
   visible: boolean;
   type: "quiz" | "exam";
   title: string;
   isReattempt?: boolean;
+  cameraRequired?: boolean;
+  attemptsRemaining?: number;
+  isResume?: boolean;
+  remainingSeconds?: number;
   onCancel: () => void;
   onBegin: () => void;
 };
@@ -18,12 +23,20 @@ export default function AssessmentStartModal({
   type,
   title,
   isReattempt = false,
+  cameraRequired = false,
+  attemptsRemaining = 1,
+  isResume = false,
+  remainingSeconds,
   onCancel,
   onBegin,
 }: AssessmentStartModalProps) {
   const { theme } = useAppTheme();
   const isQuiz = type === "quiz";
   const { isPending, run } = useAsyncAction();
+  const [cameraReady, setCameraReady] = useState(false);
+  useEffect(() => {
+    setCameraReady(false);
+  }, [cameraRequired, visible]);
   const duration = isQuiz ? 60 : 120;
   const assessmentLabel = isQuiz ? "quiz" : "exam";
 
@@ -52,13 +65,17 @@ export default function AssessmentStartModal({
               />
             </View>
             <Text className="text-xl font-bold text-center" style={{ color: theme.text }}>
-              Begin {isQuiz ? "Quiz" : "Exam"}?
+              {isResume ? "Resume" : "Begin"} {isQuiz ? "Quiz" : "Exam"}?
             </Text>
             <Text className="text-base font-semibold text-center mt-2" style={{ color: theme.text }}>
               {title}
             </Text>
             <Text className="text-sm text-center mt-1" style={{ color: theme.textMuted }}>
-              You will have {duration} minutes once you begin.
+              {isResume && typeof remainingSeconds === "number"
+                ? `Your current attempt has ${Math.max(1, Math.ceil(remainingSeconds / 60))} minutes remaining.`
+                : isResume
+                  ? "Continue your current attempt with its existing deadline."
+                  : `You will have ${duration} minutes once you begin.`}
             </Text>
           </View>
 
@@ -66,10 +83,10 @@ export default function AssessmentStartModal({
             <View className="flex-row items-start">
               <Ionicons name="warning-outline" size={20} color={theme.warning} />
               <Text className="flex-1 text-sm leading-5 ml-3" style={{ color: theme.text }}>
-                The first time you switch apps or send this app to the background, you will receive a warning. A second time will automatically submit your {assessmentLabel}. Navigating away still submits immediately.
+                The server records app background and navigation events. It will warn or finalize the {assessmentLabel} according to its security policy.
               </Text>
             </View>
-            {isQuiz && isReattempt ? (
+            {isQuiz && isReattempt && !isResume ? (
               <View className="flex-row items-start mt-3">
                 <Ionicons name="reload-outline" size={20} color={theme.warning} />
                 <Text className="flex-1 text-sm leading-5 ml-3" style={{ color: theme.text }}>
@@ -77,12 +94,24 @@ export default function AssessmentStartModal({
                 </Text>
               </View>
             ) : null}
-            {!isQuiz ? (
+            {!isQuiz && !isResume ? (
               <View className="flex-row items-start mt-3">
                 <Ionicons name="lock-closed-outline" size={20} color={theme.danger} />
                 <Text className="flex-1 text-sm font-semibold leading-5 ml-3" style={{ color: theme.danger }}>
-                  This exam allows one attempt only. You cannot retake it after you begin.
+                  Beginning consumes one attempt. {attemptsRemaining <= 1 ? "This is your last available attempt." : `${attemptsRemaining} attempts are available.`}
                 </Text>
+              </View>
+            ) : null}
+            {!isQuiz && cameraRequired ? (
+              <View className="mt-4">
+                <Text className="text-sm leading-5 mb-3" style={{ color: theme.text }}>
+                  This remote exam requires a front-camera preview before starting. A photo is taken later only if the exam server requests it.
+                </Text>
+                <ExamIdentityCapture
+                  mode="preflight"
+                  onStateChange={(state) => setCameraReady(state.phase === "preview_ready")}
+                  onReady={() => setCameraReady(true)}
+                />
               </View>
             ) : null}
           </View>
@@ -108,15 +137,17 @@ export default function AssessmentStartModal({
               accessibilityRole="button"
               accessibilityLabel={`Begin ${assessmentLabel}`}
               onPress={() => void run(onBegin)}
-              disabled={isPending}
+              disabled={isPending || (cameraRequired && !isQuiz && !cameraReady)}
               className="flex-1"
             >
               {({ pressed }) => (
                 <View
                   className="min-h-14 items-center justify-center"
-                  style={{ backgroundColor: pressed ? theme.primaryPressed : theme.school }}
+                  style={{ backgroundColor: isPending || (cameraRequired && !isQuiz && !cameraReady)
+                    ? theme.tabInactive
+                    : pressed ? theme.primaryPressed : theme.school }}
                 >
-                  <Text className="font-bold" style={{ color: "#FFFFFF" }}>{isPending ? "Starting..." : "Begin"}</Text>
+                  <Text className="font-bold" style={{ color: "#FFFFFF" }}>{isPending ? "Starting..." : cameraRequired && !isQuiz && !cameraReady ? "Camera required" : isResume ? "Resume" : "Begin"}</Text>
                 </View>
               )}
             </Pressable>

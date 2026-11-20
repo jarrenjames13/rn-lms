@@ -1,9 +1,13 @@
 import { ComprehensiveGradesResponse } from "@/types/api";
 import { getData } from "@/utils/fetcher";
-export const fetchComprehensiveGrades = async (courseId: number) => {
+export const fetchComprehensiveGrades = async (
+  courseId: number,
+  instanceId: number,
+) => {
   try {
     const res = await getData<ComprehensiveGradesResponse>(
-      `/modules/student-comprehensive-grades/${courseId}`,
+      `/dashboards/student/courses/${courseId}/comprehensive-grades`,
+      { instance_id: instanceId },
     );
     const data: ComprehensiveGradesResponse = res.data;
 

@@ -39,6 +39,7 @@ import { isAssessmentLeaseEvicted } from "@/utils/assessmentLease";
 import { getAssessmentClientId } from "@/utils/assessmentClientId";
 import { useAssessmentSessionRuntime } from "@/utils/useAssessmentSessionRuntime";
 import { AssessmentItemContent } from "@/components/AssessmentItemContent";
+import { getAssessmentHttpError } from "@/utils/assessmentHttpError";
 
 export default function QuizTaking() {
   const { theme } = useAppTheme();
@@ -56,6 +57,7 @@ export default function QuizTaking() {
   const startInFlightRef = useRef(false);
   const submissionInFlightRef = useRef(false);
   const recoveryInFlightRef = useRef(false);
+  const securityEventInFlightRef = useRef(false);
   const dialogOpenRef = useRef(false);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -65,6 +67,10 @@ export default function QuizTaking() {
     quiz_id,
     instance_id,
     session_token,
+    client_id,
+    lease_generation,
+    session_id,
+    security_policy: securityPolicy,
     deadline_at: deadlineAt,
     status,
     submission_reason: submissionReason,
@@ -74,8 +80,11 @@ export default function QuizTaking() {
     selectedAnswers,
     setSelectedAnswers,
     setSession,
+    prepareLeaseRecovery,
     recordFocusLoss,
     setAnswerRevision,
+    setCaptureState,
+    markFinalizationPending,
     markSubmitting,
     markSubmitted,
     markActive,
@@ -84,6 +93,26 @@ export default function QuizTaking() {
   } = useQuizStore();
 
   const listRef = useRef<any>(null);
+  useEffect(() => {
+    if (!hasHydrated || status !== "active") return;
+    const leaseReady =
+      !!session_token &&
+      !!client_id &&
+      Number.isInteger(Number(session_id)) &&
+      Number(session_id) > 0 &&
+      Number.isInteger(Number(lease_generation)) &&
+      Number(lease_generation) > 0;
+    if (!leaseReady) prepareLeaseRecovery();
+  }, [
+    client_id,
+    hasHydrated,
+    lease_generation,
+    prepareLeaseRecovery,
+    session_id,
+    session_token,
+    status,
+  ]);
+
   useEffect(() => {
     if (
       !hasHydrated ||
@@ -102,8 +131,8 @@ export default function QuizTaking() {
         instance_id,
         category: "quiz",
         client_id: clientId,
-      }))
-      .then((session) => {
+      }).then((session) => ({ clientId, session })))
+      .then(({ clientId, session }) => {
         if (!cancelled) {
           const deadline = new Date(session.deadline_at).getTime();
           const remaining = session.remaining_seconds ?? 0;
@@ -111,7 +140,11 @@ export default function QuizTaking() {
           setSession(session.session_token, deadline, {
             session_id: session.session_id,
             lease_generation: session.lease_generation,
-            lease_token: session.lease_token,
+            client_id: clientId,
+            unload_credential: session.unload_credential,
+            security_policy: session.security_policy,
+            camera_required: session.camera_required,
+            capture_state: session.capture_state,
             resumed: session.resumed,
           });
         }
@@ -130,11 +163,7 @@ export default function QuizTaking() {
               generation: Number(detail.lease_generation),
             });
           } else {
-            setSessionError(
-              typeof detail === "string"
-                ? detail
-                : error?.message ?? "Unable to start quiz session.",
-            );
+            setSessionError(getAssessmentHttpError(error, "Unable to start quiz session.").message);
           }
         }
       })
@@ -153,18 +182,27 @@ export default function QuizTaking() {
     isError,
     error,
   } = useQuery({
-    ...createQuizQuestionsOptions(quiz_id, instance_id, session_token),
-    enabled: status === "active" && quiz_id > 0 && instance_id > 0 && !!session_token,
+    ...createQuizQuestionsOptions(
+      quiz_id,
+      instance_id,
+      session_token,
+      client_id ?? "",
+      lease_generation ?? 0,
+    ),
+    enabled: status === "active" && quiz_id > 0 && instance_id > 0 &&
+      !!session_token && !!client_id && lease_generation != null,
   });
 
   const { mutateAsync: submitAnswers, isPending: isSubmitting } = useQuizAnswers({
     onError: () => undefined,
   });
 
-  const { queueAutosave, reportFocusLoss, setAnswerVersions } = useAssessmentSessionRuntime({
+  const { queueAutosave, flushPendingSaves, reportFocusLoss, reportSecurityEvent, setAnswerVersions } = useAssessmentSessionRuntime({
     getAttempt: useQuizStore.getState,
     setAnswerRevision,
     setRemainingSeconds: setSecondsLeft,
+    setCaptureState,
+    onSessionTerminal: markFinalizationPending,
     leaseKey:
       status === "active"
         ? `${useQuizStore.getState().session_id}:${useQuizStore.getState().lease_generation}:${session_token}`
@@ -187,35 +225,68 @@ export default function QuizTaking() {
 
   const recoverExistingResult = useCallback(async () => {
     const attempt = useQuizStore.getState();
-    if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+    if (isAssessmentLeaseEvicted(attempt.session_token)) return;
     const recovered = await fetchQuizResult(quiz_id, instance_id, session_token);
-    if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+    if (isAssessmentLeaseEvicted(attempt.session_token)) return;
     markSubmitted(recovered);
   }, [instance_id, markSubmitted, quiz_id, session_token]);
 
   const submitAttempt = useCallback(
     async (reason: SubmissionReason, recovering = false) => {
-      const attempt = useQuizStore.getState();
-      if (!attempt.session_token || submissionInFlightRef.current) return;
-      if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
-      if (!recovering && attempt.status !== "active") return;
+      const initialAttempt = useQuizStore.getState();
+      if (!initialAttempt.session_token || submissionInFlightRef.current) return;
+      if (isAssessmentLeaseEvicted(initialAttempt.session_token)) return;
+      if (!recovering && initialAttempt.status !== "active") return;
 
       submissionInFlightRef.current = true;
-      markSubmitting(reason);
       try {
+        await flushPendingSaves();
+        const readyAttempt = useQuizStore.getState();
+        const sameLease =
+          readyAttempt.session_token === initialAttempt.session_token &&
+          String(readyAttempt.session_id) === String(initialAttempt.session_id) &&
+          readyAttempt.client_id === initialAttempt.client_id &&
+          readyAttempt.lease_generation === initialAttempt.lease_generation;
+        if (!sameLease || isAssessmentLeaseEvicted(initialAttempt.session_token)) return;
+        if (!recovering && readyAttempt.status !== "active") return;
+        if (readyAttempt.session_id == null || readyAttempt.lease_generation == null) {
+          throw new Error("The active quiz session is missing its lease metadata.");
+        }
+        markSubmitting(reason);
         await flushAssessmentStorage();
-        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+        const attempt = useQuizStore.getState();
+        if (
+          attempt.session_token !== initialAttempt.session_token ||
+          String(attempt.session_id) !== String(initialAttempt.session_id) ||
+          attempt.client_id !== initialAttempt.client_id ||
+          attempt.lease_generation !== initialAttempt.lease_generation ||
+          isAssessmentLeaseEvicted(initialAttempt.session_token)
+        ) return;
         const submittedResult = await submitAnswers({
           quiz_id: attempt.quiz_id,
           instance_id: attempt.instance_id,
           answers: attempt.selectedAnswers,
           submission_reason: reason,
           session_token: attempt.session_token,
+          session_id: Number(attempt.session_id),
+          client_id: attempt.client_id ?? await getAssessmentClientId(),
+          lease_generation: Number(attempt.lease_generation),
         });
-        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+        const latestAttempt = useQuizStore.getState();
+        if (
+          latestAttempt.session_token !== attempt.session_token ||
+          latestAttempt.session_id !== attempt.session_id ||
+          latestAttempt.lease_generation !== attempt.lease_generation ||
+          isAssessmentLeaseEvicted(attempt.session_token)
+        ) return;
         markSubmitted(submittedResult);
       } catch (error) {
-        if (isAssessmentLeaseEvicted(attempt.session_token, attempt.lease_token)) return;
+        if (isAssessmentLeaseEvicted(initialAttempt.session_token)) return;
+        const apiError = getAssessmentHttpError(error, "Unable to submit quiz.");
+        if (apiError.code === "ASSESSMENT_SESSION_TERMINAL" || apiError.code === "ASSESSMENT_DEADLINE_EXPIRED" || apiError.code === "ASSESSMENT_FINALIZING") {
+          markFinalizationPending();
+          return;
+        }
         if (getApiErrorStatus(error) === 409 && /already submitted/i.test((error as Error).message)) {
           try {
             await recoverExistingResult();
@@ -226,7 +297,7 @@ export default function QuizTaking() {
           }
         }
 
-        const message = (error as Error).message || "Unable to submit quiz.";
+        const message = apiError.message;
         if (reason === "manual" && !recovering) {
           try {
             await recoverExistingResult();
@@ -247,9 +318,11 @@ export default function QuizTaking() {
     },
     [
       markActive,
+      markFinalizationPending,
       markRecoveryError,
       markSubmitted,
       markSubmitting,
+      flushPendingSaves,
       recoverExistingResult,
       submitAnswers,
     ],
@@ -268,13 +341,39 @@ export default function QuizTaking() {
       ignoreFocusLossRef: dialogOpenRef,
       recordFocusLoss,
       reportFocusLoss,
-      onSecondEpisode: () => performSubmission("tab_switch"),
+      focusThreshold: securityPolicy?.focus_threshold,
+      onThresholdReached: () => {
+        markFinalizationPending();
+        void recoverSubmission();
+      },
+      onReportError: (error) => {
+        Alert.alert(
+          "Unable to verify quiz security status",
+          getAssessmentHttpError(error, "Reconnect and return to the quiz.").message,
+        );
+      },
     });
 
   usePreventRemove(status !== "idle" && !navigationAllowed, () => {
     const attempt = useQuizStore.getState();
-    if (attempt.status === "active" && attempt.session_token) {
-      performSubmission("navigation_attempt");
+    if (attempt.status === "active" && attempt.session_token && !securityEventInFlightRef.current) {
+      securityEventInFlightRef.current = true;
+      void reportSecurityEvent("navigation_attempt")
+        .then((event) => {
+          if (event.must_submit) {
+            markFinalizationPending();
+            void recoverSubmission();
+          }
+        })
+        .catch((error) => {
+          Alert.alert(
+            "Unable to verify navigation attempt",
+            getAssessmentHttpError(error, "Reconnect before leaving the quiz.").message,
+          );
+        })
+        .finally(() => {
+          securityEventInFlightRef.current = false;
+        });
     }
   });
 
@@ -292,6 +391,9 @@ export default function QuizTaking() {
       setSession(session.session_token, deadline, {
         session_id: session.session_id,
         lease_generation: session.lease_generation,
+        client_id: clientId,
+        unload_credential: session.unload_credential,
+        security_policy: session.security_policy,
         resumed: true,
       });
       setTakeoverRequest(null);
@@ -319,22 +421,36 @@ export default function QuizTaking() {
     if (!session_token || recoveryInFlightRef.current || submissionInFlightRef.current) return;
     recoveryInFlightRef.current = true;
     try {
-      await recoverExistingResult();
-    } catch (error) {
-      if (getApiErrorStatus(error) === 404) {
-        await submitAttempt(submissionReason ?? "navigation_attempt", true);
-      } else {
-        markRecoveryError((error as Error).message || "Unable to recover quiz result.");
+      const attempt = useQuizStore.getState();
+      for (let attemptNumber = 0; attemptNumber < 5; attemptNumber += 1) {
+        if (isAssessmentLeaseEvicted(attempt.session_token)) return;
+        try {
+          const recovered = await fetchQuizResult(attempt.quiz_id, attempt.instance_id, attempt.session_token);
+          if (isAssessmentLeaseEvicted(attempt.session_token)) return;
+          markSubmitted(recovered);
+          return;
+        } catch (error) {
+          const detail = getAssessmentHttpError(error);
+          if (detail.status !== 404 && detail.code !== "ASSESSMENT_FINALIZING") throw error;
+          if (detail.status === 404 && attempt.status !== "finalization_pending") {
+            await submitAttempt(submissionReason ?? "navigation_attempt", true);
+            return;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1200));
       }
+      markRecoveryError("The server is still finalizing this quiz. Try again shortly.");
+    } catch (error) {
+      markRecoveryError(getAssessmentHttpError(error, "Unable to recover quiz result.").message);
     } finally {
       recoveryInFlightRef.current = false;
     }
-  }, [markRecoveryError, recoverExistingResult, session_token, submissionReason, submitAttempt]);
+  }, [markRecoveryError, markSubmitted, session_token, submissionReason, submitAttempt]);
 
   useEffect(() => {
     if (
       hasHydrated &&
-      (status === "submitting" || status === "recovery_error") &&
+      (status === "submitting" || status === "finalization_pending" || status === "recovery_error") &&
       AppState.currentState === "active"
     ) {
       void recoverSubmission();
@@ -364,7 +480,7 @@ export default function QuizTaking() {
       const attemptStatus = useQuizStore.getState().status;
       if (
         next === "active" &&
-        (attemptStatus === "submitting" || attemptStatus === "recovery_error")
+        (attemptStatus === "submitting" || attemptStatus === "finalization_pending" || attemptStatus === "recovery_error")
       ) {
         void recoverSubmission();
       }
@@ -434,6 +550,10 @@ export default function QuizTaking() {
 
   if (status === "submitting") {
     return <ScreenLoading message="Submitting your quiz and preparing the result..." />;
+  }
+
+  if (status === "finalization_pending") {
+    return <ScreenLoading message="The server is finalizing your quiz result..." />;
   }
 
   if (status === "recovery_error") {
@@ -615,6 +735,7 @@ export default function QuizTaking() {
             return (
               <Pressable
                 key={key}
+                disabled={status !== "active"}
                 className={`mb-3 rounded-xl border-2 overflow-hidden ${
                   isSelected
                     ? "border-[#B42335] bg-[#FCECEF] dark:border-[#F06A78] dark:bg-[#3A2025]"

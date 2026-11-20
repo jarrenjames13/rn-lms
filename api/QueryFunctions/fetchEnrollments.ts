@@ -1,20 +1,22 @@
-import { Enrollment } from "@/types/api";
+import type { Enrollment } from "@/types/api";
 import { getData } from "@/utils/fetcher";
 
-export const fetchEnrollments = async (userId: number) => {
-  try {
-    const response = await getData<Enrollment[] | { enrollments: Enrollment[] }>(
-      `/enrollments/student/${userId}`,
-      {}
-    );
-    const data = response.data;
+export type EnrollmentPage = {
+  enrollments: Enrollment[];
+  pagination: {
+    limit: number;
+    has_more: boolean;
+    next_cursor: string | null;
+  };
+};
 
-    return Array.isArray(data) ? data : data.enrollments;
-  } catch (error: any) {
-    throw new Error(
-      error?.response?.data?.detail ||
-        error.message ||
-        "Error fetching enrollments"
-    );
-  }
+export const fetchEnrollments = async (
+  userId: number,
+  cursor?: string,
+): Promise<EnrollmentPage> => {
+  const response = await getData<EnrollmentPage>(
+    `/enrollments/student/${userId}`,
+    { pagination: "cursor", limit: 48, ...(cursor ? { cursor } : {}) },
+  );
+  return response.data;
 };

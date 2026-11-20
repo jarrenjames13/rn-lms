@@ -2,12 +2,14 @@ import { postData } from "@/utils/fetcher";
 
 export type TrackSectionOptionPayload = {
   section_id: number;
+  instance_id: number;
+  module_id?: number;
 };
 
 export const postTrackSection = async (payload: TrackSectionOptionPayload) => {
   try {
     const response = await postData(
-      "/modules/student-progress/track-section",
+      "/student-progress/track-section",
       payload
     );
     return response.data;

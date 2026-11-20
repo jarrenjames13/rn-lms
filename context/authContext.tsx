@@ -5,7 +5,7 @@ import {
   VerifyUser,
 } from "@/types/api";
 
-import { BASE_URL } from "@/utils/constants";
+import { apiUrl, BASE_URL } from "@/utils/constants";
 import { apiClient, clearApiAuthorization, persistAuthCookies, setLogoutCallback } from "@/utils/fetcher";
 import { showToast } from "@/utils/toast/toast";
 import NetInfo from "@react-native-community/netinfo";
@@ -255,7 +255,7 @@ export const AuthProvider = ({ children }: any) => {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 5000);
-      const probe = await fetch(`${BASE_URL}/health`, {
+      const probe = await fetch(apiUrl("health"), {
         method: "GET",
         signal: controller.signal,
       });
